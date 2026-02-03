@@ -53,6 +53,7 @@ export const apiKeys = sqliteTable("api_keys", {
   createdAt: integer("created_at").notNull(), // unix timestamp
   lastUsedAt: integer("last_used_at"), // unix timestamp, nullable
   revokedAt: integer("revoked_at"), // unix timestamp, nullable
+  rateLimit: integer("rate_limit"), // requests per minute, null = unlimited
 });
 
 // Webhooks table

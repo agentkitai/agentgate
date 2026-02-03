@@ -4,17 +4,32 @@ interface ApiKey {
   id: string;
   name: string;
   scopes: string[];
-  created_at: number;
-  last_used_at: number | null;
+  createdAt: number;
+  lastUsedAt: number | null;
+  rateLimit: number | null;
   active: boolean;
+}
+
+interface CreateForm {
+  name: string;
+  scopes: string[];
+  rateLimit: number | null;
+}
+
+interface EditForm {
+  id: string;
+  name: string;
+  scopes: string[];
+  rateLimit: number | null;
 }
 
 export default function ApiKeys() {
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [showEdit, setShowEdit] = useState<EditForm | null>(null);
   const [newKey, setNewKey] = useState<{ key: string; name: string } | null>(null);
-  const [createForm, setCreateForm] = useState({ name: '', scopes: ['request:create', 'request:read'] });
+  const [createForm, setCreateForm] = useState<CreateForm>({ name: '', scopes: ['request:create', 'request:read'], rateLimit: null });
 
   useEffect(() => {
     fetchKeys();
@@ -37,14 +52,38 @@ export default function ApiKeys() {
       const res = await fetch('/api/api-keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(createForm),
+        body: JSON.stringify({
+          name: createForm.name,
+          scopes: createForm.scopes,
+          rateLimit: createForm.rateLimit,
+        }),
       });
       const data = await res.json();
       setNewKey({ key: data.key, name: data.name });
       setShowCreate(false);
+      setCreateForm({ name: '', scopes: ['request:create', 'request:read'], rateLimit: null });
       fetchKeys();
     } catch (err) {
       console.error('Failed to create key:', err);
+    }
+  }
+
+  async function updateKey() {
+    if (!showEdit) return;
+    try {
+      await fetch(`/api/api-keys/${showEdit.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: showEdit.name,
+          scopes: showEdit.scopes,
+          rateLimit: showEdit.rateLimit,
+        }),
+      });
+      setShowEdit(null);
+      fetchKeys();
+    } catch (err) {
+      console.error('Failed to update key:', err);
     }
   }
 
@@ -132,6 +171,21 @@ export default function ApiKeys() {
                 ))}
               </div>
             </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Rate Limit (requests/min)</label>
+              <input
+                type="number"
+                value={createForm.rateLimit ?? ''}
+                onChange={(e) => setCreateForm({ 
+                  ...createForm, 
+                  rateLimit: e.target.value ? parseInt(e.target.value, 10) : null 
+                })}
+                className="w-full border rounded px-3 py-2"
+                placeholder="Unlimited"
+                min="1"
+              />
+              <p className="text-xs text-gray-500 mt-1">Leave empty for unlimited requests</p>
+            </div>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowCreate(false)}
@@ -151,6 +205,76 @@ export default function ApiKeys() {
         </div>
       )}
 
+      {/* Edit Key Modal */}
+      {showEdit && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Edit API Key</h2>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Name</label>
+              <input
+                type="text"
+                value={showEdit.name}
+                onChange={(e) => setShowEdit({ ...showEdit, name: e.target.value })}
+                className="w-full border rounded px-3 py-2"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Scopes</label>
+              <div className="space-y-2">
+                {scopeOptions.map((scope) => (
+                  <label key={scope} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={showEdit.scopes.includes(scope)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setShowEdit({ ...showEdit, scopes: [...showEdit.scopes, scope] });
+                        } else {
+                          setShowEdit({ ...showEdit, scopes: showEdit.scopes.filter(s => s !== scope) });
+                        }
+                      }}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">{scope}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Rate Limit (requests/min)</label>
+              <input
+                type="number"
+                value={showEdit.rateLimit ?? ''}
+                onChange={(e) => setShowEdit({ 
+                  ...showEdit, 
+                  rateLimit: e.target.value ? parseInt(e.target.value, 10) : null 
+                })}
+                className="w-full border rounded px-3 py-2"
+                placeholder="Unlimited"
+                min="1"
+              />
+              <p className="text-xs text-gray-500 mt-1">Leave empty for unlimited requests</p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowEdit(null)}
+                className="px-4 py-2 border rounded hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={updateKey}
+                disabled={!showEdit.name || showEdit.scopes.length === 0}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Keys List */}
       {loading ? (
         <p>Loading...</p>
@@ -163,6 +287,7 @@ export default function ApiKeys() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scopes</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rate Limit</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Used</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -181,10 +306,13 @@ export default function ApiKeys() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
-                    {new Date(key.created_at).toLocaleDateString()}
+                    {key.rateLimit ? `${key.rateLimit}/min` : 'Unlimited'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
-                    {key.last_used_at ? new Date(key.last_used_at).toLocaleDateString() : 'Never'}
+                    {new Date(key.createdAt * 1000).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {key.lastUsedAt ? new Date(key.lastUsedAt * 1000).toLocaleDateString() : 'Never'}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 text-xs rounded ${key.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
@@ -193,12 +321,20 @@ export default function ApiKeys() {
                   </td>
                   <td className="px-6 py-4">
                     {key.active && (
-                      <button
-                        onClick={() => revokeKey(key.id)}
-                        className="text-red-600 hover:text-red-800 text-sm"
-                      >
-                        Revoke
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setShowEdit({ id: key.id, name: key.name, scopes: key.scopes, rateLimit: key.rateLimit })}
+                          className="text-blue-600 hover:text-blue-800 text-sm"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => revokeKey(key.id)}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          Revoke
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>

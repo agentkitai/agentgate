@@ -2,16 +2,30 @@
 
 import type { Context, Next } from "hono";
 import { validateApiKey } from "../lib/api-keys.js";
+import { checkRateLimit, type RateLimitResult } from "../lib/rate-limiter.js";
 import type { ApiKey } from "../db/index.js";
 
 // Type for context variables
 export type AuthVariables = {
   apiKey: ApiKey;
+  rateLimit: RateLimitResult | null;
 };
+
+/**
+ * Set rate limit headers on the response
+ */
+function setRateLimitHeaders(c: Context, result: RateLimitResult): void {
+  if (result.limit > 0) {
+    c.header("X-RateLimit-Limit", result.limit.toString());
+    c.header("X-RateLimit-Remaining", result.remaining.toString());
+    c.header("X-RateLimit-Reset", Math.ceil(Date.now() / 1000 + result.resetMs / 1000).toString());
+  }
+}
 
 /**
  * Authentication middleware
  * Extracts Bearer token from Authorization header and validates against database
+ * Also enforces rate limiting if configured on the API key
  */
 export async function authMiddleware(
   c: Context,
@@ -43,10 +57,25 @@ export async function authMiddleware(
     return c.json({ error: "Invalid API key" }, 401);
   }
 
-  // Attach API key record to context
+  // Check rate limit
+  const rateLimitResult = checkRateLimit(apiKeyRecord.id, apiKeyRecord.rateLimit);
+  
+  if (!rateLimitResult.allowed) {
+    setRateLimitHeaders(c, rateLimitResult);
+    c.header("Retry-After", Math.ceil(rateLimitResult.resetMs / 1000).toString());
+    return c.json({ error: "Rate limit exceeded" }, 429);
+  }
+
+  // Attach API key record and rate limit info to context
   c.set("apiKey", apiKeyRecord);
+  c.set("rateLimit", rateLimitResult);
 
   await next();
+  
+  // Set rate limit headers on successful responses
+  if (rateLimitResult.limit > 0) {
+    setRateLimitHeaders(c, rateLimitResult);
+  }
 }
 
 /**

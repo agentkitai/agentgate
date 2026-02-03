@@ -2,6 +2,13 @@
 
 import 'dotenv/config';
 import { createSlackBot, type SlackBot, type SlackBotOptions } from './bot.js';
+export {
+  truncate,
+  formatJson,
+  getUrgencyEmoji,
+  buildApprovalBlocks,
+  buildDecidedBlocks,
+} from './helpers.js';
 
 export { createSlackBot, type SlackBot, type SlackBotOptions };
 

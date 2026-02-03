@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
+import { eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { apiKeys } from '../db/schema.js';
 import { createApiKey, revokeApiKey } from '../lib/api-keys.js';
@@ -15,11 +16,12 @@ router.use('*', requireScope('admin'));
 const createKeySchema = z.object({
   name: z.string().min(1).max(100),
   scopes: z.array(z.string()).min(1),
+  rateLimit: z.number().int().positive().nullable().optional(),
 });
 
 router.post('/', zValidator('json', createKeySchema), async (c) => {
-  const { name, scopes } = c.req.valid('json');
-  const { id, key } = await createApiKey(name, scopes);
+  const { name, scopes, rateLimit } = c.req.valid('json');
+  const { id, key } = await createApiKey(name, scopes, rateLimit ?? null);
   
   // Return key ONCE - it won't be shown again
   return c.json({ 
@@ -27,6 +29,7 @@ router.post('/', zValidator('json', createKeySchema), async (c) => {
     key,  // Only returned on creation!
     name, 
     scopes,
+    rateLimit: rateLimit ?? null,
     message: 'Save this key - it will not be shown again'
   }, 201);
 });
@@ -40,6 +43,7 @@ router.get('/', async (c) => {
     createdAt: apiKeys.createdAt,
     lastUsedAt: apiKeys.lastUsedAt,
     revokedAt: apiKeys.revokedAt,
+    rateLimit: apiKeys.rateLimit,
   }).from(apiKeys);
   
   return c.json({ 
@@ -49,6 +53,31 @@ router.get('/', async (c) => {
       active: k.revokedAt === null,
     }))
   });
+});
+
+// Update API key
+const updateKeySchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  scopes: z.array(z.string()).min(1).optional(),
+  rateLimit: z.number().int().positive().nullable().optional(),
+});
+
+router.patch('/:id', zValidator('json', updateKeySchema), async (c) => {
+  const id = c.req.param('id');
+  const { name, scopes, rateLimit } = c.req.valid('json');
+  
+  const updateData: Record<string, unknown> = {};
+  if (name !== undefined) updateData.name = name;
+  if (scopes !== undefined) updateData.scopes = JSON.stringify(scopes);
+  if (rateLimit !== undefined) updateData.rateLimit = rateLimit;
+  
+  if (Object.keys(updateData).length === 0) {
+    return c.json({ error: 'No fields to update' }, 400);
+  }
+  
+  await db.update(apiKeys).set(updateData).where(eq(apiKeys.id, id));
+  
+  return c.json({ success: true });
 });
 
 // Revoke API key

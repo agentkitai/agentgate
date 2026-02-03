@@ -28,11 +28,13 @@ export function generateApiKey(): { key: string; hash: string } {
  * Create a new API key in the database
  * @param name - Human-readable name for the key
  * @param scopes - Array of scopes like ["request:create", "request:read", "admin"]
+ * @param rateLimit - Rate limit (requests per minute), null = unlimited
  * @returns { id, key } - key is shown once to user
  */
 export async function createApiKey(
   name: string,
-  scopes: string[]
+  scopes: string[],
+  rateLimit: number | null = null
 ): Promise<{ id: string; key: string }> {
   const id = nanoid();
   const { key, hash } = generateApiKey();
@@ -43,6 +45,7 @@ export async function createApiKey(
     name,
     scopes: JSON.stringify(scopes),
     createdAt: Math.floor(Date.now() / 1000),
+    rateLimit,
   });
 
   return { id, key };

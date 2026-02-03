@@ -133,6 +133,119 @@ Add to your `claude_desktop_config.json`:
 | `check_request` | Get status of an approval request |
 | `list_requests` | List pending approval requests |
 
+## CLI
+
+AgentGate includes a command-line interface for managing approval requests.
+
+### Installation
+
+```bash
+# From the monorepo
+pnpm --filter @agentgate/cli build
+
+# Or install globally (when published)
+npm install -g @agentgate/cli
+```
+
+### Configuration
+
+Configure the CLI with your server URL and API key:
+
+```bash
+# Set server URL
+agentgate config set serverUrl http://localhost:3000
+
+# Set API key
+agentgate config set apiKey agk_your_api_key
+
+# View current config
+agentgate config show
+```
+
+Configuration is stored in `~/.agentgate/config.json`. You can also use environment variables:
+
+```bash
+export AGENTGATE_URL=http://localhost:3000
+export AGENTGATE_API_KEY=agk_...
+```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `agentgate config show` | Show current configuration |
+| `agentgate config set <key> <value>` | Set a configuration value |
+| `agentgate request <action>` | Create a new approval request |
+| `agentgate status <id>` | Get status of a request |
+| `agentgate list` | List approval requests |
+| `agentgate approve <id>` | Approve a pending request |
+| `agentgate deny <id>` | Deny a pending request |
+
+### Examples
+
+```bash
+# Create a request
+agentgate request send_email \
+  --params '{"to": "user@example.com", "subject": "Hello"}' \
+  --urgency high
+
+# List pending requests
+agentgate list --status pending
+
+# Approve a request
+agentgate approve req_abc123 --reason "Looks good"
+
+# Deny a request
+agentgate deny req_abc123 --reason "Not authorized"
+
+# Output as JSON
+agentgate list --json
+```
+
+## Rate Limiting
+
+AgentGate supports per-API-key rate limiting to prevent abuse and ensure fair usage.
+
+### How It Works
+
+- Rate limits use a **sliding window algorithm** (requests per minute)
+- Limits are configured per API key
+- When exceeded, requests return `429 Too Many Requests`
+- Rate limit headers are included in all authenticated responses
+
+### Rate Limit Headers
+
+| Header | Description |
+|--------|-------------|
+| `X-RateLimit-Limit` | Maximum requests per minute |
+| `X-RateLimit-Remaining` | Remaining requests in current window |
+| `X-RateLimit-Reset` | Seconds until window resets |
+
+### Configuring Rate Limits
+
+Set rate limits when creating or updating API keys:
+
+```typescript
+// Via API (requires admin scope)
+POST /api/keys
+{
+  "name": "My Agent",
+  "scopes": ["request:create", "request:read"],
+  "rateLimit": 60  // 60 requests per minute
+}
+
+// null = unlimited
+{
+  "name": "Internal Service",
+  "scopes": ["admin"],
+  "rateLimit": null
+}
+```
+
+### Dashboard
+
+Rate limits can also be managed from the web dashboard under **Settings → API Keys**.
+
 ## Webhooks
 
 AgentGate can notify external systems when request events occur.
@@ -221,6 +334,7 @@ Verify by computing `HMAC-SHA256(secret, body)` and comparing.
 | [`@agentgate/core`](./packages/core) | Types, schemas, policy engine | - |
 | [`@agentgate/server`](./packages/server) | Hono API server | - |
 | [`@agentgate/sdk`](./packages/sdk) | TypeScript SDK for agents | [README](./packages/sdk/README.md) |
+| [`@agentgate/cli`](./packages/cli) | Command-line interface | - |
 | [`@agentgate/mcp`](./packages/mcp) | MCP server for Claude Desktop | - |
 | [`@agentgate/slack`](./packages/slack) | Slack bot integration | [README](./packages/slack/README.md) |
 | [`@agentgate/dashboard`](./packages/dashboard) | React web dashboard | - |
@@ -324,21 +438,48 @@ pnpm --filter @agentgate/server bootstrap
 
 # Start development (server + dashboard)
 pnpm dev
+```
 
-# Run tests
+### Testing
+
+AgentGate uses [Vitest](https://vitest.dev/) for testing across all packages.
+
+```bash
+# Run all tests
 pnpm test
 
+# Run tests with coverage report
+pnpm test:coverage
+
+# Run tests in watch mode (single package)
+pnpm --filter @agentgate/server test:watch
+
+# Run a specific test file
+pnpm --filter @agentgate/server test -- src/__tests__/integration.test.ts
+```
+
+Coverage reports are generated per-package and include line, branch, and function coverage.
+
+### Code Quality
+
+```bash
 # Build all packages
 pnpm build
 
 # Type checking
 pnpm typecheck
 
-# Lint
+# Lint (ESLint)
 pnpm lint
 
-# Format code
+# Fix lint issues
+pnpm lint:fix
+
+# Format code (Prettier)
 pnpm format
+
+# Check formatting
+pnpm format:check
 ```
 
 ## Docker
@@ -357,6 +498,7 @@ agentgate/
 │   ├── core/           # Shared types, schemas, policy engine
 │   ├── server/         # Hono API server
 │   ├── sdk/            # TypeScript SDK
+│   ├── cli/            # Command-line interface
 │   ├── mcp/            # MCP server for Claude Desktop
 │   ├── slack/          # Slack bot
 │   └── dashboard/      # React dashboard

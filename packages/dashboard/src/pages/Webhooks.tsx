@@ -93,7 +93,7 @@ export default function Webhooks() {
       const res = await fetch(`/api/webhooks/${id}/test`, { method: 'POST' });
       const data = await res.json();
       alert(data.success ? 'Test sent successfully!' : `Test failed: ${data.message}`);
-    } catch (err) {
+    } catch {
       alert('Failed to send test');
     }
   }
