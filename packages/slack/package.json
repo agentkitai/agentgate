@@ -18,7 +18,9 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "@agentgate/core": "workspace:*",
     "@slack/bolt": "^4.1.0",
@@ -27,6 +29,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@vitest/coverage-v8": "^2.1.9",
     "tsx": "^4.19.2",
     "vitest": "^2.1.8"
   }
