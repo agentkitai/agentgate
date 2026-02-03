@@ -57,10 +57,10 @@ export default function RequestList() {
   };
 
   const urgencyColors = {
-    low: 'text-gray-500',
-    normal: 'text-blue-500',
-    high: 'text-orange-500',
-    critical: 'text-red-500',
+    low: 'text-gray-500 bg-gray-100',
+    normal: 'text-blue-600 bg-blue-100',
+    high: 'text-orange-600 bg-orange-100',
+    critical: 'text-red-600 bg-red-100',
   };
 
   const tabs: { value: StatusFilter; label: string }[] = [
@@ -73,21 +73,22 @@ export default function RequestList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Approval Requests</h1>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Approval Requests</h1>
         <span className="text-sm text-gray-500">
           {total} {total === 1 ? 'request' : 'requests'}
         </span>
       </div>
 
-      {/* Status filter tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="flex gap-4 -mb-px">
+      {/* Status filter tabs - horizontal scroll on mobile */}
+      <div className="border-b border-gray-200 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto">
+        <nav className="flex gap-1 sm:gap-4 min-w-max -mb-px">
           {tabs.map((tab) => (
             <button
               key={tab.value}
               onClick={() => handleStatusChange(tab.value)}
-              className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-3 px-3 sm:px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
                 statusFilter === tab.value
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -122,43 +123,75 @@ export default function RequestList() {
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          {/* Table Header */}
-          <div className="hidden sm:grid sm:grid-cols-12 gap-4 px-4 py-3 bg-gray-50 border-b border-gray-200 text-sm font-medium text-gray-500">
-            <div className="col-span-3">ID</div>
-            <div className="col-span-3">Action</div>
-            <div className="col-span-2">Status</div>
-            <div className="col-span-2">Urgency</div>
-            <div className="col-span-2">Created</div>
+        <>
+          {/* Desktop Table */}
+          <div className="hidden md:block bg-white rounded-lg border border-gray-200 overflow-hidden">
+            {/* Table Header */}
+            <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-gray-50 border-b border-gray-200 text-sm font-medium text-gray-500">
+              <div className="col-span-3">ID</div>
+              <div className="col-span-3">Action</div>
+              <div className="col-span-2">Status</div>
+              <div className="col-span-2">Urgency</div>
+              <div className="col-span-2">Created</div>
+            </div>
+
+            {/* Table Body */}
+            <div className="divide-y divide-gray-200">
+              {requests.map((request) => (
+                <div
+                  key={request.id}
+                  onClick={() => navigate(`/requests/${request.id}`)}
+                  className="grid grid-cols-12 gap-4 px-4 py-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                >
+                  <div className="col-span-3 font-mono text-sm text-gray-600 truncate">
+                    {request.id}
+                  </div>
+                  <div className="col-span-3 font-medium text-gray-900 truncate">
+                    {request.action}
+                  </div>
+                  <div className="col-span-2">
+                    <StatusBadge status={request.status} />
+                  </div>
+                  <div className="col-span-2">
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded ${urgencyColors[request.urgency]}`}>
+                      {request.urgency.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="col-span-2 text-sm text-gray-500">
+                    {new Date(request.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Table Body */}
-          <div className="divide-y divide-gray-200">
+          {/* Mobile Cards */}
+          <div className="md:hidden space-y-3">
             {requests.map((request) => (
               <div
                 key={request.id}
                 onClick={() => navigate(`/requests/${request.id}`)}
-                className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 px-4 py-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                className="bg-white rounded-lg border border-gray-200 p-4 active:bg-gray-50 cursor-pointer"
               >
-                <div className="col-span-3 font-mono text-sm text-gray-600 truncate">
-                  {request.id}
-                </div>
-                <div className="col-span-3 font-medium text-gray-900">
-                  {request.action}
-                </div>
-                <div className="col-span-2">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <h3 className="font-medium text-gray-900">{request.action}</h3>
                   <StatusBadge status={request.status} />
                 </div>
-                <div className={`col-span-2 text-sm font-medium ${urgencyColors[request.urgency]}`}>
-                  {request.urgency.toUpperCase()}
-                </div>
-                <div className="col-span-2 text-sm text-gray-500">
-                  {new Date(request.createdAt).toLocaleDateString()}
+                <p className="font-mono text-xs text-gray-500 truncate mb-3">
+                  {request.id}
+                </p>
+                <div className="flex items-center justify-between text-sm">
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded ${urgencyColors[request.urgency]}`}>
+                    {request.urgency.toUpperCase()}
+                  </span>
+                  <span className="text-gray-500">
+                    {new Date(request.createdAt).toLocaleDateString()}
+                  </span>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </>
       )}
     </div>
   );

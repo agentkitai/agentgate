@@ -1,0 +1,37 @@
+name: 'AgentGate Approval'
+description: 'Request approval from AgentGate before proceeding with a workflow step'
+author: 'AgentGate'
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  api_url:
+    description: 'AgentGate server URL (e.g., https://agentgate.example.com)'
+    required: true
+  api_key:
+    description: 'API key for authentication'
+    required: true
+  action_name:
+    description: 'Name of the action requiring approval (e.g., deploy_production)'
+    required: true
+  params:
+    description: 'JSON string of parameters for the action'
+    required: false
+    default: '{}'
+  timeout_seconds:
+    description: 'Timeout in seconds to wait for decision (default: 300)'
+    required: false
+    default: '300'
+
+outputs:
+  status:
+    description: 'Decision status: approved, denied, expired, or timeout'
+  request_id:
+    description: 'ID of the approval request'
+  decided_by:
+    description: 'Who made the decision (if applicable)'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

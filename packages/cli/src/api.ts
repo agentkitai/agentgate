@@ -2,7 +2,7 @@
 
 import type { ApprovalRequest, ApprovalStatus } from '@agentgate/core';
 import { getResolvedConfig } from './config.js';
-import type { RequestOptions, ListOptions, DecisionOptions } from './types.js';
+import type { RequestOptions, ListOptions, DecisionOptions, PaginatedResponse } from './types.js';
 
 /**
  * API client for AgentGate server
@@ -71,7 +71,7 @@ export class ApiClient {
   /**
    * List approval requests
    */
-  async listRequests(options: ListOptions = {}): Promise<ApprovalRequest[]> {
+  async listRequests(options: ListOptions = {}): Promise<{ requests: ApprovalRequest[]; pagination: PaginatedResponse<ApprovalRequest>['pagination'] }> {
     const params = new URLSearchParams();
     if (options.status) params.set('status', options.status);
     if (options.limit) params.set('limit', String(options.limit));
@@ -79,16 +79,18 @@ export class ApiClient {
 
     const query = params.toString();
     const endpoint = query ? `/api/requests?${query}` : '/api/requests';
-    return this.fetch<ApprovalRequest[]>(endpoint);
+    return this.fetch<PaginatedResponse<ApprovalRequest>>(endpoint);
   }
 
   /**
    * Approve a request
    */
   async approveRequest(options: DecisionOptions): Promise<ApprovalRequest> {
-    return this.fetch<ApprovalRequest>(`/api/requests/${options.requestId}/approve`, {
+    return this.fetch<ApprovalRequest>(`/api/requests/${options.requestId}/decide`, {
       method: 'POST',
       body: JSON.stringify({
+        decision: 'approved',
+        decidedBy: options.decidedBy ?? 'cli',
         reason: options.reason,
       }),
     });
@@ -98,9 +100,11 @@ export class ApiClient {
    * Deny a request
    */
   async denyRequest(options: DecisionOptions): Promise<ApprovalRequest> {
-    return this.fetch<ApprovalRequest>(`/api/requests/${options.requestId}/deny`, {
+    return this.fetch<ApprovalRequest>(`/api/requests/${options.requestId}/decide`, {
       method: 'POST',
       body: JSON.stringify({
+        decision: 'denied',
+        decidedBy: options.decidedBy ?? 'cli',
         reason: options.reason,
       }),
     });
@@ -109,8 +113,8 @@ export class ApiClient {
   /**
    * Get server status
    */
-  async getServerStatus(): Promise<{ status: string; version: string }> {
-    return this.fetch<{ status: string; version: string }>('/api/health');
+  async getServerStatus(): Promise<{ status: string; timestamp: string }> {
+    return this.fetch<{ status: string; timestamp: string }>('/health');
   }
 }
 

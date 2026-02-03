@@ -12,16 +12,22 @@
     "dev": "pnpm --filter @agentgate/server --filter @agentgate/dashboard -r --parallel run dev",
     "demo": "pnpm --filter @agentgate/demo run start",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.29.8",
     "@eslint/js": "^9.19.0",
     "@types/node": "^22.12.0",
     "@vitest/coverage-v8": "^2.1.9",
     "eslint": "^9.19.0",
     "prettier": "^3.4.2",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.22.0"
+    "typescript-eslint": "^8.22.0",
+    "vitepress": "^1.6.4",
+    "vue": "^3.5.27"
   },
   "packageManager": "pnpm@9.15.4",
   "engines": {

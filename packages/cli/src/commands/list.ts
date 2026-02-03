@@ -37,7 +37,7 @@ export function createListCommand(): Command {
         }
 
         const client = new ApiClient();
-        const results = await client.listRequests({
+        const { requests, pagination } = await client.listRequests({
           status: options.status as 'pending' | 'approved' | 'denied' | 'expired' | undefined,
           limit,
           offset,
@@ -45,7 +45,11 @@ export function createListCommand(): Command {
 
         const config = getResolvedConfig();
         const format = options.json ? 'json' : config.outputFormat;
-        console.log(formatRequestList(results, format));
+        console.log(formatRequestList(requests, format));
+        
+        if (format !== 'json' && pagination.hasMore) {
+          console.log(`\nShowing ${requests.length} of ${pagination.total} requests. Use --offset to paginate.`);
+        }
       } catch (error) {
         console.error('Failed to list requests:', error instanceof Error ? error.message : error);
         process.exit(1);

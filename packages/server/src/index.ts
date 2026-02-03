@@ -6,6 +6,9 @@ import requestsRouter from "./routes/requests.js";
 import policiesRouter from "./routes/policies.js";
 import apiKeysRouter from "./routes/api-keys.js";
 import webhooksRouter from "./routes/webhooks.js";
+import auditRouter from "./routes/audit.js";
+import tokensRouter from "./routes/tokens.js";
+import decideRouter from "./routes/decide.js";
 import { authMiddleware, type AuthVariables } from "./middleware/auth.js";
 
 // Create Hono app with typed variables
@@ -23,14 +26,19 @@ app.get("/health", (c) => {
   });
 });
 
+// Decision endpoint (public, no auth required - uses tokens)
+app.route("/api/decide", decideRouter);
+
 // Apply auth middleware to all /api/* routes
 app.use("/api/*", authMiddleware);
 
 // Mount API routes
 app.route("/api/requests", requestsRouter);
+app.route("/api", tokensRouter);
 app.route("/api/policies", policiesRouter);
 app.route("/api/api-keys", apiKeysRouter);
 app.route("/api/webhooks", webhooksRouter);
+app.route("/api/audit", auditRouter);
 
 // Global error handler
 app.onError((err, c) => {

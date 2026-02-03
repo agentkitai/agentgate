@@ -49,4 +49,18 @@ export interface ListOptions {
 export interface DecisionOptions {
   requestId: string;
   reason?: string;
+  decidedBy?: string;
+}
+
+/**
+ * Paginated list response from server
+ */
+export interface PaginatedResponse<T> {
+  requests: T[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
 }

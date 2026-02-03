@@ -1,6 +1,7 @@
 {
   "name": "@agentgate/sdk",
   "version": "0.0.1",
+  "description": "SDK for integrating AgentGate into your applications",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -15,9 +16,24 @@
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "pnpm run build"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amitpaz1/agentgate.git",
+    "directory": "packages/sdk"
+  },
+  "keywords": [
+    "agentgate",
+    "approval",
+    "agent",
+    "sdk"
+  ],
+  "license": "MIT",
   "dependencies": {
     "@agentgate/core": "workspace:*"
   },

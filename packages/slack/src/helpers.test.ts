@@ -6,6 +6,7 @@ import {
   getUrgencyEmoji,
   buildApprovalBlocks,
   buildDecidedBlocks,
+  type DecisionLinks,
 } from './helpers.js';
 
 describe('truncate', () => {
@@ -79,6 +80,12 @@ describe('buildApprovalBlocks', () => {
     urgency: 'high',
     status: 'pending',
     createdAt: '2024-01-15T10:00:00Z',
+  };
+
+  const sampleDecisionLinks: DecisionLinks = {
+    approveUrl: 'https://gate.example.com/api/decide/approve-token-123',
+    denyUrl: 'https://gate.example.com/api/decide/deny-token-456',
+    expiresAt: '2024-01-16T10:00:00Z',
   };
 
   it('creates header block', () => {
@@ -176,6 +183,98 @@ describe('buildApprovalBlocks', () => {
     const blocks = buildApprovalBlocks(requestWithContext);
     const contextBlock = blocks.find((b) => b.type === 'context');
     expect(contextBlock).toBeDefined();
+  });
+
+  it('includes decision link buttons when decisionLinks provided', () => {
+    const blocks = buildApprovalBlocks(baseRequest, { decisionLinks: sampleDecisionLinks });
+    
+    // Should have two action blocks - one for interactive buttons, one for link buttons
+    const actionBlocks = blocks.filter((b) => b.type === 'actions');
+    expect(actionBlocks.length).toBeGreaterThanOrEqual(2);
+    
+    // Find the link buttons action block
+    const linkButtonsBlock = actionBlocks.find((block) => {
+      if (block.type !== 'actions') return false;
+      const elements = (block as { elements: unknown[] }).elements;
+      return elements.some((el: { action_id?: string }) => 
+        el.action_id?.startsWith('link_approve_')
+      );
+    });
+    
+    expect(linkButtonsBlock).toBeDefined();
+    if (linkButtonsBlock && linkButtonsBlock.type === 'actions') {
+      const elements = (linkButtonsBlock as { elements: { url?: string; action_id?: string }[] }).elements;
+      expect(elements).toHaveLength(2);
+      
+      const approveButton = elements.find((el) => el.action_id?.startsWith('link_approve_'));
+      const denyButton = elements.find((el) => el.action_id?.startsWith('link_deny_'));
+      
+      expect(approveButton?.url).toBe(sampleDecisionLinks.approveUrl);
+      expect(denyButton?.url).toBe(sampleDecisionLinks.denyUrl);
+    }
+  });
+
+  it('includes expiry context when decisionLinks has expiresAt', () => {
+    const blocks = buildApprovalBlocks(baseRequest, { decisionLinks: sampleDecisionLinks });
+    
+    const expiryBlock = blocks.find((b) => {
+      if (b.type !== 'context') return false;
+      const elements = (b as { elements: { text?: string }[] }).elements;
+      return elements.some((el) => el.text?.includes('expire'));
+    });
+    
+    expect(expiryBlock).toBeDefined();
+    if (expiryBlock && expiryBlock.type === 'context') {
+      const elements = (expiryBlock as { elements: { text: string }[] }).elements;
+      expect(elements[0]?.text).toContain(sampleDecisionLinks.expiresAt);
+    }
+  });
+
+  it('excludes interactive buttons when includeInteractiveButtons is false', () => {
+    const blocks = buildApprovalBlocks(baseRequest, { 
+      includeInteractiveButtons: false,
+      decisionLinks: sampleDecisionLinks 
+    });
+    
+    // Should only have link buttons, not interactive buttons
+    const actionBlocks = blocks.filter((b) => b.type === 'actions');
+    expect(actionBlocks).toHaveLength(1); // Only the link buttons
+    
+    const hasInteractiveButtons = actionBlocks.some((block) => {
+      if (block.type !== 'actions') return false;
+      const elements = (block as { elements: { action_id?: string }[] }).elements;
+      return elements.some((el) => 
+        el.action_id?.startsWith('approve_') && !el.action_id?.startsWith('link_')
+      );
+    });
+    
+    expect(hasInteractiveButtons).toBe(false);
+  });
+
+  it('includes both interactive and link buttons by default when decisionLinks provided', () => {
+    const blocks = buildApprovalBlocks(baseRequest, { decisionLinks: sampleDecisionLinks });
+    
+    const actionBlocks = blocks.filter((b) => b.type === 'actions');
+    
+    // Should have interactive buttons
+    const hasInteractiveButtons = actionBlocks.some((block) => {
+      if (block.type !== 'actions') return false;
+      const elements = (block as { elements: { action_id?: string }[] }).elements;
+      return elements.some((el) => 
+        el.action_id === `approve_${baseRequest.id}` || 
+        el.action_id === `deny_${baseRequest.id}`
+      );
+    });
+    
+    // Should have link buttons
+    const hasLinkButtons = actionBlocks.some((block) => {
+      if (block.type !== 'actions') return false;
+      const elements = (block as { elements: { action_id?: string }[] }).elements;
+      return elements.some((el) => el.action_id?.startsWith('link_approve_'));
+    });
+    
+    expect(hasInteractiveButtons).toBe(true);
+    expect(hasLinkButtons).toBe(true);
   });
 });
 

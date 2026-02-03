@@ -2,7 +2,7 @@
 
 import type { Context, Next } from "hono";
 import { validateApiKey } from "../lib/api-keys.js";
-import { checkRateLimit, type RateLimitResult } from "../lib/rate-limiter.js";
+import { getRateLimiter, type RateLimitResult } from "../lib/rate-limiter/index.js";
 import type { ApiKey } from "../db/index.js";
 
 // Type for context variables
@@ -58,7 +58,8 @@ export async function authMiddleware(
   }
 
   // Check rate limit
-  const rateLimitResult = checkRateLimit(apiKeyRecord.id, apiKeyRecord.rateLimit);
+  const rateLimiter = getRateLimiter();
+  const rateLimitResult = await rateLimiter.checkLimit(apiKeyRecord.id, apiKeyRecord.rateLimit);
   
   if (!rateLimitResult.allowed) {
     setRateLimitHeaders(c, rateLimitResult);

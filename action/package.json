@@ -1,0 +1,29 @@
+{
+  "name": "@agentgate/github-action",
+  "version": "0.0.1",
+  "private": true,
+  "description": "GitHub Action for AgentGate approval requests",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "ncc build src/index.ts -o dist --source-map --license licenses.txt",
+    "test": "vitest run",
+    "lint": "eslint src/"
+  },
+  "keywords": [
+    "github-action",
+    "approval",
+    "agent",
+    "agentgate"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "@vercel/ncc": "^0.38.3",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.2"
+  }
+}

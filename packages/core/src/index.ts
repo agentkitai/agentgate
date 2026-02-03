@@ -16,3 +16,31 @@ export type {
 
 // Policy engine
 export { evaluatePolicy } from './policy-engine.js';
+
+// Events
+export {
+  EventNames,
+  type EventName,
+  type BaseEvent,
+  type RequestCreatedEvent,
+  type RequestUpdatedEvent,
+  type RequestDecidedEvent,
+  type RequestExpiredEvent,
+  type RequestEscalatedEvent,
+  type PolicyMatchedEvent,
+  type WebhookTriggeredEvent,
+  type WebhookFailedEvent,
+  type ApiKeyRateLimitedEvent,
+  type AgentGateEvent,
+  createBaseEvent,
+  eventMatchesFilter,
+} from './events.js';
+
+// Event Emitter
+export {
+  AgentGateEmitter,
+  type EventListener,
+  getGlobalEmitter,
+  resetGlobalEmitter,
+  createEmitter,
+} from './emitter.js';

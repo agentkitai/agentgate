@@ -11,6 +11,8 @@ export interface SlackBotOptions {
   signingSecret: string;
   /** AgentGate server URL (e.g., http://localhost:3000) */
   agentgateUrl: string;
+  /** API key for authenticating with AgentGate API */
+  apiKey?: string;
   /** Default channel for notifications */
   defaultChannel?: string;
   /** Port to listen on (default: 3001) */
@@ -29,10 +31,23 @@ export interface SlackBot {
 }
 
 /**
+ * Build HTTP headers for AgentGate API calls
+ */
+function buildApiHeaders(apiKey?: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+  }
+  return headers;
+}
+
+/**
  * Create a Slack bot for AgentGate approvals
  */
 export function createSlackBot(options: SlackBotOptions): SlackBot {
-  const { token, signingSecret, agentgateUrl, port = 3001 } = options;
+  const { token, signingSecret, agentgateUrl, apiKey, port = 3001 } = options;
 
   const app = new App({
     token,
@@ -57,10 +72,10 @@ export function createSlackBot(options: SlackBotOptions): SlackBot {
       // Call AgentGate API to approve
       const response = await fetch(`${agentgateUrl}/api/requests/${requestId}/decide`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: buildApiHeaders(apiKey),
         body: JSON.stringify({
           decision: 'approved',
-          decidedBy: userId,
+          decidedBy: `slack:${userId}`,
         }),
       });
 
@@ -112,10 +127,10 @@ export function createSlackBot(options: SlackBotOptions): SlackBot {
       // Call AgentGate API to deny
       const response = await fetch(`${agentgateUrl}/api/requests/${requestId}/decide`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: buildApiHeaders(apiKey),
         body: JSON.stringify({
           decision: 'denied',
-          decidedBy: userId,
+          decidedBy: `slack:${userId}`,
         }),
       });
 

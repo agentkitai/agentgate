@@ -9,13 +9,15 @@ export function createApproveCommand(): Command {
     .description('Approve a pending request')
     .argument('<requestId>', 'The request ID to approve')
     .option('-r, --reason <reason>', 'Reason for approval')
+    .option('-b, --by <name>', 'Who is approving (default: cli)')
     .option('--json', 'Output as JSON')
-    .action(async (requestId: string, options: { reason?: string; json?: boolean }) => {
+    .action(async (requestId: string, options: { reason?: string; by?: string; json?: boolean }) => {
       try {
         const client = new ApiClient();
         const result = await client.approveRequest({
           requestId,
           reason: options.reason,
+          decidedBy: options.by,
         });
 
         const config = getResolvedConfig();

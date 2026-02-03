@@ -22,6 +22,20 @@
       "when": 1770098611230,
       "tag": "0002_round_karma",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1770104580000,
+      "tag": "0003_add_rate_limit",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1770106738069,
+      "tag": "0004_decision_tokens",
+      "breakpoints": true
     }
   ]
 }

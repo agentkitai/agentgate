@@ -482,13 +482,127 @@ pnpm format
 pnpm format:check
 ```
 
-## Docker
+## Docker Deployment
 
-Start Redis (for future queue/pub-sub features):
+AgentGate provides Docker images for easy self-hosted deployments.
+
+### Quick Start
+
+1. **Copy the example environment file:**
+
+```bash
+cp .env.example .env
+```
+
+2. **Generate secure credentials:**
+
+```bash
+# Generate admin API key (required)
+echo "ADMIN_API_KEY=$(openssl rand -hex 32)" >> .env
+
+# Generate JWT secret (recommended for production)
+echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env
+```
+
+3. **Start all services:**
 
 ```bash
 docker-compose up -d
 ```
+
+4. **Access the services:**
+
+- **Dashboard:** http://localhost:8080
+- **API Server:** http://localhost:3000
+- **Health Check:** http://localhost:3000/health
+
+### Services
+
+| Service | Description | Port |
+|---------|-------------|------|
+| `server` | AgentGate API server | 3000 |
+| `dashboard` | Web dashboard (nginx) | 8080 |
+| `postgres` | PostgreSQL database | 5432 |
+| `redis` | Redis (rate limiting, queues) | 6379 |
+
+### With Slack Bot
+
+To include the Slack bot, use the `bots` profile:
+
+```bash
+# Set required Slack credentials in .env first
+docker-compose --profile bots up -d
+```
+
+### Configuration
+
+All configuration is done via environment variables. See `.env.example` for all options.
+
+**Required variables:**
+- `ADMIN_API_KEY` — Admin API key (min 16 characters)
+
+**Recommended for production:**
+- `JWT_SECRET` — JWT signing secret (min 32 characters)
+- `CORS_ORIGINS` — Restrict to your domain(s)
+- `POSTGRES_PASSWORD` — Use a strong password
+
+### Building Images
+
+Build all images locally:
+
+```bash
+docker-compose build
+```
+
+Build a specific service:
+
+```bash
+docker-compose build server
+docker-compose build dashboard
+```
+
+### Database Migrations
+
+Migrations run automatically when the server starts. For manual control:
+
+```bash
+# Run migrations inside the container
+docker-compose exec server node -e "
+  import('./dist/db/migrate.js').then(m => m.runMigrations())
+"
+```
+
+### Viewing Logs
+
+```bash
+# All services
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f server
+
+# Last 100 lines
+docker-compose logs --tail=100 server
+```
+
+### Stopping Services
+
+```bash
+# Stop all
+docker-compose down
+
+# Stop and remove volumes (WARNING: deletes data)
+docker-compose down -v
+```
+
+### Production Considerations
+
+1. **Use a reverse proxy** (nginx, Caddy, Traefik) for TLS termination
+2. **Set strong passwords** for PostgreSQL
+3. **Restrict CORS origins** to your domain
+4. **Use Docker secrets** for sensitive values in production
+5. **Set up backups** for PostgreSQL data volume
+6. **Monitor health endpoints** for uptime checks
 
 ## Project Structure
 

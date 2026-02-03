@@ -4,10 +4,20 @@ import { Hono } from "hono";
 import { nanoid } from "nanoid";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { db, approvalRequests, auditLogs, policies } from "../db/index.js";
-import { evaluatePolicy } from "@agentgate/core";
-import type { ApprovalRequest, Policy as CorePolicy, PolicyRule } from "@agentgate/core";
+import {
+  evaluatePolicy,
+  EventNames,
+  createBaseEvent,
+  getGlobalEmitter,
+  type ApprovalRequest,
+  type Policy as CorePolicy,
+  type PolicyRule,
+  type RequestCreatedEvent,
+  type RequestDecidedEvent,
+} from "@agentgate/core";
 import { logAuditEvent } from "../lib/audit.js";
 import { deliverWebhook } from "../lib/webhook.js";
+import { getGlobalDispatcher } from "../lib/notification/index.js";
 
 const requestsRouter = new Hono();
 
@@ -205,7 +215,32 @@ requestsRouter.post("/", async (c) => {
     matchedRule: policyDecision.matchedRule,
   });
 
-  // If auto-approved or auto-denied, log that event too
+  // Emit request.created event
+  const createdEvent: RequestCreatedEvent = {
+    ...createBaseEvent(EventNames.REQUEST_CREATED, "server"),
+    payload: {
+      requestId: id,
+      action,
+      params,
+      context,
+      urgency,
+      expiresAt: expiresAt?.toISOString(),
+      policyDecision: policyDecision.decision !== "route_to_human" && policyDecision.decision !== "route_to_agent"
+        ? { decision: policyDecision.decision }
+        : undefined,
+    },
+  };
+
+  // Emit to global emitter (for internal listeners)
+  getGlobalEmitter().emitSync(createdEvent);
+
+  // Dispatch to notification channels (async, fire-and-forget)
+  // Only dispatch for pending requests (auto-approved/denied will get decided event instead)
+  if (status === "pending") {
+    getGlobalDispatcher().dispatchSync(createdEvent, policyDecision.channels);
+  }
+
+  // If auto-approved or auto-denied, log that event too and emit decided event
   if (status === "approved") {
     await logAuditEvent(id, "approved", "policy", {
       reason: decisionReason,
@@ -226,6 +261,22 @@ requestsRouter.post("/", async (c) => {
         decisionReason,
       },
     });
+
+    // Emit decided event for auto-approval
+    const decidedEvent: RequestDecidedEvent = {
+      ...createBaseEvent(EventNames.REQUEST_DECIDED, "server"),
+      payload: {
+        requestId: id,
+        action,
+        status: "approved",
+        decidedBy: "policy",
+        decidedByType: "policy",
+        reason: decisionReason || undefined,
+        decisionTimeMs: 0, // Instant decision
+      },
+    };
+    getGlobalEmitter().emitSync(decidedEvent);
+    getGlobalDispatcher().dispatchSync(decidedEvent, policyDecision.channels);
   } else if (status === "denied") {
     await logAuditEvent(id, "denied", "policy", {
       reason: decisionReason,
@@ -246,6 +297,22 @@ requestsRouter.post("/", async (c) => {
         decisionReason,
       },
     });
+
+    // Emit decided event for auto-denial
+    const decidedEvent: RequestDecidedEvent = {
+      ...createBaseEvent(EventNames.REQUEST_DECIDED, "server"),
+      payload: {
+        requestId: id,
+        action,
+        status: "denied",
+        decidedBy: "policy",
+        decidedByType: "policy",
+        reason: decisionReason || undefined,
+        decisionTimeMs: 0, // Instant decision
+      },
+    };
+    getGlobalEmitter().emitSync(decidedEvent);
+    getGlobalDispatcher().dispatchSync(decidedEvent, policyDecision.channels);
   }
 
   const response = {
@@ -399,6 +466,24 @@ requestsRouter.post("/:id/decide", async (c) => {
 
   // Deliver webhook for manual decision
   await deliverWebhook(`request.${decision}`, { request: updatedRequest });
+
+  // Emit decided event
+  const decisionTimeMs = now.getTime() - existingRequest.createdAt.getTime();
+  const decidedEvent: RequestDecidedEvent = {
+    ...createBaseEvent(EventNames.REQUEST_DECIDED, "server"),
+    payload: {
+      requestId: id,
+      action: existingRequest.action,
+      status: decision,
+      decidedBy,
+      decidedByType: "human",
+      reason,
+      decisionTimeMs,
+    },
+  };
+
+  getGlobalEmitter().emitSync(decidedEvent);
+  getGlobalDispatcher().dispatchSync(decidedEvent);
 
   return c.json(updatedRequest);
 });

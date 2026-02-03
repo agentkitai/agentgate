@@ -85,6 +85,7 @@ export SLACK_SIGNING_SECRET=your-signing-secret
 
 # Optional
 export AGENTGATE_URL=http://localhost:3000  # default
+export AGENTGATE_API_KEY=your-api-key       # recommended for authenticated API calls
 export SLACK_BOT_PORT=3001                  # default
 export SLACK_DEFAULT_CHANNEL=#approvals
 
@@ -98,9 +99,21 @@ Or with a `.env` file:
 SLACK_BOT_TOKEN=xoxb-your-token
 SLACK_SIGNING_SECRET=your-signing-secret
 AGENTGATE_URL=http://localhost:3000
+AGENTGATE_API_KEY=your-api-key
 SLACK_BOT_PORT=3001
 SLACK_DEFAULT_CHANNEL=#approvals
 ```
+
+## Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `SLACK_BOT_TOKEN` | Yes | - | Slack bot token (xoxb-...) |
+| `SLACK_SIGNING_SECRET` | Yes | - | Slack app signing secret |
+| `AGENTGATE_URL` | No | `http://localhost:3000` | AgentGate server URL |
+| `AGENTGATE_API_KEY` | Recommended | - | API key for AgentGate API authentication |
+| `SLACK_BOT_PORT` | No | `3001` | Port for the bot to listen on |
+| `SLACK_DEFAULT_CHANNEL` | No | - | Default channel for notifications |
 
 ## Message Format
 
@@ -123,7 +136,13 @@ Parameters:
 📋 Context: {"agent": "email-agent"}
 ━━━━━━━━━━━━━━━━━━━━
 [✅ Approve] [❌ Deny]
+[🔗 Approve (one-click)] [🔗 Deny (one-click)]
+⏰ One-click links expire: 2024-01-16T10:30:00Z
 ```
+
+The message includes two types of buttons:
+- **Interactive buttons**: Work with the Slack bot to approve/deny via the API
+- **One-click link buttons**: Open in browser for direct approval/denial (useful for mobile or when bot is unavailable)
 
 After a decision, the message updates to show:
 

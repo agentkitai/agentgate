@@ -1,0 +1,148 @@
+{
+  "planId": "agentgate-v0.4",
+  "createdAt": "2026-02-03T07:55:00Z",
+  "tasks": [
+    {
+      "id": "1-config-event-contract",
+      "name": "v0.4 config + event contract",
+      "status": "pending",
+      "assignedTo": "builder-notify-core",
+      "blockedBy": [],
+      "description": "Define env vars/config, standardize event names, and specify channel routing format for notifications."
+    },
+    {
+      "id": "2-db-postgres",
+      "name": "PostgreSQL support (dual-dialect DB adapter)",
+      "status": "pending",
+      "assignedTo": "builder-db",
+      "blockedBy": ["1-config-event-contract"],
+      "description": "Add Postgres support alongside SQLite using Drizzle; split schema per dialect; add migrate/generate scripts."
+    },
+    {
+      "id": "3-rate-limit-redis",
+      "name": "Redis-backed rate limiting",
+      "status": "pending",
+      "assignedTo": "builder-rate-limit",
+      "blockedBy": ["1-config-event-contract"],
+      "description": "Implement async RateLimiter interface with in-memory and Redis backends; update auth middleware and tests."
+    },
+    {
+      "id": "4-docker-compose-selfhost",
+      "name": "Docker + docker-compose self-hosting",
+      "status": "pending",
+      "assignedTo": "builder-docker",
+      "blockedBy": ["2-db-postgres"],
+      "description": "Add Dockerfiles and expand compose to run server + dashboard + postgres + redis (+ optional bots) with .env.example."
+    },
+    {
+      "id": "5-notify-core",
+      "name": "Server eventing + notification routing",
+      "status": "pending",
+      "assignedTo": "builder-notify-core",
+      "blockedBy": ["1-config-event-contract"],
+      "description": "Emit canonical request events and implement a dispatcher that routes targets based on policy channels and defaults."
+    },
+    {
+      "id": "6-approval-links",
+      "name": "One-click approval link tokens",
+      "status": "pending",
+      "assignedTo": "builder-notify-core",
+      "blockedBy": ["2-db-postgres"],
+      "description": "Add DB-backed decision tokens + endpoints and generate approve/deny links for use in notifications."
+    },
+    {
+      "id": "7-email-notifications",
+      "name": "Email notifications",
+      "status": "completed",
+      "completedAt": "2026-02-03T10:29:00Z",
+      "assignedTo": "builder-email",
+      "blockedBy": ["5-notify-core", "6-approval-links"],
+      "description": "Implement SMTP email notifications for pending requests with approve/deny links and view link."
+    },
+    {
+      "id": "8-slack-notifications",
+      "name": "Slack integration updates",
+      "status": "pending",
+      "assignedTo": "builder-slack",
+      "blockedBy": ["5-notify-core", "6-approval-links"],
+      "description": "Fix Slack bot auth to AgentGate API, add triggering (webhook receiver/polling), include approve/deny links in messages."
+    },
+    {
+      "id": "9-discord-bot",
+      "name": "Discord bot integration",
+      "status": "pending",
+      "assignedTo": "builder-discord",
+      "blockedBy": ["5-notify-core", "6-approval-links"],
+      "description": "Create @agentgate/discord with request notifications and approve/deny interactions, including one-click links."
+    },
+    {
+      "id": "10-audit-log-page",
+      "name": "Audit log API + dashboard page",
+      "status": "pending",
+      "assignedTo": "builder-dashboard",
+      "blockedBy": ["2-db-postgres"],
+      "description": "Add GET /api/audit with filters/pagination and a dashboard /audit page with filter UI."
+    },
+    {
+      "id": "11-dashboard-auth-mobile",
+      "name": "Dashboard auth + mobile UX",
+      "status": "pending",
+      "assignedTo": "builder-dashboard",
+      "blockedBy": [],
+      "description": "Add API key session for dashboard API calls and improve mobile navigation/layouts."
+    },
+    {
+      "id": "12-github-action",
+      "name": "GitHub Action approval gate",
+      "status": "pending",
+      "assignedTo": "builder-gh-action",
+      "blockedBy": [],
+      "description": "Implement a Node-based GitHub Action that creates an approval request and waits for a decision with timeout handling."
+    },
+    {
+      "id": "13-cli-fix",
+      "name": "Fix CLI API alignment",
+      "status": "pending",
+      "assignedTo": "builder-release",
+      "blockedBy": ["1-config-event-contract"],
+      "description": "Update CLI endpoints and response handling to match the server; optionally reuse @agentgate/sdk."
+    },
+    {
+      "id": "14-npm-publish",
+      "name": "npm publishing setup (core/sdk/cli)",
+      "status": "pending",
+      "assignedTo": "builder-release",
+      "blockedBy": ["13-cli-fix"],
+      "description": "Add Changesets and CI release workflow; ensure core/sdk/cli are publishable with correct metadata and build outputs."
+    },
+    {
+      "id": "15-vitepress-docs",
+      "name": "VitePress documentation site",
+      "status": "pending",
+      "assignedTo": "builder-docs",
+      "blockedBy": ["4-docker-compose-selfhost", "14-npm-publish"],
+      "description": "Create docs site covering docker self-host, config, integrations, GitHub Action, SDK, and CLI."
+    },
+    {
+      "id": "16-validate-all",
+      "name": "Final validation",
+      "status": "pending",
+      "assignedTo": "validator-backend",
+      "blockedBy": [
+        "2-db-postgres",
+        "3-rate-limit-redis",
+        "4-docker-compose-selfhost",
+        "6-approval-links",
+        "7-email-notifications",
+        "8-slack-notifications",
+        "9-discord-bot",
+        "10-audit-log-page",
+        "11-dashboard-auth-mobile",
+        "12-github-action",
+        "14-npm-publish",
+        "15-vitepress-docs"
+      ],
+      "description": "Run full suite: tests/typecheck/build, docker compose smoke test, notifications and approval links end-to-end, action example."
+    }
+  ]
+}

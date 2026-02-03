@@ -54,7 +54,8 @@ CREATE TABLE IF NOT EXISTS \`api_keys\` (
 	\`scopes\` text NOT NULL,
 	\`created_at\` integer NOT NULL,
 	\`last_used_at\` integer,
-	\`revoked_at\` integer
+	\`revoked_at\` integer,
+	\`rate_limit\` integer
 );
 
 -- 0002_round_karma.sql
@@ -79,6 +80,19 @@ CREATE TABLE IF NOT EXISTS \`webhooks\` (
 	\`created_at\` integer NOT NULL,
 	\`enabled\` integer DEFAULT 1 NOT NULL
 );
+
+-- 0004_decision_tokens.sql
+CREATE TABLE IF NOT EXISTS \`decision_tokens\` (
+	\`id\` text PRIMARY KEY NOT NULL,
+	\`request_id\` text NOT NULL,
+	\`action\` text NOT NULL,
+	\`token\` text NOT NULL,
+	\`expires_at\` integer NOT NULL,
+	\`used_at\` integer,
+	\`created_at\` integer NOT NULL,
+	FOREIGN KEY (\`request_id\`) REFERENCES \`approval_requests\`(\`id\`) ON UPDATE no action ON DELETE no action
+);
+CREATE UNIQUE INDEX IF NOT EXISTS \`decision_tokens_token_unique\` ON \`decision_tokens\` (\`token\`);
 `;
 
 export type TestDb = BetterSQLite3Database<typeof schema>;

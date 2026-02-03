@@ -8,6 +8,8 @@ export {
   getUrgencyEmoji,
   buildApprovalBlocks,
   buildDecidedBlocks,
+  type DecisionLinks,
+  type BuildApprovalBlocksOptions,
 } from './helpers.js';
 
 export { createSlackBot, type SlackBot, type SlackBotOptions };
@@ -19,6 +21,7 @@ async function main() {
   const token = process.env.SLACK_BOT_TOKEN;
   const signingSecret = process.env.SLACK_SIGNING_SECRET;
   const agentgateUrl = process.env.AGENTGATE_URL || 'http://localhost:3000';
+  const apiKey = process.env.AGENTGATE_API_KEY;
   const defaultChannel = process.env.SLACK_DEFAULT_CHANNEL;
   const port = parseInt(process.env.SLACK_BOT_PORT || '3001', 10);
 
@@ -32,9 +35,14 @@ async function main() {
     process.exit(1);
   }
 
+  if (!apiKey) {
+    console.warn('⚠️  AGENTGATE_API_KEY not set - API calls may fail if authentication is required');
+  }
+
   console.log('🚀 Starting AgentGate Slack bot...');
   console.log(`   AgentGate URL: ${agentgateUrl}`);
   console.log(`   Port: ${port}`);
+  console.log(`   API Key: ${apiKey ? '✓ configured' : '✗ not set'}`);
   if (defaultChannel) {
     console.log(`   Default channel: ${defaultChannel}`);
   }
@@ -43,6 +51,7 @@ async function main() {
     token,
     signingSecret,
     agentgateUrl,
+    apiKey,
     defaultChannel,
     port,
   });
