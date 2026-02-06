@@ -1,367 +1,120 @@
 # AgentGate v0.5 — Review Fixes & Production Hardening
 # Sprint Status Tracker
-# Source: tech-spec-agentgate-review-fixes.md
-# Created: 2026-02-06
+# Updated: 2026-02-06 16:15 GMT+2
 
 sprint:
   name: "v0.5 Review Fixes & Production Hardening"
   created: "2026-02-06"
-  status: "not-started"
+  status: "in-progress"
   total_stories: 26
-  completed: 0
+  completed: 5
   in_progress: 0
 
 epics:
   - id: epic-1
     name: "Critical Bug Fixes"
-    description: "Fix features that are completely non-functional"
-    priority: critical
-    status: not-started
+    status: done
     stories:
       - id: "1.1"
         title: "Fix MCP Decide Handler — Add decidedBy Field"
-        effort: XS
-        priority: critical
-        status: not-started
-        files:
-          - packages/mcp/src/types.ts
-          - packages/mcp/src/tools.ts
-        review_refs:
-          - "Code Review §3.2"
-
+        status: done
+        commit: "0367fae"
       - id: "1.2"
         title: "Fix Discord Bot — Add Auth Header to API Calls"
-        effort: XS
-        priority: critical
-        status: not-started
-        files:
-          - packages/discord/src/bot.ts
-        review_refs:
-          - "Code Review §3.3"
-
+        status: done
+        commit: "0143be3"
       - id: "1.3"
         title: "Fix PostgreSQL Mode — Async DB Initialization"
-        effort: M
-        priority: critical
-        status: not-started
-        files:
-          - packages/server/src/db/index.ts
-          - packages/server/src/index.ts
-          - packages/server/src/routes/requests.ts
-          - packages/server/src/routes/decide.ts
-          - packages/server/src/routes/api-keys.ts
-          - packages/server/src/routes/webhooks.ts
-          - packages/server/src/routes/audit.ts
-          - packages/server/src/routes/policies.ts
-          - packages/server/src/routes/tokens.ts
-          - packages/server/src/lib/webhook.ts
-          - packages/server/src/lib/api-keys.ts
-          - packages/server/src/lib/audit.ts
-          - packages/server/src/lib/decision-tokens.ts
-          - packages/server/src/middleware/auth.ts
-        review_refs:
-          - "Code Review §4.2"
-          - "Cloud Review #18"
-
+        status: done
+        # 14 files refactored from sync db to getDb()
       - id: "1.4"
         title: "Add Auto-Migrations on Server Startup"
-        effort: S
-        priority: critical
-        status: not-started
-        depends_on: ["1.3"]
-        files:
-          - packages/server/src/index.ts
-        review_refs:
-          - "Cloud Review #15"
+        status: done
+        commit: "a1b8f4b"
 
   - id: epic-2
     name: "Security Hardening"
-    description: "Fix security vulnerabilities found in reviews"
-    priority: critical
-    status: not-started
+    status: in-progress
     stories:
       - id: "2.1"
         title: "Atomic Update for Decision Endpoint — Fix Race Condition"
-        effort: S
-        priority: critical
-        status: not-started
-        depends_on: ["1.3"]
-        files:
-          - packages/server/src/routes/requests.ts
-          - packages/server/src/routes/decide.ts
-        review_refs:
-          - "Code Review §3.4"
-          - "Cloud Review #35"
-
+        status: done
+        commit: "6d4a199"
       - id: "2.2"
         title: "Cross-Invalidate Decision Tokens After Use"
-        effort: XS
-        priority: medium
         status: not-started
-        files:
-          - packages/server/src/routes/decide.ts
-        review_refs:
-          - "Code Review §3.5"
-
       - id: "2.3"
         title: "ReDoS Protection for $regex Policy Matcher"
-        effort: S
-        priority: medium
         status: not-started
-        files:
-          - packages/core/src/policy-engine.ts
-          - packages/core/package.json
-          - packages/server/src/routes/policies.ts
-        review_refs:
-          - "Code Review §3.6"
-
       - id: "2.4"
         title: "HTML Escaping in Email Templates"
-        effort: S
-        priority: medium
         status: not-started
-        files:
-          - packages/server/src/lib/notification/adapters/email.ts
-        review_refs:
-          - "Code Review §3.9"
-
       - id: "2.5"
         title: "SSRF Protection for Webhook Notification Adapter"
-        effort: XS
-        priority: medium
         status: not-started
-        files:
-          - packages/server/src/lib/notification/adapters/webhook.ts
-        review_refs:
-          - "Code Review §3.8"
-
       - id: "2.6"
         title: "Require Admin API Key in Production"
-        effort: XS
-        priority: high
         status: not-started
-        files:
-          - packages/server/src/index.ts
-        review_refs:
-          - "Cloud Review #20"
-
       - id: "2.7"
         title: "Add Request Body Size Limits"
-        effort: XS
-        priority: medium
         status: not-started
-        files:
-          - packages/server/src/index.ts
-        review_refs:
-          - "Code Review §4.4"
 
   - id: epic-3
     name: "Production Infrastructure"
-    description: "Ops readiness — shutdown, retries, logging, health"
-    priority: high
     status: not-started
     stories:
       - id: "3.1"
         title: "Add Graceful Shutdown (SIGTERM/SIGINT Handler)"
-        effort: S
-        priority: critical
         status: not-started
-        files:
-          - packages/server/src/index.ts
-        review_refs:
-          - "Cloud Review #2"
-
       - id: "3.2"
         title: "Persistent Webhook Retry Queue (Replace setTimeout)"
-        effort: M
-        priority: critical
         status: not-started
-        depends_on: ["1.3"]
-        files:
-          - packages/server/src/lib/webhook.ts
-          - packages/server/src/index.ts
-        review_refs:
-          - "Code Review §5.5"
-          - "Cloud Review #31"
-
       - id: "3.3"
         title: "Add Database Indexes"
-        effort: S
-        priority: high
         status: not-started
-        files:
-          - packages/server/src/db/schema.sqlite.ts
-          - packages/server/src/db/schema.postgres.ts
-        review_refs:
-          - "Code Review §5.1"
-          - "Cloud Review #12"
-
       - id: "3.4"
         title: "Wire Structured Logging (Replace console.*)"
-        effort: M
-        priority: high
         status: not-started
-        files:
-          - packages/server/src/lib/logger.ts
-          - packages/server/src/index.ts
-          - packages/server/package.json
-        review_refs:
-          - "Cloud Review #26"
-
       - id: "3.5"
         title: "Deep Health Check (Verify DB + Redis)"
-        effort: S
-        priority: high
         status: not-started
-        depends_on: ["1.3"]
-        files:
-          - packages/server/src/index.ts
-        review_refs:
-          - "Cloud Review #25"
-
       - id: "3.6"
         title: "Create .dockerignore File"
-        effort: XS
-        priority: high
         status: not-started
-        files:
-          - .dockerignore
-        review_refs:
-          - "Cloud Review #1"
 
   - id: epic-4
     name: "Code Quality & Performance"
-    description: "Architecture improvements and performance fixes"
-    priority: medium
     status: not-started
     stories:
       - id: "4.1"
         title: "Batch lastUsedAt Writes for API Keys"
-        effort: S
-        priority: medium
         status: not-started
-        depends_on: ["1.3"]
-        files:
-          - packages/server/src/lib/api-keys.ts
-        review_refs:
-          - "Code Review §5.3"
-
       - id: "4.2"
         title: "Reuse Email Transporter"
-        effort: XS
-        priority: medium
         status: not-started
-        files:
-          - packages/server/src/lib/notification/adapters/email.ts
-        review_refs:
-          - "Code Review §5.4"
-
       - id: "4.3"
         title: "Remove SDK confirm() Method (Dead Code)"
-        effort: XS
-        priority: medium
         status: not-started
-        files:
-          - packages/sdk/src/client.ts
-        review_refs:
-          - "Code Review §4.5"
-
       - id: "4.4"
         title: "Consolidate HTTP Client Implementations"
-        effort: M
-        priority: medium
         status: not-started
-        files:
-          - packages/core/src/http-client.ts
-          - packages/core/src/index.ts
-          - packages/mcp/src/api.ts
-        review_refs:
-          - "Code Review §4.1"
 
   - id: epic-5
     name: "CI/CD & Deployment"
-    description: "Ship readiness — tests, Docker publishing, secrets"
-    priority: high
     status: not-started
     stories:
       - id: "5.1"
         title: "Add Test Step to CI Pipeline"
-        effort: XS
-        priority: high
         status: not-started
-        files:
-          - .github/workflows/release.yml
-        review_refs:
-          - "Cloud Review #42"
-
       - id: "5.2"
         title: "Add PR Check Workflow"
-        effort: S
-        priority: medium
         status: not-started
-        files:
-          - .github/workflows/ci.yml
-        review_refs:
-          - "Cloud Review #44"
-
       - id: "5.3"
         title: "Docker Image Publishing Workflow"
-        effort: M
-        priority: high
         status: not-started
-        files:
-          - .github/workflows/docker.yml
-        review_refs:
-          - "Cloud Review #43"
-          - "Cloud Review #37"
-
       - id: "5.4"
         title: "File-Based Secrets Support (_FILE Suffix)"
-        effort: S
-        priority: medium
         status: not-started
-        files:
-          - packages/server/src/config.ts
-        review_refs:
-          - "Cloud Review #23"
-
       - id: "5.5"
         title: "Air-Gap Docker Image Bundle Documentation"
-        effort: S
-        priority: medium
         status: not-started
-        files:
-          - docs/deployment/air-gap.md
-        review_refs:
-          - "Cloud Review #37"
-          - "Cloud Review #39"
-          - "Cloud Review #40"
-
-# Execution order (recommended sequence respecting dependencies):
-execution_order:
-  - "3.6"   # .dockerignore (no deps, instant win)
-  - "1.3"   # Fix PostgreSQL mode (foundational)
-  - "1.4"   # Auto-migrations (depends on 1.3)
-  - "1.1"   # Fix MCP decide (quick win)
-  - "1.2"   # Fix Discord bot (quick win)
-  - "2.1"   # Atomic decide (security critical)
-  - "2.2"   # Cross-invalidate tokens
-  - "2.6"   # Require admin API key in production
-  - "2.7"   # Body size limits
-  - "2.5"   # SSRF in webhook adapter
-  - "2.4"   # HTML escaping in emails
-  - "2.3"   # ReDoS protection
-  - "3.1"   # Graceful shutdown
-  - "3.3"   # Database indexes
-  - "3.4"   # Structured logging
-  - "3.5"   # Deep health check
-  - "3.2"   # Persistent webhook retries
-  - "4.1"   # Batch lastUsedAt
-  - "4.2"   # Reuse email transporter
-  - "4.3"   # Remove SDK confirm
-  - "4.4"   # Consolidate HTTP clients
-  - "5.1"   # Tests in CI
-  - "5.2"   # PR check workflow
-  - "5.3"   # Docker publishing
-  - "5.4"   # File-based secrets
-  - "5.5"   # Air-gap docs

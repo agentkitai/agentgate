@@ -2,7 +2,7 @@
 
 import { Hono } from "hono";
 import { html } from "hono/html";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { getDb, approvalRequests, decisionTokens } from "../db/index.js";
 import { logAuditEvent } from "../lib/audit.js";
 import { deliverWebhook } from "../lib/webhook.js";
@@ -236,6 +236,15 @@ decideRouter.get("/:token", async (c) => {
     .update(decisionTokens)
     .set({ usedAt: now })
     .where(eq(decisionTokens.id, tokenRecord.id));
+
+  // Cross-invalidate all other tokens for this request
+  await getDb()
+    .update(decisionTokens)
+    .set({ usedAt: now })
+    .where(and(
+      eq(decisionTokens.requestId, tokenRecord.requestId),
+      isNull(decisionTokens.usedAt)
+    ));
 
   // Log audit event
   await logAuditEvent(
