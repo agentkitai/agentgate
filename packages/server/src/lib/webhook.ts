@@ -1,9 +1,12 @@
 import crypto from 'crypto';
 import { getDb } from '../db/index.js';
 import { webhooks, webhookDeliveries } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, and, gt } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { validateWebhookUrl } from './url-validator.js';
+import { getLogger } from './logger.js';
+
+const MAX_ATTEMPTS = 3;
 
 // Sign payload with HMAC-SHA256
 export function signPayload(payload: string, secret: string): string {
@@ -41,13 +44,19 @@ async function deliverToWebhook(webhook: typeof webhooks.$inferSelect, event: st
     attempts: 0,
   });
 
-  // Attempt delivery (with retry)
+  // Attempt first delivery immediately
   await attemptDelivery(deliveryId, webhook.url, payload, signature);
 }
 
+/**
+ * Compute the exponential backoff delay for a given attempt number.
+ * attempt 1 → 2s, attempt 2 → 4s, attempt 3 → 8s
+ */
+function getBackoffMs(attempt: number): number {
+  return Math.pow(2, attempt) * 1000;
+}
+
 async function attemptDelivery(deliveryId: string, url: string, payload: string, signature: string, attempt = 1) {
-  const maxAttempts = 3;
-  
   // SSRF protection: Re-validate URL before each delivery attempt (DNS rebinding defense)
   const validation = await validateWebhookUrl(url);
   if (!validation.valid) {
@@ -74,34 +83,134 @@ async function attemptDelivery(deliveryId: string, url: string, payload: string,
 
     const responseBody = await response.text().catch(() => null);
 
-    await getDb().update(webhookDeliveries)
-      .set({
-        status: response.ok ? 'success' : 'failed',
-        attempts: attempt,
-        lastAttemptAt: Date.now(),
-        responseCode: response.status,
-        responseBody,
-      })
-      .where(eq(webhookDeliveries.id, deliveryId));
-
-    if (!response.ok && attempt < maxAttempts) {
-      // Retry with exponential backoff
-      setTimeout(() => attemptDelivery(deliveryId, url, payload, signature, attempt + 1), 
-        Math.pow(2, attempt) * 1000);
+    if (response.ok) {
+      await getDb().update(webhookDeliveries)
+        .set({
+          status: 'success',
+          attempts: attempt,
+          lastAttemptAt: Date.now(),
+          responseCode: response.status,
+          responseBody,
+        })
+        .where(eq(webhookDeliveries.id, deliveryId));
+    } else if (attempt < MAX_ATTEMPTS) {
+      // Mark as pending for retry by the scanner (DB-based retry)
+      await getDb().update(webhookDeliveries)
+        .set({
+          status: 'pending',
+          attempts: attempt,
+          lastAttemptAt: Date.now(),
+          responseCode: response.status,
+          responseBody,
+        })
+        .where(eq(webhookDeliveries.id, deliveryId));
+    } else {
+      // Max attempts reached — mark as permanently failed
+      await getDb().update(webhookDeliveries)
+        .set({
+          status: 'failed',
+          attempts: attempt,
+          lastAttemptAt: Date.now(),
+          responseCode: response.status,
+          responseBody,
+        })
+        .where(eq(webhookDeliveries.id, deliveryId));
     }
   } catch (error) {
-    await getDb().update(webhookDeliveries)
-      .set({
-        status: 'failed',
-        attempts: attempt,
-        lastAttemptAt: Date.now(),
-        responseBody: error instanceof Error ? error.message : 'Unknown error',
-      })
-      .where(eq(webhookDeliveries.id, deliveryId));
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
 
-    if (attempt < maxAttempts) {
-      setTimeout(() => attemptDelivery(deliveryId, url, payload, signature, attempt + 1),
-        Math.pow(2, attempt) * 1000);
+    if (attempt < MAX_ATTEMPTS) {
+      // Mark as pending for retry by the scanner (DB-based retry)
+      await getDb().update(webhookDeliveries)
+        .set({
+          status: 'pending',
+          attempts: attempt,
+          lastAttemptAt: Date.now(),
+          responseBody: errorMsg,
+        })
+        .where(eq(webhookDeliveries.id, deliveryId));
+    } else {
+      // Max attempts reached — mark as permanently failed
+      await getDb().update(webhookDeliveries)
+        .set({
+          status: 'failed',
+          attempts: attempt,
+          lastAttemptAt: Date.now(),
+          responseBody: errorMsg,
+        })
+        .where(eq(webhookDeliveries.id, deliveryId));
     }
   }
+}
+
+/**
+ * Periodic retry scanner for webhook deliveries.
+ * Finds pending deliveries that have been attempted at least once and are
+ * due for retry based on exponential backoff (2^attempts * 1000ms).
+ * 
+ * Runs every `intervalMs` milliseconds (default: 30 seconds).
+ */
+export function startRetryScanner(intervalMs = 30_000): NodeJS.Timeout {
+  return setInterval(async () => {
+    try {
+      const now = Date.now();
+
+      // Find pending deliveries that have been attempted at least once
+      // (attempts > 0 means they've had at least one failed attempt)
+      const pending = await getDb().select().from(webhookDeliveries)
+        .where(and(
+          eq(webhookDeliveries.status, 'pending'),
+          gt(webhookDeliveries.attempts, 0),
+        ))
+        .limit(10);
+
+      for (const delivery of pending) {
+        // Check if enough time has passed for exponential backoff
+        const backoffMs = getBackoffMs(delivery.attempts);
+        const retryAfter = (delivery.lastAttemptAt ?? 0) + backoffMs;
+
+        if (now < retryAfter) {
+          continue; // Not yet due for retry
+        }
+
+        // Skip deliveries that have already reached max attempts
+        // (shouldn't be pending, but defensive check)
+        if (delivery.attempts >= MAX_ATTEMPTS) {
+          await getDb().update(webhookDeliveries)
+            .set({ status: 'failed' })
+            .where(eq(webhookDeliveries.id, delivery.id));
+          continue;
+        }
+
+        // Re-fetch the webhook to get the current URL and secret
+        const [webhook] = await getDb().select().from(webhooks)
+          .where(eq(webhooks.id, delivery.webhookId))
+          .limit(1);
+
+        if (!webhook || !webhook.enabled) {
+          // Webhook deleted or disabled — mark delivery as failed
+          await getDb().update(webhookDeliveries)
+            .set({
+              status: 'failed',
+              lastAttemptAt: now,
+              responseBody: webhook ? 'Webhook disabled' : 'Webhook not found',
+            })
+            .where(eq(webhookDeliveries.id, delivery.id));
+          continue;
+        }
+
+        const signature = signPayload(delivery.payload, webhook.secret);
+        const nextAttempt = delivery.attempts + 1;
+
+        getLogger().info(
+          { deliveryId: delivery.id, attempt: nextAttempt, webhookId: webhook.id },
+          'Retry scanner: retrying webhook delivery'
+        );
+
+        await attemptDelivery(delivery.id, webhook.url, delivery.payload, signature, nextAttempt);
+      }
+    } catch (err) {
+      getLogger().error({ err }, 'Webhook retry scanner error');
+    }
+  }, intervalMs);
 }

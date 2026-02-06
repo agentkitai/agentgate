@@ -16,6 +16,7 @@ import { securityHeadersMiddleware } from "./middleware/security-headers.js";
 import { initDatabase, runMigrations, closeDatabase, getDb, approvalRequests } from "./db/index.js";
 import { resetRateLimiter } from "./lib/rate-limiter/index.js";
 import { initLogger, getLogger } from "./lib/logger.js";
+import { startRetryScanner } from "./lib/webhook.js";
 import { sql } from "drizzle-orm";
 
 // Create Hono app with typed variables
@@ -157,6 +158,10 @@ async function main() {
 
   getLogger().info(`AgentGate server running at http://localhost:${port}`);
 
+  // Start webhook retry scanner (persistent retries via DB polling)
+  const retryScannerInterval = startRetryScanner();
+  getLogger().info('Webhook retry scanner started (30s interval).');
+
   // --- Graceful shutdown ---
   let shuttingDown = false;
 
@@ -169,6 +174,9 @@ async function main() {
     server.close(() => {
       getLogger().info('HTTP server closed.');
     });
+
+    clearInterval(retryScannerInterval);
+    getLogger().info('Webhook retry scanner stopped.');
 
     try {
       await resetRateLimiter();
