@@ -16,6 +16,10 @@
 
 ---
 
+<p align="center">
+  <img src="docs/public/demo.gif" alt="AgentGate Demo" width="700">
+</p>
+
 Your AI agent wants to send an email, delete a file, or deploy to production.
 **Should it?** AgentGate lets you define policies that auto-approve safe actions,
 auto-deny dangerous ones, and route everything else to a human — via dashboard, Slack, Discord, or email.
