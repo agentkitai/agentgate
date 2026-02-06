@@ -10,7 +10,7 @@ import auditRouter from "./routes/audit.js";
 import tokensRouter from "./routes/tokens.js";
 import decideRouter from "./routes/decide.js";
 import { authMiddleware, type AuthVariables } from "./middleware/auth.js";
-import { getConfig } from "./config.js";
+import { getConfig, validateProductionConfig } from "./config.js";
 import { securityHeadersMiddleware } from "./middleware/security-headers.js";
 import { initDatabase, runMigrations } from "./db/index.js";
 
@@ -19,6 +19,20 @@ const app = new Hono<{ Variables: AuthVariables }>();
 
 // Load config
 const config = getConfig();
+
+// Enforce production security requirements
+if (config.isProduction) {
+  const warnings = validateProductionConfig(config);
+  const criticalWarnings = warnings.filter(w => w.includes('ADMIN_API_KEY'));
+  if (criticalWarnings.length > 0) {
+    console.error('FATAL: Production security requirements not met:');
+    criticalWarnings.forEach(w => console.error(`  - ${w}`));
+    console.error('Set ADMIN_API_KEY environment variable (min 16 characters) to start in production mode.');
+    process.exit(1);
+  }
+  // Log non-critical warnings
+  warnings.filter(w => !w.includes('ADMIN_API_KEY')).forEach(w => console.warn(`Warning: ${w}`));
+}
 
 // Middleware
 app.use("*", logger());
