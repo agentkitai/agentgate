@@ -17,6 +17,7 @@ import { initDatabase, runMigrations, closeDatabase, getDb, approvalRequests } f
 import { resetRateLimiter } from "./lib/rate-limiter/index.js";
 import { initLogger, getLogger } from "./lib/logger.js";
 import { startRetryScanner } from "./lib/webhook.js";
+import { startLastUsedFlusher, stopLastUsedFlusher } from "./lib/api-keys.js";
 import { sql } from "drizzle-orm";
 
 // Create Hono app with typed variables
@@ -162,6 +163,10 @@ async function main() {
   const retryScannerInterval = startRetryScanner();
   getLogger().info('Webhook retry scanner started (30s interval).');
 
+  // Start batched lastUsedAt flusher (reduces per-request DB writes)
+  startLastUsedFlusher();
+  getLogger().info('API key lastUsedAt flusher started (60s interval).');
+
   // --- Graceful shutdown ---
   let shuttingDown = false;
 
@@ -177,6 +182,9 @@ async function main() {
 
     clearInterval(retryScannerInterval);
     getLogger().info('Webhook retry scanner stopped.');
+
+    stopLastUsedFlusher();
+    getLogger().info('API key lastUsedAt flusher stopped.');
 
     try {
       await resetRateLimiter();

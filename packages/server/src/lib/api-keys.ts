@@ -4,6 +4,49 @@ import { createHash, randomBytes } from "node:crypto";
 import { nanoid } from "nanoid";
 import { eq, and, isNull } from "drizzle-orm";
 import { getDb, apiKeys, type ApiKey } from "../db/index.js";
+import { getLogger } from "./logger.js";
+
+// --- Batched lastUsedAt writes ---
+// Buffer: apiKey.id → unix timestamp (seconds)
+const lastUsedBuffer = new Map<string, number>();
+let flushTimer: NodeJS.Timeout | null = null;
+
+/**
+ * Flush buffered lastUsedAt timestamps to the database.
+ * Atomically swaps the buffer so concurrent writes during flush are safe.
+ */
+async function flushLastUsed(): Promise<void> {
+  if (lastUsedBuffer.size === 0) return;
+  const entries = Array.from(lastUsedBuffer.entries());
+  lastUsedBuffer.clear();
+  const db = getDb();
+  for (const [id, timestamp] of entries) {
+    await db.update(apiKeys).set({ lastUsedAt: timestamp }).where(eq(apiKeys.id, id));
+  }
+}
+
+/**
+ * Start the periodic lastUsedAt flusher.
+ * @param intervalMs - Flush interval in milliseconds (default 60s)
+ */
+export function startLastUsedFlusher(intervalMs = 60_000): NodeJS.Timeout {
+  flushTimer = setInterval(() => {
+    flushLastUsed().catch(err => getLogger().error({ err }, 'Failed to flush lastUsedAt'));
+  }, intervalMs);
+  return flushTimer;
+}
+
+/**
+ * Stop the periodic lastUsedAt flusher and perform a final flush.
+ */
+export function stopLastUsedFlusher(): void {
+  if (flushTimer) {
+    clearInterval(flushTimer);
+    flushTimer = null;
+  }
+  // Best-effort final flush on shutdown
+  flushLastUsed().catch(() => {});
+}
 
 /**
  * Hash an API key using SHA256
@@ -70,11 +113,8 @@ export async function validateApiKey(key: string): Promise<ApiKey | null> {
     return null;
   }
 
-  // Update last_used_at
-  await getDb()
-    .update(apiKeys)
-    .set({ lastUsedAt: Math.floor(Date.now() / 1000) })
-    .where(eq(apiKeys.id, apiKey.id));
+  // Buffer lastUsedAt — flushed periodically by startLastUsedFlusher()
+  lastUsedBuffer.set(apiKey.id, Math.floor(Date.now() / 1000));
 
   return apiKey;
 }
