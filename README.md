@@ -1,20 +1,57 @@
-# AgentGate
+<p align="center">
+  <h1 align="center">AgentGate</h1>
+  <p align="center">
+    <strong>Human-in-the-loop approval system for AI agents.</strong><br>
+    Agents request. Policies decide. Humans approve.<br>
+    <em>Keep humans in control of what AI agents can do.</em>
+  </p>
+</p>
 
-**Human-in-the-loop approval system for AI agents.**
+<p align="center">
+  <a href="https://www.npmjs.com/search?q=%40agentgate"><img src="https://img.shields.io/npm/v/@agentgate/sdk?label=sdk&color=blue" alt="npm version"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License"></a>
+  <a href="#"><img src="https://img.shields.io/badge/tests-passing-brightgreen" alt="Tests Passing"></a>
+  <a href="#"><img src="https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript&logoColor=white" alt="TypeScript"></a>
+</p>
 
-AgentGate provides a standardized way for AI agents to request and receive approvals for sensitive actions. It bridges the gap between autonomous AI capabilities and human oversight.
+---
 
-## Features
+Your AI agent wants to send an email, delete a file, or deploy to production.
+**Should it?** AgentGate lets you define policies that auto-approve safe actions,
+auto-deny dangerous ones, and route everything else to a human — via dashboard, Slack, Discord, or email.
 
-- 🛡️ **Policy Engine** — Auto-approve, auto-deny, or route to humans based on configurable rules
-- 👥 **Human Approvals** — Via Slack bot or web dashboard
-- 📊 **Real-time Dashboard** — Monitor and manage approval requests
-- 📝 **Audit Logging** — Complete history of all requests and decisions
-- 🔌 **TypeScript SDK** — Easy integration for agents
-- 🔐 **API Key Authentication** — Secure access with scoped API keys
-- 🪝 **Webhooks** — Real-time notifications for request events
-- 🤖 **MCP Integration** — Use with Claude Desktop via Model Context Protocol
-- ⚡ **Fast & Lightweight** — Hono server with SQLite storage
+### ✨ Highlights
+
+- 🛡️ **Policy engine** — auto-approve, auto-deny, or route to humans based on rules
+- 👥 **Multi-channel approvals** — Slack, Discord, email, or web dashboard
+- 🔌 **TypeScript SDK + MCP** — works with any agent framework or Claude Desktop
+- 🪝 **Webhooks with retry** — real-time notifications with exponential backoff
+- 📝 **Full audit trail** — every request, decision, and action logged
+- 🐳 **Docker-ready** — one `docker-compose up` for the full stack
+- 🔐 **Production-hardened** — SSRF protection, ReDoS defense, structured logging, graceful shutdown
+- ⚡ **Fast & lightweight** — Hono server, SQLite or PostgreSQL
+
+---
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Architecture](#architecture)
+- [Packages](#packages)
+- [SDK Usage](#sdk-usage)
+- [CLI](#cli)
+- [MCP Integration](#mcp-integration)
+- [Authentication](#authentication)
+- [API Endpoints](#api-endpoints)
+- [Rate Limiting](#rate-limiting)
+- [Webhooks](#webhooks)
+- [Configuration](#configuration)
+- [Docker Deployment](#docker-deployment)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
 
 ## Quick Start
 
@@ -62,76 +99,84 @@ pnpm demo
 
 Visit **http://localhost:5173** to view and manage approval requests.
 
-## Authentication
+## Architecture
 
-AgentGate uses API keys for authentication. All API requests (except `/health`) require a valid API key.
-
-### API Key Scopes
-
-| Scope | Description |
-|-------|-------------|
-| `admin` | Full access to all operations |
-| `request:create` | Create new approval requests |
-| `request:read` | Read approval requests |
-| `request:decide` | Approve or deny requests |
-| `webhook:manage` | Create/update/delete webhooks |
-
-### Using API Keys
-
-**HTTP Header:**
-```bash
-curl -H "Authorization: Bearer agk_..." http://localhost:3000/api/requests
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         AI Agents                                │
+│  (use @agentgate/sdk or MCP to request approvals)               │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │ HTTP API (authenticated)
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    AgentGate Server                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ Policy Engine│  │ Request Store│  │ Audit Logger │          │
+│  ├──────────────┤  ├──────────────┤  ├──────────────┤          │
+│  │  API Keys    │  │  Webhooks    │  │  MCP Server  │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+              ┌─────────────┼─────────────┐
+              ▼             ▼             ▼
+┌────────────────┐ ┌────────────────┐ ┌────────────────┐
+│  Web Dashboard │ │   Slack Bot    │ │  Discord Bot   │
+│(React+Tailwind)│ │(approve in DM) │ │(approve in ch) │
+└────────────────┘ └────────────────┘ └────────────────┘
+              │             │             │
+              └─────────────┼─────────────┘
+                            ▼
+                      ┌──────────┐
+                      │  Humans  │
+                      └──────────┘
 ```
 
-**SDK:**
+## Packages
+
+| Package | Description | Docs |
+|---------|-------------|------|
+| [`@agentgate/core`](./packages/core) | Types, schemas, policy engine | - |
+| [`@agentgate/server`](./packages/server) | Hono API server | - |
+| [`@agentgate/sdk`](./packages/sdk) | TypeScript SDK for agents | [README](./packages/sdk/README.md) |
+| [`@agentgate/cli`](./packages/cli) | Command-line interface | - |
+| [`@agentgate/mcp`](./packages/mcp) | MCP server for Claude Desktop | - |
+| [`@agentgate/slack`](./packages/slack) | Slack bot integration | [README](./packages/slack/README.md) |
+| [`@agentgate/discord`](./packages/discord) | Discord bot integration | [README](./packages/discord/README.md) |
+| [`@agentgate/dashboard`](./packages/dashboard) | React web dashboard | - |
+
+## SDK Usage
+
 ```typescript
+import { AgentGateClient } from '@agentgate/sdk';
+
+// Create client with API key
 const client = new AgentGateClient({
   baseUrl: 'http://localhost:3000',
   apiKey: process.env.AGENTGATE_API_KEY,
 });
-```
 
-### Creating Additional API Keys
+// Request approval
+const request = await client.request({
+  action: 'send_email',
+  params: {
+    to: 'customer@example.com',
+    subject: 'Order shipped!',
+  },
+  urgency: 'normal',
+});
 
-```typescript
-// Via API (requires admin scope)
-POST /api/keys
-{
-  "name": "My Agent",
-  "scopes": ["request:create", "request:read"]
+// Wait for human decision
+const decided = await client.waitForDecision(request.id, {
+  timeout: 60000, // 1 minute
+});
+
+if (decided.status === 'approved') {
+  // Execute the action
+  await sendEmail(decided.params);
+} else {
+  console.log('Action denied:', decided.decisionReason);
 }
 ```
-
-## MCP Integration
-
-AgentGate includes a Model Context Protocol (MCP) server for integration with Claude Desktop and other MCP-compatible clients.
-
-### Claude Desktop Configuration
-
-Add to your `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "agentgate": {
-      "command": "npx",
-      "args": ["@agentgate/mcp"],
-      "env": {
-        "AGENTGATE_URL": "http://localhost:3000",
-        "AGENTGATE_API_KEY": "agk_..."
-      }
-    }
-  }
-}
-```
-
-### Available MCP Tools
-
-| Tool | Description |
-|------|-------------|
-| `request_approval` | Create a new approval request |
-| `check_request` | Get status of an approval request |
-| `list_requests` | List pending approval requests |
 
 ## CLI
 
@@ -201,6 +246,93 @@ agentgate deny req_abc123 --reason "Not authorized"
 # Output as JSON
 agentgate list --json
 ```
+
+## MCP Integration
+
+AgentGate includes a Model Context Protocol (MCP) server for integration with Claude Desktop and other MCP-compatible clients.
+
+### Claude Desktop Configuration
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "agentgate": {
+      "command": "npx",
+      "args": ["@agentgate/mcp"],
+      "env": {
+        "AGENTGATE_URL": "http://localhost:3000",
+        "AGENTGATE_API_KEY": "agk_..."
+      }
+    }
+  }
+}
+```
+
+### Available MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `request_approval` | Create a new approval request |
+| `check_request` | Get status of an approval request |
+| `list_requests` | List pending approval requests |
+
+## Authentication
+
+AgentGate uses API keys for authentication. All API requests (except `/health`) require a valid API key.
+
+### API Key Scopes
+
+| Scope | Description |
+|-------|-------------|
+| `admin` | Full access to all operations |
+| `request:create` | Create new approval requests |
+| `request:read` | Read approval requests |
+| `request:decide` | Approve or deny requests |
+| `webhook:manage` | Create/update/delete webhooks |
+
+### Using API Keys
+
+**HTTP Header:**
+```bash
+curl -H "Authorization: Bearer agk_..." http://localhost:3000/api/requests
+```
+
+**SDK:**
+```typescript
+const client = new AgentGateClient({
+  baseUrl: 'http://localhost:3000',
+  apiKey: process.env.AGENTGATE_API_KEY,
+});
+```
+
+### Creating Additional API Keys
+
+```typescript
+// Via API (requires admin scope)
+POST /api/keys
+{
+  "name": "My Agent",
+  "scopes": ["request:create", "request:read"]
+}
+```
+
+## API Endpoints
+
+| Method | Endpoint | Description | Required Scope |
+|--------|----------|-------------|----------------|
+| `POST` | `/api/requests` | Create approval request | `request:create` |
+| `GET` | `/api/requests` | List requests (with filters) | `request:read` |
+| `GET` | `/api/requests/:id` | Get request by ID | `request:read` |
+| `POST` | `/api/requests/:id/decide` | Submit approval/denial | `request:decide` |
+| `GET` | `/api/requests/:id/audit` | Get audit trail | `request:read` |
+| `GET` | `/api/policies` | List policies | `admin` |
+| `POST` | `/api/policies` | Create policy | `admin` |
+| `GET` | `/api/webhooks` | List webhooks | `webhook:manage` |
+| `POST` | `/api/webhooks` | Create webhook | `webhook:manage` |
+| `DELETE` | `/api/webhooks/:id` | Delete webhook | `webhook:manage` |
+| `GET` | `/health` | Health check | (none) |
 
 ## Rate Limiting
 
@@ -295,103 +427,9 @@ X-AgentGate-Signature: sha256=...
 
 Verify by computing `HMAC-SHA256(secret, body)` and comparing.
 
-## Architecture
+### Webhook Retry
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         AI Agents                                │
-│  (use @agentgate/sdk or MCP to request approvals)               │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │ HTTP API (authenticated)
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    AgentGate Server                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │ Policy Engine│  │ Request Store│  │ Audit Logger │          │
-│  ├──────────────┤  ├──────────────┤  ├──────────────┤          │
-│  │  API Keys    │  │  Webhooks    │  │  MCP Server  │          │
-│  └──────────────┘  └──────────────┘  └──────────────┘          │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-              ┌─────────────┴─────────────┐
-              ▼                           ▼
-┌──────────────────────┐     ┌──────────────────────┐
-│    Web Dashboard     │     │     Slack Bot        │
-│  (React + Tailwind)  │     │  (approve in Slack)  │
-└──────────────────────┘     └──────────────────────┘
-              │                           │
-              └───────────┬───────────────┘
-                          ▼
-                    ┌──────────┐
-                    │  Humans  │
-                    └──────────┘
-```
-
-## Packages
-
-| Package | Description | Docs |
-|---------|-------------|------|
-| [`@agentgate/core`](./packages/core) | Types, schemas, policy engine | - |
-| [`@agentgate/server`](./packages/server) | Hono API server | - |
-| [`@agentgate/sdk`](./packages/sdk) | TypeScript SDK for agents | [README](./packages/sdk/README.md) |
-| [`@agentgate/cli`](./packages/cli) | Command-line interface | - |
-| [`@agentgate/mcp`](./packages/mcp) | MCP server for Claude Desktop | - |
-| [`@agentgate/slack`](./packages/slack) | Slack bot integration | [README](./packages/slack/README.md) |
-| [`@agentgate/dashboard`](./packages/dashboard) | React web dashboard | - |
-
-## SDK Usage
-
-```typescript
-import { AgentGateClient } from '@agentgate/sdk';
-
-// Create client with API key
-const client = new AgentGateClient({
-  baseUrl: 'http://localhost:3000',
-  apiKey: process.env.AGENTGATE_API_KEY,
-});
-
-// Request approval
-const request = await client.request({
-  action: 'send_email',
-  params: {
-    to: 'customer@example.com',
-    subject: 'Order shipped!',
-  },
-  urgency: 'normal',
-});
-
-// Wait for human decision
-const decided = await client.waitForDecision(request.id, {
-  timeout: 60000, // 1 minute
-});
-
-if (decided.status === 'approved') {
-  // Execute the action
-  await sendEmail(decided.params);
-  
-  // Confirm execution (for audit trail)
-  await client.confirm(decided.id);
-} else {
-  console.log('Action denied:', decided.decisionReason);
-}
-```
-
-## API Endpoints
-
-| Method | Endpoint | Description | Required Scope |
-|--------|----------|-------------|----------------|
-| `POST` | `/api/requests` | Create approval request | `request:create` |
-| `GET` | `/api/requests` | List requests (with filters) | `request:read` |
-| `GET` | `/api/requests/:id` | Get request by ID | `request:read` |
-| `POST` | `/api/requests/:id/decide` | Submit approval/denial | `request:decide` |
-| `POST` | `/api/requests/:id/confirm` | Confirm action execution | `request:create` |
-| `GET` | `/api/requests/:id/audit` | Get audit trail | `request:read` |
-| `GET` | `/api/policies` | List policies | `admin` |
-| `POST` | `/api/policies` | Create policy | `admin` |
-| `GET` | `/api/webhooks` | List webhooks | `webhook:manage` |
-| `POST` | `/api/webhooks` | Create webhook | `webhook:manage` |
-| `DELETE` | `/api/webhooks/:id` | Delete webhook | `webhook:manage` |
-| `GET` | `/health` | Health check | (none) |
+Failed webhook deliveries are retried automatically with exponential backoff. The server scans for pending deliveries and retries them with increasing delays (`2^attempts * 1000ms`) until successful or the maximum retry count is reached.
 
 ## Configuration
 
@@ -404,6 +442,8 @@ if (decided.status === 'approved') {
 | `AGENTGATE_API_KEY` | - | API key for SDK/CLI |
 | `SLACK_BOT_TOKEN` | - | Slack bot token (for Slack integration) |
 | `SLACK_SIGNING_SECRET` | - | Slack signing secret |
+| `DISCORD_BOT_TOKEN` | - | Discord bot token (for Discord integration) |
+| `DISCORD_DEFAULT_CHANNEL` | - | Default Discord channel for notifications |
 
 ### Policy Configuration
 
@@ -422,64 +462,6 @@ Policies are stored in the database and can be managed via API:
     }
   ]
 }
-```
-
-## Development
-
-```bash
-# Install dependencies
-pnpm install
-
-# Run migrations
-pnpm --filter @agentgate/server db:migrate
-
-# Bootstrap (create admin key)
-pnpm --filter @agentgate/server bootstrap
-
-# Start development (server + dashboard)
-pnpm dev
-```
-
-### Testing
-
-AgentGate uses [Vitest](https://vitest.dev/) for testing across all packages.
-
-```bash
-# Run all tests
-pnpm test
-
-# Run tests with coverage report
-pnpm test:coverage
-
-# Run tests in watch mode (single package)
-pnpm --filter @agentgate/server test:watch
-
-# Run a specific test file
-pnpm --filter @agentgate/server test -- src/__tests__/integration.test.ts
-```
-
-Coverage reports are generated per-package and include line, branch, and function coverage.
-
-### Code Quality
-
-```bash
-# Build all packages
-pnpm build
-
-# Type checking
-pnpm typecheck
-
-# Lint (ESLint)
-pnpm lint
-
-# Fix lint issues
-pnpm lint:fix
-
-# Format code (Prettier)
-pnpm format
-
-# Check formatting
-pnpm format:check
 ```
 
 ## Docker Deployment
@@ -525,12 +507,12 @@ docker-compose up -d
 | `postgres` | PostgreSQL database | 5432 |
 | `redis` | Redis (rate limiting, queues) | 6379 |
 
-### With Slack Bot
+### With Slack or Discord Bots
 
-To include the Slack bot, use the `bots` profile:
+To include the bot services, use the `bots` profile:
 
 ```bash
-# Set required Slack credentials in .env first
+# Set required bot credentials in .env first
 docker-compose --profile bots up -d
 ```
 
@@ -604,6 +586,64 @@ docker-compose down -v
 5. **Set up backups** for PostgreSQL data volume
 6. **Monitor health endpoints** for uptime checks
 
+## Development
+
+```bash
+# Install dependencies
+pnpm install
+
+# Run migrations
+pnpm --filter @agentgate/server db:migrate
+
+# Bootstrap (create admin key)
+pnpm --filter @agentgate/server bootstrap
+
+# Start development (server + dashboard)
+pnpm dev
+```
+
+### Testing
+
+AgentGate uses [Vitest](https://vitest.dev/) for testing across all packages.
+
+```bash
+# Run all tests
+pnpm test
+
+# Run tests with coverage report
+pnpm test:coverage
+
+# Run tests in watch mode (single package)
+pnpm --filter @agentgate/server test:watch
+
+# Run a specific test file
+pnpm --filter @agentgate/server test -- src/__tests__/integration.test.ts
+```
+
+Coverage reports are generated per-package and include line, branch, and function coverage.
+
+### Code Quality
+
+```bash
+# Build all packages
+pnpm build
+
+# Type checking
+pnpm typecheck
+
+# Lint (ESLint)
+pnpm lint
+
+# Fix lint issues
+pnpm lint:fix
+
+# Format code (Prettier)
+pnpm format
+
+# Check formatting
+pnpm format:check
+```
+
 ## Project Structure
 
 ```
@@ -615,12 +655,26 @@ agentgate/
 │   ├── cli/            # Command-line interface
 │   ├── mcp/            # MCP server for Claude Desktop
 │   ├── slack/          # Slack bot
+│   ├── discord/        # Discord bot
 │   └── dashboard/      # React dashboard
 ├── apps/
 │   └── demo/           # Demo application
-├── docker-compose.yml  # Redis for queuing
+├── docker-compose.yml  # Docker deployment
 └── package.json        # Monorepo root
 ```
+
+## Contributing
+
+Contributions are welcome! To get started:
+
+1. Fork the repository
+2. Clone and install dependencies (`pnpm install`)
+3. Follow the [Development](#development) section above to set up your local environment
+4. Create a feature branch and make your changes
+5. Run `pnpm build && pnpm test` to verify everything works
+6. Open a pull request
+
+Please make sure all tests pass and code is formatted (`pnpm format:check && pnpm lint`) before submitting.
 
 ## License
 
