@@ -155,12 +155,26 @@ function getUrgencyEmoji(urgency: string): string {
 }
 
 /**
- * Format JSON for display in emails
+ * Escape user-controlled strings before interpolating into HTML templates.
+ * Prevents XSS when values like action names contain HTML/JS.
+ */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * Format JSON for display in emails.
+ * Output is escaped for safe embedding inside HTML (e.g. <pre> tags).
  */
 function formatJson(obj: Record<string, unknown>, maxLen = 500): string {
   const str = JSON.stringify(obj, null, 2);
-  if (str.length <= maxLen) return str;
-  return str.slice(0, maxLen - 3) + "...";
+  const truncated = str.length <= maxLen ? str : str.slice(0, maxLen - 3) + "...";
+  return escapeHtml(truncated);
 }
 
 /**
@@ -201,7 +215,7 @@ export function buildRequestCreatedHtml(
       <tr>
         <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb;">
           <strong style="color: #374151;">Policy Decision</strong><br/>
-          <span style="color: #6b7280;">${payload.policyDecision.decision}${payload.policyDecision.policyId ? ` (Policy: ${payload.policyDecision.policyId})` : ""}</span>
+          <span style="color: #6b7280;">${escapeHtml(String(payload.policyDecision.decision))}${payload.policyDecision.policyId ? ` (Policy: ${escapeHtml(String(payload.policyDecision.policyId))})` : ""}</span>
         </td>
       </tr>`
     : "";
@@ -239,7 +253,7 @@ export function buildRequestCreatedHtml(
           <tr>
             <td style="padding: 24px 24px 0 24px; text-align: center;">
               <span style="display: inline-block; background-color: ${urgencyColor}; color: #ffffff; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase;">
-                ${urgencyEmoji} ${payload.urgency} Priority
+                ${urgencyEmoji} ${escapeHtml(payload.urgency)} Priority
               </span>
             </td>
           </tr>
@@ -274,13 +288,13 @@ export function buildRequestCreatedHtml(
                 <tr>
                   <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb;">
                     <strong style="color: #374151;">Action</strong><br/>
-                    <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 14px; color: #1f2937;">${payload.action}</code>
+                    <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 14px; color: #1f2937;">${escapeHtml(payload.action)}</code>
                   </td>
                 </tr>
                 <tr>
                   <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb;">
                     <strong style="color: #374151;">Request ID</strong><br/>
-                    <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #6b7280;">${payload.requestId}</code>
+                    <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #6b7280;">${escapeHtml(payload.requestId)}</code>
                   </td>
                 </tr>
                 <tr>
@@ -303,7 +317,7 @@ export function buildRequestCreatedHtml(
           <tr>
             <td style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
               <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                This email was sent by AgentGate • Event ID: ${event.eventId}
+                This email was sent by AgentGate • Event ID: ${escapeHtml(event.eventId)}
               </p>
             </td>
           </tr>
@@ -353,19 +367,19 @@ export function buildRequestDecidedHtml(
                 <tr>
                   <td style="padding: 16px; border-bottom: 1px solid #e5e7eb;">
                     <strong style="color: #374151;">Action</strong><br/>
-                    <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 14px; color: #1f2937;">${payload.action}</code>
+                    <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 14px; color: #1f2937;">${escapeHtml(payload.action)}</code>
                   </td>
                 </tr>
                 <tr>
                   <td style="padding: 16px; border-bottom: 1px solid #e5e7eb;">
                     <strong style="color: #374151;">Request ID</strong><br/>
-                    <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #6b7280;">${payload.requestId}</code>
+                    <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #6b7280;">${escapeHtml(payload.requestId)}</code>
                   </td>
                 </tr>
                 <tr>
                   <td style="padding: 16px; border-bottom: 1px solid #e5e7eb;">
                     <strong style="color: #374151;">Decided By</strong><br/>
-                    <span style="color: #6b7280;">${payload.decidedBy} (${payload.decidedByType})</span>
+                    <span style="color: #6b7280;">${escapeHtml(String(payload.decidedBy))} (${escapeHtml(String(payload.decidedByType))})</span>
                   </td>
                 </tr>
                 <tr>
@@ -379,7 +393,7 @@ export function buildRequestDecidedHtml(
                     ? `<tr>
                   <td style="padding: 16px; border-bottom: 1px solid #e5e7eb;">
                     <strong style="color: #374151;">Reason</strong><br/>
-                    <span style="color: #6b7280;">${payload.reason}</span>
+                    <span style="color: #6b7280;">${escapeHtml(String(payload.reason))}</span>
                   </td>
                 </tr>`
                     : ""
@@ -392,7 +406,7 @@ export function buildRequestDecidedHtml(
           <tr>
             <td style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
               <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                This email was sent by AgentGate • Event ID: ${event.eventId}
+                This email was sent by AgentGate • Event ID: ${escapeHtml(event.eventId)}
               </p>
             </td>
           </tr>
@@ -419,7 +433,7 @@ export function buildGenericHtml(event: AgentGateEvent): string {
   if ("payload" in event && "urgency" in event.payload) {
     const urgency = event.payload.urgency as string;
     const color = urgencyColors[urgency] || "#6b7280";
-    urgencyBadge = `<span style="background-color: ${color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; text-transform: uppercase;">${urgency}</span>`;
+    urgencyBadge = `<span style="background-color: ${color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; text-transform: uppercase;">${escapeHtml(urgency)}</span>`;
   }
 
   let html = `<!DOCTYPE html>
@@ -446,7 +460,7 @@ export function buildGenericHtml(event: AgentGateEvent): string {
     <div class="content">
       <div class="field">
         <span class="label">Event:</span>
-        <span class="value">${event.type}</span>
+        <span class="value">${escapeHtml(event.type)}</span>
       </div>
       <div class="field">
         <span class="label">Time:</span>
@@ -459,14 +473,14 @@ export function buildGenericHtml(event: AgentGateEvent): string {
       html += `
       <div class="field">
         <span class="label">Request ID:</span>
-        <span class="value"><code>${event.payload.requestId}</code></span>
+        <span class="value"><code>${escapeHtml(String(event.payload.requestId))}</code></span>
       </div>`;
     }
     if ("action" in event.payload) {
       html += `
       <div class="field">
         <span class="label">Action:</span>
-        <span class="value"><code>${event.payload.action}</code></span>
+        <span class="value"><code>${escapeHtml(String(event.payload.action))}</code></span>
       </div>`;
     }
     if ("status" in event.payload) {
@@ -475,14 +489,14 @@ export function buildGenericHtml(event: AgentGateEvent): string {
       html += `
       <div class="field">
         <span class="label">Status:</span>
-        <span class="value" style="color: ${statusColor}; font-weight: 600;">${status.toUpperCase()}</span>
+        <span class="value" style="color: ${statusColor}; font-weight: 600;">${escapeHtml(status.toUpperCase())}</span>
       </div>`;
     }
     if ("params" in event.payload && Object.keys(event.payload.params as object).length > 0) {
       html += `
       <div class="field">
         <span class="label">Parameters:</span>
-        <pre>${JSON.stringify(event.payload.params, null, 2)}</pre>
+        <pre>${formatJson(event.payload.params as Record<string, unknown>)}</pre>
       </div>`;
     }
   }
@@ -490,7 +504,7 @@ export function buildGenericHtml(event: AgentGateEvent): string {
   html += `
     </div>
     <div class="footer">
-      Sent by AgentGate • Event ID: ${event.eventId}
+      Sent by AgentGate • Event ID: ${escapeHtml(event.eventId)}
     </div>
   </div>
 </body>

@@ -10,6 +10,8 @@ import { deliverWebhook } from "../lib/webhook.js";
 const decideRouter = new Hono();
 
 // HTML page generator
+// Note: Hono's `html` tagged template literal auto-escapes all interpolated
+// values (returns HtmlEscapedString), so manual escapeHtml() is not needed here.
 function htmlResponse(
   title: string,
   message: string,
