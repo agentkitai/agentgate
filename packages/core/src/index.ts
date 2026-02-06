@@ -44,3 +44,6 @@ export {
   resetGlobalEmitter,
   createEmitter,
 } from './emitter.js';
+
+// HTTP Client
+export { AgentGateHttpClient } from './http-client.js';

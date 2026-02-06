@@ -139,6 +139,7 @@ describe('handleToolCall', () => {
     const responseData = { id: 'req-123', status: 'pending' };
     fetchMock.mockResolvedValue({
       ok: true,
+      status: 200,
       json: () => Promise.resolve(responseData),
     });
 
@@ -164,6 +165,7 @@ describe('handleToolCall', () => {
     const responseData = { id: 'req-123', status: 'approved' };
     fetchMock.mockResolvedValue({
       ok: true,
+      status: 200,
       json: () => Promise.resolve(responseData),
     });
 
@@ -182,6 +184,7 @@ describe('handleToolCall', () => {
     const responseData = { requests: [] };
     fetchMock.mockResolvedValue({
       ok: true,
+      status: 200,
       json: () => Promise.resolve(responseData),
     });
 
@@ -200,6 +203,7 @@ describe('handleToolCall', () => {
     const responseData = { id: 'req-123', status: 'approved' };
     fetchMock.mockResolvedValue({
       ok: true,
+      status: 200,
       json: () => Promise.resolve(responseData),
     });
 
@@ -224,7 +228,7 @@ describe('handleToolCall', () => {
       ok: false,
       status: 401,
       statusText: 'Unauthorized',
-      json: () => Promise.resolve({ error: 'Invalid API key' }),
+      text: () => Promise.resolve(JSON.stringify({ error: 'Invalid API key' })),
     });
 
     const result = await handleToolCall(config, 'agentgate_get', {
