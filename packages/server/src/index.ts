@@ -13,7 +13,8 @@ import decideRouter from "./routes/decide.js";
 import { authMiddleware, type AuthVariables } from "./middleware/auth.js";
 import { getConfig, validateProductionConfig } from "./config.js";
 import { securityHeadersMiddleware } from "./middleware/security-headers.js";
-import { initDatabase, runMigrations } from "./db/index.js";
+import { initDatabase, runMigrations, closeDatabase } from "./db/index.js";
+import { resetRateLimiter } from "./lib/rate-limiter/index.js";
 
 // Create Hono app with typed variables
 const app = new Hono<{ Variables: AuthVariables }>();
@@ -124,12 +125,53 @@ async function main() {
 
   console.log(`Starting AgentGate server on port ${port}...`);
 
-  serve({
+  const server = serve({
     fetch: app.fetch,
     port,
   });
 
   console.log(`AgentGate server running at http://localhost:${port}`);
+
+  // --- Graceful shutdown ---
+  let shuttingDown = false;
+
+  async function shutdown(signal: string) {
+    if (shuttingDown) return; // Prevent double-shutdown
+    shuttingDown = true;
+
+    console.log(`\n${signal} received. Starting graceful shutdown...`);
+
+    server.close(() => {
+      console.log('HTTP server closed.');
+    });
+
+    try {
+      await resetRateLimiter();
+      console.log('Rate limiter cleaned up.');
+    } catch (err) {
+      console.error('Error cleaning up rate limiter:', err);
+    }
+
+    try {
+      await closeDatabase();
+      console.log('Database connections closed.');
+    } catch (err) {
+      console.error('Error closing database:', err);
+    }
+
+    console.log('Graceful shutdown complete.');
+    process.exit(0);
+  }
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+
+  // Safety net: force exit after 10 seconds if shutdown stalls
+  const forceExitTimeout = setTimeout(() => {
+    console.error('Forced shutdown after timeout.');
+    process.exit(1);
+  }, 10_000);
+  forceExitTimeout.unref();
 }
 
 main().catch((err) => {
