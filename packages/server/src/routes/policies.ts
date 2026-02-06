@@ -3,6 +3,7 @@
 import { Hono } from "hono";
 import { nanoid } from "nanoid";
 import { eq } from "drizzle-orm";
+import isSafeRegex from "safe-regex2";
 import { getDb, policies } from "../db/index.js";
 import type { PolicyRule } from "@agentgate/core";
 
@@ -47,6 +48,19 @@ function validatePolicyBody(body: unknown): {
         valid: false,
         error: `rules[${i}].decision must be one of: auto_approve, auto_deny, route_to_human, route_to_agent`,
       };
+    }
+
+    // Validate regex matchers for ReDoS safety
+    for (const [key, matcher] of Object.entries(rule.match)) {
+      if (typeof matcher === "object" && matcher !== null && "$regex" in matcher) {
+        const regexMatcher = matcher as { $regex: string };
+        if (!isSafeRegex(regexMatcher.$regex)) {
+          return {
+            valid: false,
+            error: `Unsafe regex in rule matcher for "${key}": ${regexMatcher.$regex}`,
+          };
+        }
+      }
     }
   }
 

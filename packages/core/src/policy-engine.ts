@@ -1,5 +1,6 @@
 // @agentgate/core - Policy evaluation engine
 
+import isSafeRegex from 'safe-regex2';
 import type { ApprovalRequest, Policy, PolicyRule, PolicyDecision, MatcherValue } from './types.js';
 
 /**
@@ -56,10 +57,13 @@ function matchValue(value: unknown, matcher: MatcherValue): boolean {
       return matcher.$in.includes(value as string | number);
     }
     
-    // $regex - regex match
+    // $regex - regex match (with ReDoS protection)
     if ('$regex' in matcher) {
       if (typeof value !== 'string') return false;
       try {
+        if (!isSafeRegex(matcher.$regex)) {
+          return false; // Unsafe regex — treat as non-match
+        }
         const regex = new RegExp(matcher.$regex);
         return regex.test(value);
       } catch {
