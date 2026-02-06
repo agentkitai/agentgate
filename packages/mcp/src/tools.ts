@@ -38,7 +38,7 @@ export const toolDefinitions = [
         },
         urgency: {
           type: 'string',
-          enum: ['low', 'normal', 'high'],
+          enum: ['low', 'normal', 'high', 'critical'],
           description: 'Request urgency',
         },
       },
@@ -85,6 +85,7 @@ export const toolDefinitions = [
           description: 'Your decision',
         },
         reason: { type: 'string', description: 'Reason for decision (optional)' },
+        decidedBy: { type: 'string', description: 'Who is making this decision (default: "mcp-user")' },
       },
       required: ['id', 'decision'],
     },
@@ -168,6 +169,7 @@ export async function handleDecide(
   return apiCall(config, 'POST', `/api/requests/${args.id}/decide`, {
     decision: args.decision,
     reason: args.reason,
+    decidedBy: args.decidedBy ?? 'mcp-user',
   });
 }
 
@@ -188,7 +190,7 @@ export async function handleToolCall(
           action: args.action as string,
           params: args.params as Record<string, unknown> | undefined,
           context: args.context as Record<string, unknown> | undefined,
-          urgency: args.urgency as 'low' | 'normal' | 'high' | undefined,
+          urgency: args.urgency as 'low' | 'normal' | 'high' | 'critical' | undefined,
         });
         break;
 
@@ -208,6 +210,7 @@ export async function handleToolCall(
           id: args.id as string,
           decision: args.decision as 'approved' | 'denied',
           reason: args.reason as string | undefined,
+          decidedBy: args.decidedBy as string | undefined,
         });
         break;
 

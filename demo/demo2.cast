@@ -1,0 +1,12 @@
+{"version": 2, "width": 80, "height": 24, "timestamp": 1770113204, "env": {"SHELL": "/usr/bin/zsh", "TERM": null}}
+[0.003225, "o", "TERM environment variable not set.\r\n"]
+[0.003858, "o", "🚀 AgentGate - Approval Workflows for AI Agents\r\n\r\n"]
+[1.011808, "o", "Step 1: Agent requests deployment approval\r\n─────────────────────────────────────────────\r\n"]
+[1.120629, "o", "Failed to create request: HTTP 401: {\"error\":\"Missing Authorization header\"}\r\n"]
+[1.143154, "o", "\r\n"]
+[3.159626, "o", "Step 2: List pending requests\r\n─────────────────────────────────────────────\r\n"]
+[3.265765, "o", "Failed to list requests: HTTP 401: {\"error\":\"Missing Authorization header\"}\r\n"]
+[3.288854, "o", "\r\n"]
+[5.298503, "o", "Step 3: Approve (using request ID from above)\r\n─────────────────────────────────────────────\r\n"]
+[5.428303, "o", "\r\n"]
+[6.432834, "o", "✅ Agent can now proceed!\r\n"]

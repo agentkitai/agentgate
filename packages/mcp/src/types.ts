@@ -7,7 +7,7 @@ export interface RequestArgs {
   action: string;
   params?: Record<string, unknown>;
   context?: Record<string, unknown>;
-  urgency?: 'low' | 'normal' | 'high';
+  urgency?: 'low' | 'normal' | 'high' | 'critical';
 }
 
 export interface GetArgs {
@@ -23,6 +23,7 @@ export interface DecideArgs {
   id: string;
   decision: 'approved' | 'denied';
   reason?: string;
+  decidedBy?: string;
 }
 
 // API types

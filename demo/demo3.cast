@@ -1,0 +1,13 @@
+{"version": 2, "width": 100, "height": 30, "timestamp": 1770113267, "env": {"SHELL": "/usr/bin/zsh", "TERM": "xterm"}}
+[0.004623, "o", "\u001b[H\u001b[2J\u001b[3J"]
+[0.005309, "o", "🚀 AgentGate - Human-in-the-Loop for AI Agents\r\n\r\n"]
+[1.011745, "o", "▶ Step 1: AI agent requests approval\r\n────────────────────────────────────\r\n"]
+[2.124913, "o", "Failed to create request: fetch failed\r\n"]
+[2.128405, "o", "\r\n"]
+[4.139145, "o", "▶ Step 2: List pending requests\r\n────────────────────────────────────\r\n"]
+[5.24925, "o", "Failed to list requests: fetch failed\r\n"]
+[5.252589, "o", "\r\n"]
+[7.253608, "o", "▶ Step 3: Human approves\r\n────────────────────────────────────\r\n"]
+[8.457481, "o", "Failed to approve request: fetch failed\r\n"]
+[8.460948, "o", "\r\n"]
+[10.478732, "o", "✅ Agent can proceed with deployment!\r\n"]
