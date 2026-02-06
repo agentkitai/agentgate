@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { bodyLimit } from "hono/body-limit";
 import { serve } from "@hono/node-server";
 import requestsRouter from "./routes/requests.js";
 import policiesRouter from "./routes/policies.js";
@@ -53,6 +54,9 @@ app.use(
   })
 );
 app.use("*", securityHeadersMiddleware);
+
+// Body size limit for API routes (1MB) - prevents oversized payload attacks
+app.use("/api/*", bodyLimit({ maxSize: 1024 * 1024 }));
 
 // Health check endpoint (public, no auth required)
 app.get("/health", (c) => {
