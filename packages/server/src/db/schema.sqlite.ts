@@ -1,7 +1,7 @@
 /**
  * SQLite schema definition for AgentGate
  */
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 
 // Approval requests table
 export const approvalRequests = sqliteTable("approval_requests", {
@@ -23,6 +23,11 @@ export const approvalRequests = sqliteTable("approval_requests", {
   expiresAt: integer("expires_at", { mode: "timestamp" }),
 });
 
+// Indexes for approval_requests
+export const idxRequestsStatus = index("idx_requests_status").on(approvalRequests.status);
+export const idxRequestsAction = index("idx_requests_action").on(approvalRequests.action);
+export const idxRequestsCreatedAt = index("idx_requests_created_at").on(approvalRequests.createdAt);
+
 // Audit logs table
 export const auditLogs = sqliteTable("audit_logs", {
   id: text("id").primaryKey(),
@@ -36,6 +41,9 @@ export const auditLogs = sqliteTable("audit_logs", {
   details: text("details"), // JSON stringified
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
+
+// Index for audit_logs
+export const idxAuditRequestId = index("idx_audit_request_id").on(auditLogs.requestId);
 
 // Policies table
 export const policies = sqliteTable("policies", {
@@ -58,6 +66,9 @@ export const apiKeys = sqliteTable("api_keys", {
   revokedAt: integer("revoked_at"), // unix timestamp, nullable
   rateLimit: integer("rate_limit"), // requests per minute, null = unlimited
 });
+
+// Index for api_keys
+export const idxApiKeysHash = index("idx_api_keys_hash").on(apiKeys.keyHash);
 
 // Webhooks table
 export const webhooks = sqliteTable("webhooks", {
@@ -86,6 +97,10 @@ export const webhookDeliveries = sqliteTable("webhook_deliveries", {
   responseBody: text("response_body"), // nullable
 });
 
+// Indexes for webhook_deliveries
+export const idxDeliveriesWebhookId = index("idx_deliveries_webhook_id").on(webhookDeliveries.webhookId);
+export const idxDeliveriesStatus = index("idx_deliveries_status").on(webhookDeliveries.status);
+
 // Decision tokens table for one-click approve/deny links
 export const decisionTokens = sqliteTable("decision_tokens", {
   id: text("id").primaryKey(),
@@ -100,6 +115,9 @@ export const decisionTokens = sqliteTable("decision_tokens", {
   usedAt: integer("used_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
+
+// Index for decision_tokens
+export const idxTokensRequestId = index("idx_tokens_request_id").on(decisionTokens.requestId);
 
 // Type exports
 export type ApprovalRequest = typeof approvalRequests.$inferSelect;
