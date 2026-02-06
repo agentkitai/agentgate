@@ -126,10 +126,9 @@ async function demoSimpleApproval() {
     decisionReason: decided.decisionReason,
   });
 
-  // Step 5: Agent would confirm execution (optional, for audit trail)
-  // Note: confirm endpoint is optional and may not be implemented
-  // await client.confirm(decided.id, { emailSent: true, messageId: "msg-abc123" });
-  log("Agent would now execute the action and optionally confirm.");
+  // Step 5: Execute the action
+  // Note: confirm() was removed in v0.5 — use audit log endpoint for tracking
+  log("Agent would now execute the approved action.");
 }
 
 // Demo 2: Denial flow

@@ -194,16 +194,8 @@ export class AgentGateClient {
     }
   }
 
-  /**
-   * Confirm that an action was executed
-   * Used for audit trail purposes
-   */
-  async confirm(id: string, result?: unknown): Promise<void> {
-    await this.fetch(`/api/requests/${id}/confirm`, {
-      method: 'POST',
-      body: JSON.stringify({ result }),
-    });
-  }
+  // confirm() was removed in v0.5 — the /api/requests/:id/confirm endpoint
+  // was never implemented. Use the audit log endpoint for action tracking.
 
   /**
    * List approval requests with optional filters

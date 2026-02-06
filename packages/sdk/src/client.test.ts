@@ -367,47 +367,7 @@ describe('AgentGateClient', () => {
     });
   });
 
-  describe('confirm()', () => {
-    it('should confirm action execution without result', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 204,
-        headers: new Headers({}),
-        json: () => Promise.reject(new Error('No content')),
-      });
-
-      await client.confirm('req_123');
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/requests/req_123/confirm',
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({ result: undefined }),
-        })
-      );
-    });
-
-    it('should confirm action execution with result', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 204,
-        headers: new Headers({}),
-        json: () => Promise.reject(new Error('No content')),
-      });
-
-      await client.confirm('req_123', { emailId: 'email_456', sentAt: '2024-01-15T10:10:00Z' });
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/requests/req_123/confirm',
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({
-            result: { emailId: 'email_456', sentAt: '2024-01-15T10:10:00Z' },
-          }),
-        })
-      );
-    });
-  });
+  // confirm() tests removed — method was dead code (endpoint never existed)
 
   describe('error handling', () => {
     it('should throw AgentGateError with status code', async () => {
