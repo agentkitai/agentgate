@@ -1,14 +1,24 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
-import Home from './pages/Home';
-import RequestList from './pages/RequestList';
-import RequestDetail from './pages/RequestDetail';
-import ApiKeys from './pages/ApiKeys';
-import Webhooks from './pages/Webhooks';
-import AuditLog from './pages/AuditLog';
-import Login from './pages/Login';
+import { ChunkErrorBoundary } from './components/ChunkErrorBoundary';
+import {
+  HomeSkeleton,
+  RequestListSkeleton,
+  AuditLogSkeleton,
+  ApiKeysSkeleton,
+  WebhooksSkeleton,
+  SkeletonBox,
+} from './components/Skeleton';
+
+const Home = lazy(() => import('./pages/Home'));
+const RequestList = lazy(() => import('./pages/RequestList'));
+const RequestDetail = lazy(() => import('./pages/RequestDetail'));
+const ApiKeys = lazy(() => import('./pages/ApiKeys'));
+const Webhooks = lazy(() => import('./pages/Webhooks'));
+const AuditLog = lazy(() => import('./pages/AuditLog'));
+const Login = lazy(() => import('./pages/Login'));
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -55,10 +65,14 @@ function App() {
 
   if (isLoginPage) {
     return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+      <ChunkErrorBoundary>
+        <Suspense fallback={<div className="flex items-center justify-center h-screen"><SkeletonBox className="h-8 w-8" /></div>}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </Suspense>
+      </ChunkErrorBoundary>
     );
   }
 
@@ -152,12 +166,15 @@ function App() {
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <ChunkErrorBoundary>
         <Routes>
           <Route
             path="/"
             element={
               <ProtectedRoute>
-                <Home />
+                <Suspense fallback={<HomeSkeleton />}>
+                  <Home />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -165,7 +182,9 @@ function App() {
             path="/requests"
             element={
               <ProtectedRoute>
-                <RequestList />
+                <Suspense fallback={<RequestListSkeleton />}>
+                  <RequestList />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -173,7 +192,9 @@ function App() {
             path="/requests/:id"
             element={
               <ProtectedRoute>
-                <RequestDetail />
+                <Suspense fallback={<div className="space-y-6"><SkeletonBox className="h-6 w-32" /><div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4"><SkeletonBox className="h-7 w-64" /><SkeletonBox className="h-4 w-48" /></div></div>}>
+                  <RequestDetail />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -181,7 +202,9 @@ function App() {
             path="/audit"
             element={
               <ProtectedRoute>
-                <AuditLog />
+                <Suspense fallback={<AuditLogSkeleton />}>
+                  <AuditLog />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -189,7 +212,9 @@ function App() {
             path="/settings/api-keys"
             element={
               <ProtectedRoute>
-                <ApiKeys />
+                <Suspense fallback={<ApiKeysSkeleton />}>
+                  <ApiKeys />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -197,13 +222,16 @@ function App() {
             path="/settings/webhooks"
             element={
               <ProtectedRoute>
-                <Webhooks />
+                <Suspense fallback={<WebhooksSkeleton />}>
+                  <Webhooks />
+                </Suspense>
               </ProtectedRoute>
             }
           />
-          <Route path="/login" element={<Login />} />
+          <Route path="/login" element={<Suspense fallback={null}><Login /></Suspense>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </ChunkErrorBoundary>
       </main>
     </div>
     </ToastProvider>

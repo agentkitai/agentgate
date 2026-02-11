@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { api, type ApprovalRequest, type ApprovalStatus } from '../api';
 import { StatusBadge } from '../components/StatusBadge';
+import { RequestListSkeleton } from '../components/Skeleton';
 
 type StatusFilter = 'all' | ApprovalStatus;
 
@@ -16,6 +17,9 @@ export default function RequestList() {
   
   const statusFilter = (searchParams.get('status') || 'all') as StatusFilter;
 
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mounted = useRef(true);
+
   const fetchRequests = useCallback(async () => {
     try {
       setError(null);
@@ -24,26 +28,49 @@ export default function RequestList() {
         params.status = statusFilter;
       }
       const response = await api.listRequests(params);
+      if (!mounted.current) return;
       setRequests(response.requests);
       setTotal(response.pagination.total);
     } catch (err) {
+      if (!mounted.current) return;
       setError(err instanceof Error ? err.message : 'Failed to load requests');
     } finally {
-      setLoading(false);
+      if (mounted.current) setLoading(false);
     }
   }, [statusFilter]);
 
   useEffect(() => {
+    mounted.current = true;
     fetchRequests();
     
-    // Auto-refresh pending requests every 5 seconds
-    const interval = setInterval(() => {
+    // Auto-refresh pending requests every 5 seconds, visibility-aware
+    intervalRef.current = setInterval(() => {
       if (statusFilter === 'pending' || statusFilter === 'all') {
         fetchRequests();
       }
     }, 5000);
-    
-    return () => clearInterval(interval);
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      } else {
+        fetchRequests();
+        intervalRef.current = setInterval(() => {
+          if (statusFilter === 'pending' || statusFilter === 'all') {
+            fetchRequests();
+          }
+        }, 5000);
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      mounted.current = false;
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchRequests, statusFilter]);
 
   const handleStatusChange = (status: StatusFilter) => {
@@ -107,9 +134,7 @@ export default function RequestList() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-        </div>
+        <RequestListSkeleton />
       ) : requests.length === 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
           <p className="text-gray-500">No requests found</p>

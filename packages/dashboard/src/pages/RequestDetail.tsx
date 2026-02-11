@@ -1,8 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api, type ApprovalRequest, type AuditLogEntry } from '../api';
 import { StatusBadge } from '../components/StatusBadge';
 import { AuditLog } from '../components/AuditLog';
+import { SkeletonBox } from '../components/Skeleton';
+import { ReasonModal } from '../components/ReasonModal';
+
+const Spinner = () => (
+  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+  </svg>
+);
 
 export default function RequestDetail() {
   const { id } = useParams<{ id: string }>();
@@ -11,8 +20,10 @@ export default function RequestDetail() {
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [deciding, setDeciding] = useState(false);
+  const [deciding, setDeciding] = useState<'approved' | 'denied' | null>(null);
   const [decisionError, setDecisionError] = useState<string | null>(null);
+  const [reasonModal, setReasonModal] = useState<'approved' | 'denied' | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -36,20 +47,16 @@ export default function RequestDetail() {
     fetchData();
   }, [id]);
 
-  const handleDecision = async (decision: 'approved' | 'denied') => {
-    if (!id || !request) return;
+  const submitDecision = async (decision: 'approved' | 'denied', reason: string | undefined) => {
+    if (!id || !request || deciding) return;
     
-    const reason = decision === 'denied' 
-      ? prompt('Reason for denial (optional):')
-      : prompt('Reason for approval (optional):');
-    
-    setDeciding(true);
+    setDeciding(decision);
     setDecisionError(null);
     
     try {
       // TODO: Dashboard currently uses single API-key auth with no user identity.
       // When per-user auth is added, replace 'dashboard:admin' with `dashboard:${user.id}`.
-      const updated = await api.decide(id, decision, 'dashboard:admin', reason || undefined);
+      const updated = await api.decide(id, decision, 'dashboard:admin', reason);
       setRequest(updated);
       
       // Refresh audit log
@@ -58,7 +65,7 @@ export default function RequestDetail() {
     } catch (err) {
       setDecisionError(err instanceof Error ? err.message : 'Failed to submit decision');
     } finally {
-      setDeciding(false);
+      setDeciding(null);
     }
   };
 
@@ -71,8 +78,14 @@ export default function RequestDetail() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      <div className="space-y-6">
+        <SkeletonBox className="h-6 w-32" />
+        <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+          <SkeletonBox className="h-7 w-64" />
+          <SkeletonBox className="h-4 w-48" />
+          <SkeletonBox className="h-4 w-full" />
+          <SkeletonBox className="h-4 w-3/4" />
+        </div>
       </div>
     );
   }
@@ -124,21 +137,34 @@ export default function RequestDetail() {
           {request.status === 'pending' && (
             <div className="flex gap-3 pt-2 sm:pt-0">
               <button
-                onClick={() => handleDecision('denied')}
-                disabled={deciding}
-                className="flex-1 sm:flex-none px-4 py-2.5 bg-red-100 text-red-700 rounded-lg font-medium hover:bg-red-200 disabled:opacity-50 transition-colors"
+                ref={reasonModal === 'denied' ? triggerRef : undefined}
+                onClick={() => setReasonModal('denied')}
+                disabled={deciding !== null}
+                className="flex-1 sm:flex-none px-4 py-2.5 bg-red-100 text-red-700 rounded-lg font-medium hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Deny
+                {deciding === 'denied' ? <><Spinner />Denying...</> : 'Deny'}
               </button>
               <button
-                onClick={() => handleDecision('approved')}
-                disabled={deciding}
-                className="flex-1 sm:flex-none px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+                ref={reasonModal === 'approved' ? triggerRef : undefined}
+                onClick={() => setReasonModal('approved')}
+                disabled={deciding !== null}
+                className="flex-1 sm:flex-none px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Approve
+                {deciding === 'approved' ? <><Spinner />Approving...</> : 'Approve'}
               </button>
             </div>
           )}
+
+          <ReasonModal
+            open={reasonModal !== null}
+            onClose={() => setReasonModal(null)}
+            onSubmit={(reason) => {
+              if (reasonModal) submitDecision(reasonModal, reason);
+            }}
+            title={reasonModal === 'denied' ? 'Reason for denial' : 'Reason for approval'}
+            placeholder="Reason (optional)"
+            submitLabel={reasonModal === 'denied' ? 'Deny' : 'Approve'}
+          />
         </div>
 
         {decisionError && (

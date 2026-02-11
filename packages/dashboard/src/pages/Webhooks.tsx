@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { adminApi } from '../api';
 import { ResponsiveTable, type Column } from '../components/ResponsiveTable';
 import { useToast } from '../components/Toast';
+import { Modal } from '../components/Modal';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 interface WebhookDelivery {
   id: string;
@@ -21,6 +23,13 @@ interface Webhook {
   deliveries?: WebhookDelivery[];
 }
 
+const Spinner = () => (
+  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+  </svg>
+);
+
 export default function Webhooks() {
   const toast = useToast();
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
@@ -29,10 +38,17 @@ export default function Webhooks() {
   const [showCreate, setShowCreate] = useState(false);
   const [selectedWebhook, setSelectedWebhook] = useState<Webhook | null>(null);
   const [newSecret, setNewSecret] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [isDeletingWebhook, setIsDeletingWebhook] = useState(false);
+  const [isTestingWebhook, setIsTestingWebhook] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState({ 
     url: '', 
     events: ['request.approved', 'request.denied'] 
   });
+  const createTitleId = useId();
+  const detailTitleId = useId();
 
   const eventOptions = ['request.approved', 'request.denied', 'request.expired', '*'];
 
@@ -51,6 +67,8 @@ export default function Webhooks() {
   }
 
   async function createWebhook() {
+    if (isCreating) return;
+    setIsCreating(true);
     try {
       const data = await adminApi.createWebhook(createForm);
       setNewSecret(data.secret);
@@ -60,21 +78,28 @@ export default function Webhooks() {
       fetchWebhooks();
     } catch (err) {
       toast.error('Failed to create webhook');
+    } finally {
+      setIsCreating(false);
     }
   }
 
   async function toggleWebhook(id: string, enabled: boolean) {
+    if (togglingId) return;
+    setTogglingId(id);
     try {
       await adminApi.updateWebhook(id, { enabled });
       toast.success(`Webhook ${enabled ? 'enabled' : 'disabled'}`);
       fetchWebhooks();
     } catch (err) {
       toast.error('Failed to update webhook');
+    } finally {
+      setTogglingId(null);
     }
   }
 
   async function deleteWebhook(id: string) {
-    if (!confirm('Are you sure you want to delete this webhook?')) return;
+    if (isDeletingWebhook) return;
+    setIsDeletingWebhook(true);
     try {
       await adminApi.deleteWebhook(id);
       toast.success('Webhook deleted');
@@ -82,15 +107,25 @@ export default function Webhooks() {
       setSelectedWebhook(null);
     } catch (err) {
       toast.error('Failed to delete webhook');
+    } finally {
+      setIsDeletingWebhook(false);
     }
   }
 
   async function testWebhook(id: string) {
+    if (isTestingWebhook) return;
+    setIsTestingWebhook(true);
     try {
       const data = await adminApi.testWebhook(id);
-      alert(data.success ? 'Test sent successfully!' : `Test failed: ${data.message}`);
+      if (data.success) {
+        toast.success('Test sent successfully!');
+      } else {
+        toast.error(`Test failed: ${data.message}`);
+      }
     } catch {
-      alert('Failed to send test');
+      toast.error('Failed to send test');
+    } finally {
+      setIsTestingWebhook(false);
     }
   }
 
@@ -132,13 +167,14 @@ export default function Webhooks() {
       accessor: (wh) => (
         <button
           onClick={() => toggleWebhook(wh.id, !wh.enabled)}
-          className={`px-3 py-1.5 text-xs rounded font-medium transition-colors ${
+          disabled={togglingId === wh.id}
+          className={`px-3 py-1.5 text-xs rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
             wh.enabled 
               ? 'bg-green-100 text-green-800 hover:bg-green-200' 
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
         >
-          {wh.enabled ? 'Enabled' : 'Disabled'}
+          {togglingId === wh.id ? <><Spinner />Toggling...</> : wh.enabled ? 'Enabled' : 'Disabled'}
         </button>
       ),
     },
@@ -192,11 +228,20 @@ export default function Webhooks() {
         </div>
       )}
 
+      {/* Delete Confirm Dialog */}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => { if (deleteTarget) deleteWebhook(deleteTarget); }}
+        title="Delete Webhook"
+        message="Are you sure you want to delete this webhook? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+      />
+
       {/* Create Modal */}
-      {showCreate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Add Webhook</h2>
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} titleId={createTitleId} className="max-w-md">
+            <h2 id={createTitleId} className="text-xl font-bold mb-4">Add Webhook</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">URL</label>
@@ -216,18 +261,15 @@ export default function Webhooks() {
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowCreate(false)} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-              <button onClick={createWebhook} disabled={!createForm.url || createForm.events.length === 0} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">Create</button>
+              <button onClick={createWebhook} disabled={isCreating || !createForm.url || createForm.events.length === 0} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">{isCreating ? <><Spinner />Creating...</> : 'Create'}</button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Webhook Detail Modal */}
       {selectedWebhook && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <Modal open onClose={() => setSelectedWebhook(null)} titleId={detailTitleId} className="max-w-2xl">
             <div className="flex justify-between items-start mb-4">
-              <h2 className="text-xl font-bold">Webhook Details</h2>
+              <h2 id={detailTitleId} className="text-xl font-bold">Webhook Details</h2>
               <button onClick={() => setSelectedWebhook(null)} className="p-1 text-gray-400 hover:text-gray-600">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -266,11 +308,10 @@ export default function Webhooks() {
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 mt-6 pt-4 border-t">
-              <button onClick={() => testWebhook(selectedWebhook.id)} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Send Test</button>
-              <button onClick={() => deleteWebhook(selectedWebhook.id)} className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Delete</button>
+              <button onClick={() => testWebhook(selectedWebhook.id)} disabled={isTestingWebhook} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">{isTestingWebhook ? <><Spinner />Testing...</> : 'Send Test'}</button>
+              <button onClick={() => setDeleteTarget(selectedWebhook.id)} disabled={isDeletingWebhook} className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">{isDeletingWebhook ? <><Spinner />Deleting...</> : 'Delete'}</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* Table */}
@@ -294,9 +335,10 @@ export default function Webhooks() {
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => toggleWebhook(wh.id, !wh.enabled)}
-                  className={`px-3 py-1.5 text-xs rounded font-medium transition-colors ${wh.enabled ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  disabled={togglingId === wh.id}
+                  className={`px-3 py-1.5 text-xs rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${wh.enabled ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
-                  {wh.enabled ? 'Enabled' : 'Disabled'}
+                  {togglingId === wh.id ? <><Spinner />Toggling...</> : wh.enabled ? 'Enabled' : 'Disabled'}
                 </button>
                 <button onClick={() => viewWebhook(wh.id)} className="px-3 py-1.5 text-blue-600 hover:bg-blue-50 rounded text-sm font-medium transition-colors">View</button>
               </div>

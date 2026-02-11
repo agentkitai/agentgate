@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { api, type ApprovalRequest } from '../api';
 import { RequestCard } from '../components/RequestCard';
+import { HomeSkeleton } from '../components/Skeleton';
 
 export default function Home() {
   const [pendingCount, setPendingCount] = useState<number | null>(null);
@@ -9,38 +10,58 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mounted = useRef(true);
+
   useEffect(() => {
+    mounted.current = true;
+
     async function fetchData() {
       try {
         setError(null);
         
-        // Fetch pending count
-        const pendingResponse = await api.listRequests({ status: 'pending', limit: 1 });
+        // Fetch pending count and recent requests in parallel
+        const [pendingResponse, recentResponse] = await Promise.all([
+          api.listRequests({ status: 'pending', limit: 1 }),
+          api.listRequests({ limit: 5 }),
+        ]);
+        if (!mounted.current) return;
         setPendingCount(pendingResponse.pagination.total);
-        
-        // Fetch recent requests
-        const recentResponse = await api.listRequests({ limit: 5 });
         setRecentRequests(recentResponse.requests);
       } catch (err) {
+        if (!mounted.current) return;
         setError(err instanceof Error ? err.message : 'Failed to load data');
       } finally {
-        setLoading(false);
+        if (mounted.current) setLoading(false);
       }
     }
 
     fetchData();
     
-    // Auto-refresh every 10 seconds
-    const interval = setInterval(fetchData, 10000);
-    return () => clearInterval(interval);
+    // Auto-refresh every 10 seconds, visibility-aware
+    intervalRef.current = setInterval(fetchData, 10000);
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      } else {
+        fetchData();
+        intervalRef.current = setInterval(fetchData, 10000);
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      mounted.current = false;
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-      </div>
-    );
+    return <HomeSkeleton />;
   }
 
   if (error) {
