@@ -146,17 +146,15 @@ def webhook():
 
 ## Retry Behavior
 
-Failed webhook deliveries are retried with exponential backoff:
+Failed webhook deliveries are retried by a DB-based retry scanner that runs every 30 seconds. The delay between attempts uses exponential backoff with the formula **`2^attempt × 1000ms`**:
 
-| Attempt | Delay |
-|---------|-------|
-| 1 | Immediate |
-| 2 | 1 minute |
-| 3 | 5 minutes |
-| 4 | 30 minutes |
-| 5 | 2 hours |
+| Attempt | Backoff Delay |
+|---------|---------------|
+| 1 (initial) | Immediate |
+| 2 (1st retry) | ~2 seconds (`2^1 × 1000ms`) |
+| 3 (2nd retry) | ~4 seconds (`2^2 × 1000ms`) |
 
-After 5 failed attempts, the webhook is marked as failed and no further retries occur.
+After 3 failed attempts, the delivery is marked as permanently failed and no further retries occur. Note: actual retry timing depends on the scanner interval (30s), so retries may be delayed up to 30 seconds beyond the computed backoff.
 
 ## Configuration
 

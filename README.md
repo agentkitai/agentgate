@@ -52,6 +52,7 @@ auto-deny dangerous ones, and route everything else to a human — via dashboard
 - [Configuration](#configuration)
 - [Docker Deployment](#docker-deployment)
 - [Development](#development)
+- [Troubleshooting](docs/troubleshooting.md)
 - [Contributing](#contributing)
 - [License](#license)
 
