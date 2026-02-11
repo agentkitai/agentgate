@@ -157,6 +157,9 @@ echo "ADMIN_API_KEY=$(openssl rand -hex 32)" >> .env
 
 # Generate JWT secret
 echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env
+
+# Generate webhook encryption key (encrypts webhook secrets at rest)
+echo "WEBHOOK_ENCRYPTION_KEY=$(openssl rand -hex 32)" >> .env
 ```
 
 #### Air-Gap-Specific Configuration
@@ -184,7 +187,7 @@ DASHBOARD_URL=https://agentgate.internal.corp:8080
 
 # ── CORS Origins ────────────────────────────────────────────────
 # Restrict to your internal hostname(s)
-CORS_ORIGINS=https://agentgate.internal.corp:8080
+CORS_ALLOWED_ORIGINS=https://agentgate.internal.corp:8080
 
 # ── Logging ─────────────────────────────────────────────────────
 # JSON format recommended for ingestion into local SIEM/log systems
@@ -256,7 +259,7 @@ services:
       RATE_LIMIT_BACKEND: redis
       ADMIN_API_KEY: ${ADMIN_API_KEY:?ADMIN_API_KEY is required}
       JWT_SECRET: ${JWT_SECRET:-}
-      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-*}
       DECISION_LINK_BASE_URL: ${DECISION_LINK_BASE_URL:-}
       DASHBOARD_URL: ${DASHBOARD_URL:-}
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}

@@ -449,6 +449,45 @@ Failed webhook deliveries are retried automatically with exponential backoff. Th
 | `DISCORD_BOT_TOKEN` | - | Discord bot token (for Discord integration) |
 | `DISCORD_DEFAULT_CHANNEL` | - | Default Discord channel for notifications |
 
+### File-Based Secrets (`_FILE` suffix)
+
+For Docker secrets or Kubernetes secret mounts, AgentGate supports a `_FILE` suffix convention. Instead of setting a secret directly in an environment variable, point to a file containing the value:
+
+| Variable | Reads secret from file |
+|----------|----------------------|
+| `ADMIN_API_KEY_FILE` | Sets `ADMIN_API_KEY` |
+| `JWT_SECRET_FILE` | Sets `JWT_SECRET` |
+| `DATABASE_URL_FILE` | Sets `DATABASE_URL` |
+| `REDIS_URL_FILE` | Sets `REDIS_URL` |
+| `SLACK_BOT_TOKEN_FILE` | Sets `SLACK_BOT_TOKEN` |
+| `SLACK_SIGNING_SECRET_FILE` | Sets `SLACK_SIGNING_SECRET` |
+| `DISCORD_BOT_TOKEN_FILE` | Sets `DISCORD_BOT_TOKEN` |
+| `SMTP_PASS_FILE` | Sets `SMTP_PASS` |
+
+**Behavior:**
+- File contents are trimmed of leading/trailing whitespace
+- If both the env var and the `_FILE` variant are set, the explicit env var takes precedence
+- Missing or unreadable files produce a warning but do not crash the server
+
+Example with Docker Compose:
+
+```yaml
+services:
+  agentgate:
+    environment:
+      ADMIN_API_KEY_FILE: /run/secrets/admin_api_key
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+    secrets:
+      - admin_api_key
+      - jwt_secret
+
+secrets:
+  admin_api_key:
+    file: ./secrets/admin_api_key.txt
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+```
+
 ### Policy Configuration
 
 Policies are stored in the database and can be managed via API:

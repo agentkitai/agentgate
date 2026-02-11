@@ -75,7 +75,9 @@ services:
       # Security
       ADMIN_API_KEY: ${ADMIN_API_KEY:?ADMIN_API_KEY is required}
       JWT_SECRET: ${JWT_SECRET:-}
-      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-*}
+
+      WEBHOOK_ENCRYPTION_KEY: ${WEBHOOK_ENCRYPTION_KEY:-}
 
       # Decision links (set to internal hostname for air-gapped deployments)
       DECISION_LINK_BASE_URL: ${DECISION_LINK_BASE_URL:-}

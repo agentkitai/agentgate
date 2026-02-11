@@ -382,6 +382,7 @@ describe("config", () => {
         "SLACK_SIGNING_SECRET_FILE",
         "DISCORD_BOT_TOKEN_FILE",
         "SMTP_PASS_FILE",
+        "WEBHOOK_ENCRYPTION_KEY_FILE",
       ]) {
         delete process.env[key];
       }

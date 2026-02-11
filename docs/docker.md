@@ -71,7 +71,7 @@ All configuration is via environment variables in `.env`:
 
 **Recommended for production:**
 - `JWT_SECRET` — JWT signing secret (min 32 characters)
-- `CORS_ORIGINS` — Restrict to your domain(s)
+- `CORS_ALLOWED_ORIGINS` — Restrict to your domain(s)
 - `POSTGRES_PASSWORD` — Use a strong password
 
 See [Configuration](/configuration) for all options.
