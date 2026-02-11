@@ -6,6 +6,7 @@ import { eq, sql } from "drizzle-orm";
 import isSafeRegex from "safe-regex2";
 import { getDb, policies } from "../db/index.js";
 import type { PolicyRule } from "@agentgate/core";
+import { invalidatePolicyCache } from "../lib/policy-cache.js";
 
 const policiesRouter = new Hono();
 
@@ -135,6 +136,8 @@ policiesRouter.post("/", async (c) => {
     createdAt: now,
   });
 
+  invalidatePolicyCache();
+
   return c.json(
     {
       id,
@@ -178,6 +181,8 @@ policiesRouter.put("/:id", async (c) => {
     })
     .where(eq(policies.id, id));
 
+  invalidatePolicyCache();
+
   return c.json({
     id,
     name,
@@ -200,6 +205,8 @@ policiesRouter.delete("/:id", async (c) => {
   }
 
   await getDb().delete(policies).where(eq(policies.id, id));
+
+  invalidatePolicyCache();
 
   return c.json({ success: true, id });
 });

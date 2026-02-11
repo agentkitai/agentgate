@@ -35,9 +35,9 @@ export async function deliverWebhook(event: string, data: unknown): Promise<void
     return events.includes(event) || events.includes('*');
   });
 
-  for (const webhook of filtered) {
-    await deliverToWebhook(webhook, event, data);
-  }
+  await Promise.allSettled(
+    filtered.map(webhook => deliverToWebhook(webhook, event, data))
+  );
 }
 
 async function deliverToWebhook(webhook: typeof webhooks.$inferSelect, event: string, data: unknown) {

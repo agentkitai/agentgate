@@ -18,6 +18,7 @@ import {
 import { logAuditEvent } from "../lib/audit.js";
 import { deliverWebhook } from "../lib/webhook.js";
 import { getGlobalDispatcher } from "../lib/notification/index.js";
+import { getCachedPolicies } from "../lib/policy-cache.js";
 
 const requestsRouter = new Hono();
 
@@ -195,17 +196,8 @@ requestsRouter.post("/", async (c) => {
   const id = nanoid();
   const now = new Date();
 
-  // Load policies from database
-  const allPolicies = await getDb().select().from(policies).orderBy(policies.priority);
-  
-  // Convert DB policies to core Policy type
-  const corePolicies: CorePolicy[] = allPolicies.map((p) => ({
-    id: p.id,
-    name: p.name,
-    rules: JSON.parse(p.rules) as PolicyRule[],
-    priority: p.priority,
-    enabled: p.enabled,
-  }));
+  // Load policies from cache (parsed & priority-sorted)
+  const corePolicies: CorePolicy[] = await getCachedPolicies();
 
   // Build ApprovalRequest object for policy evaluation
   const requestForEval: ApprovalRequest = {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { ToastProvider } from './components/Toast';
 import Home from './pages/Home';
 import RequestList from './pages/RequestList';
 import RequestDetail from './pages/RequestDetail';
@@ -62,6 +63,7 @@ function App() {
   }
 
   return (
+    <ToastProvider>
     <div className="min-h-screen">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
@@ -204,6 +206,7 @@ function App() {
         </Routes>
       </main>
     </div>
+    </ToastProvider>
   );
 }
 

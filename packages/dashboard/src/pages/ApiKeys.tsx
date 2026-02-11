@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { adminApi } from '../api';
+import { ResponsiveTable, type Column } from '../components/ResponsiveTable';
+import { useToast } from '../components/Toast';
 
 interface ApiKey {
   id: string;
@@ -25,6 +27,7 @@ interface EditForm {
 }
 
 export default function ApiKeys() {
+  const toast = useToast();
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,9 +42,7 @@ export default function ApiKeys() {
 
   const scopeOptions = ['request:create', 'request:read', 'request:decide', 'admin'];
 
-  useEffect(() => {
-    fetchKeys();
-  }, []);
+  useEffect(() => { fetchKeys(); }, []);
 
   async function fetchKeys() {
     try {
@@ -65,9 +66,10 @@ export default function ApiKeys() {
       setNewKey({ key: data.key, name: data.name });
       setShowCreate(false);
       setCreateForm({ name: '', scopes: ['request:create', 'request:read'], rateLimit: null });
+      toast.success('API key created successfully');
       fetchKeys();
     } catch (err) {
-      console.error('Failed to create key:', err);
+      toast.error('Failed to create key');
     }
   }
 
@@ -80,9 +82,10 @@ export default function ApiKeys() {
         rateLimit: showEdit.rateLimit,
       });
       setShowEdit(null);
+      toast.success('API key updated successfully');
       fetchKeys();
     } catch (err) {
-      console.error('Failed to update key:', err);
+      toast.error('Failed to update key');
     }
   }
 
@@ -90,11 +93,85 @@ export default function ApiKeys() {
     if (!confirm('Are you sure you want to revoke this key?')) return;
     try {
       await adminApi.deleteApiKey(id);
+      toast.success('API key revoked');
       fetchKeys();
     } catch (err) {
-      console.error('Failed to revoke key:', err);
+      toast.error('Failed to revoke key');
     }
   }
+
+  const columns: Column<ApiKey>[] = [
+    {
+      header: 'Name',
+      span: 2,
+      mobileLabel: 'Name',
+      accessor: (k) => <span className="font-medium">{k.name}</span>,
+    },
+    {
+      header: 'Scopes',
+      span: 3,
+      hideOnTablet: true,
+      mobileLabel: 'Scopes',
+      accessor: (k) => (
+        <div className="flex flex-wrap gap-1">
+          {k.scopes.map((s) => (
+            <span key={s} className="bg-gray-100 text-xs px-2 py-1 rounded font-mono">{s}</span>
+          ))}
+        </div>
+      ),
+    },
+    {
+      header: 'Rate Limit',
+      span: 2,
+      tabletSpan: 1,
+      mobileLabel: 'Rate Limit',
+      accessor: (k) => (
+        <span className="text-sm text-gray-500">{k.rateLimit ? `${k.rateLimit}/min` : 'Unlimited'}</span>
+      ),
+    },
+    {
+      header: 'Created',
+      span: 2,
+      tabletSpan: 1,
+      mobileLabel: 'Created',
+      accessor: (k) => (
+        <span className="text-sm text-gray-500">{new Date(k.createdAt * 1000).toLocaleDateString()}</span>
+      ),
+    },
+    {
+      header: 'Last Used',
+      span: 2,
+      hideOnTablet: true,
+      mobileLabel: 'Last Used',
+      accessor: (k) => (
+        <span className="text-sm text-gray-500">{k.lastUsedAt ? new Date(k.lastUsedAt * 1000).toLocaleDateString() : 'Never'}</span>
+      ),
+    },
+    {
+      header: 'Status',
+      span: 1,
+      tabletSpan: 1,
+      mobileLabel: 'Status',
+      accessor: (k) => (
+        <span className={`px-2 py-1 text-xs rounded ${k.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          {k.active ? 'Active' : 'Revoked'}
+        </span>
+      ),
+    },
+    {
+      header: 'Actions',
+      span: 2,
+      tabletSpan: 1,
+      mobileLabel: false,
+      accessor: (k) =>
+        k.active ? (
+          <div className="flex gap-3">
+            <button onClick={() => setShowEdit({ id: k.id, name: k.name, scopes: k.scopes, rateLimit: k.rateLimit })} className="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</button>
+            <button onClick={() => revokeKey(k.id)} className="text-red-600 hover:text-red-800 text-sm font-medium">Revoke</button>
+          </div>
+        ) : null,
+    },
+  ];
 
   if (error) {
     return (
@@ -112,10 +189,7 @@ export default function ApiKeys() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-xl sm:text-2xl font-bold">API Keys</h1>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-        >
+        <button onClick={() => setShowCreate(true)} className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium">
           Create Key
         </button>
       </div>
@@ -125,22 +199,10 @@ export default function ApiKeys() {
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <h3 className="font-semibold text-green-800 mb-2">New API Key Created: {newKey.name}</h3>
           <p className="text-sm text-green-700 mb-2">Copy this key now - it won't be shown again!</p>
-          <code className="bg-green-100 px-3 py-2 rounded block font-mono text-sm break-all">
-            {newKey.key}
-          </code>
+          <code className="bg-green-100 px-3 py-2 rounded block font-mono text-sm break-all">{newKey.key}</code>
           <div className="flex gap-3 mt-3">
-            <button
-              onClick={() => navigator.clipboard.writeText(newKey.key)}
-              className="text-sm text-green-600 hover:text-green-800 font-medium"
-            >
-              Copy to clipboard
-            </button>
-            <button
-              onClick={() => setNewKey(null)}
-              className="text-sm text-gray-600 hover:text-gray-800"
-            >
-              Dismiss
-            </button>
+            <button onClick={() => navigator.clipboard.writeText(newKey.key)} className="text-sm text-green-600 hover:text-green-800 font-medium">Copy to clipboard</button>
+            <button onClick={() => setNewKey(null)} className="text-sm text-gray-600 hover:text-gray-800">Dismiss</button>
           </div>
         </div>
       )}
@@ -153,31 +215,14 @@ export default function ApiKeys() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Name</label>
-                <input
-                  type="text"
-                  value={createForm.name}
-                  onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  placeholder="My API Key"
-                />
+                <input type="text" value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="My API Key" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Scopes</label>
                 <div className="space-y-2">
                   {scopeOptions.map((scope) => (
                     <label key={scope} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={createForm.scopes.includes(scope)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setCreateForm({ ...createForm, scopes: [...createForm.scopes, scope] });
-                          } else {
-                            setCreateForm({ ...createForm, scopes: createForm.scopes.filter(s => s !== scope) });
-                          }
-                        }}
-                        className="w-4 h-4 rounded"
-                      />
+                      <input type="checkbox" checked={createForm.scopes.includes(scope)} onChange={(e) => { if (e.target.checked) { setCreateForm({ ...createForm, scopes: [...createForm.scopes, scope] }); } else { setCreateForm({ ...createForm, scopes: createForm.scopes.filter(s => s !== scope) }); } }} className="w-4 h-4 rounded" />
                       <span className="text-sm font-mono">{scope}</span>
                     </label>
                   ))}
@@ -185,34 +230,13 @@ export default function ApiKeys() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Rate Limit (requests/min)</label>
-                <input
-                  type="number"
-                  value={createForm.rateLimit ?? ''}
-                  onChange={(e) => setCreateForm({ 
-                    ...createForm, 
-                    rateLimit: e.target.value ? parseInt(e.target.value, 10) : null 
-                  })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  placeholder="Unlimited"
-                  min="1"
-                />
+                <input type="number" value={createForm.rateLimit ?? ''} onChange={(e) => setCreateForm({ ...createForm, rateLimit: e.target.value ? parseInt(e.target.value, 10) : null })} className="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Unlimited" min="1" />
                 <p className="text-xs text-gray-500 mt-1">Leave empty for unlimited requests</p>
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowCreate(false)}
-                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={createKey}
-                disabled={!createForm.name || createForm.scopes.length === 0}
-                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                Create
-              </button>
+              <button onClick={() => setShowCreate(false)} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+              <button onClick={createKey} disabled={!createForm.name || createForm.scopes.length === 0} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">Create</button>
             </div>
           </div>
         </div>
@@ -226,30 +250,14 @@ export default function ApiKeys() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Name</label>
-                <input
-                  type="text"
-                  value={showEdit.name}
-                  onChange={(e) => setShowEdit({ ...showEdit, name: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
+                <input type="text" value={showEdit.name} onChange={(e) => setShowEdit({ ...showEdit, name: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Scopes</label>
                 <div className="space-y-2">
                   {scopeOptions.map((scope) => (
                     <label key={scope} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={showEdit.scopes.includes(scope)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setShowEdit({ ...showEdit, scopes: [...showEdit.scopes, scope] });
-                          } else {
-                            setShowEdit({ ...showEdit, scopes: showEdit.scopes.filter(s => s !== scope) });
-                          }
-                        }}
-                        className="w-4 h-4 rounded"
-                      />
+                      <input type="checkbox" checked={showEdit.scopes.includes(scope)} onChange={(e) => { if (e.target.checked) { setShowEdit({ ...showEdit, scopes: [...showEdit.scopes, scope] }); } else { setShowEdit({ ...showEdit, scopes: showEdit.scopes.filter(s => s !== scope) }); } }} className="w-4 h-4 rounded" />
                       <span className="text-sm font-mono">{scope}</span>
                     </label>
                   ))}
@@ -257,166 +265,53 @@ export default function ApiKeys() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Rate Limit (requests/min)</label>
-                <input
-                  type="number"
-                  value={showEdit.rateLimit ?? ''}
-                  onChange={(e) => setShowEdit({ 
-                    ...showEdit, 
-                    rateLimit: e.target.value ? parseInt(e.target.value, 10) : null 
-                  })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  placeholder="Unlimited"
-                  min="1"
-                />
+                <input type="number" value={showEdit.rateLimit ?? ''} onChange={(e) => setShowEdit({ ...showEdit, rateLimit: e.target.value ? parseInt(e.target.value, 10) : null })} className="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Unlimited" min="1" />
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowEdit(null)}
-                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={updateKey}
-                disabled={!showEdit.name || showEdit.scopes.length === 0}
-                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                Save
-              </button>
+              <button onClick={() => setShowEdit(null)} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+              <button onClick={updateKey} disabled={!showEdit.name || showEdit.scopes.length === 0} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">Save</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Keys List */}
-      {loading ? (
-        <div className="flex items-center justify-center h-32">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-        </div>
-      ) : keys.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-          <p className="text-gray-500">No API keys yet. Create one to get started.</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {/* Desktop Table */}
-          <div className="hidden lg:block bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scopes</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rate Limit</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Used</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {keys.map((key) => (
-                  <tr key={key.id}>
-                    <td className="px-6 py-4 font-medium">{key.name}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1">
-                        {key.scopes.map((s) => (
-                          <span key={s} className="bg-gray-100 text-xs px-2 py-1 rounded font-mono">{s}</span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {key.rateLimit ? `${key.rateLimit}/min` : 'Unlimited'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {new Date(key.createdAt * 1000).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {key.lastUsedAt ? new Date(key.lastUsedAt * 1000).toLocaleDateString() : 'Never'}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs rounded ${key.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {key.active ? 'Active' : 'Revoked'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {key.active && (
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => setShowEdit({ id: key.id, name: key.name, scopes: key.scopes, rateLimit: key.rateLimit })}
-                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => revokeKey(key.id)}
-                            className="text-red-600 hover:text-red-800 text-sm font-medium"
-                          >
-                            Revoke
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Cards */}
-          <div className="lg:hidden space-y-4">
-            {keys.map((key) => (
-              <div key={key.id} className="bg-white rounded-lg border border-gray-200 p-4">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="min-w-0">
-                    <h3 className="font-medium text-gray-900 truncate">{key.name}</h3>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {key.scopes.map((s) => (
-                        <span key={s} className="bg-gray-100 text-xs px-2 py-0.5 rounded font-mono">{s}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <span className={`shrink-0 px-2 py-1 text-xs rounded ${key.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {key.active ? 'Active' : 'Revoked'}
-                  </span>
+      {/* Table */}
+      <ResponsiveTable
+        columns={columns}
+        rows={keys}
+        keyExtractor={(k) => k.id}
+        loading={loading}
+        emptyMessage="No API keys yet. Create one to get started."
+        renderMobileCard={(key) => (
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="min-w-0">
+                <h3 className="font-medium text-gray-900 truncate">{key.name}</h3>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {key.scopes.map((s) => (
+                    <span key={s} className="bg-gray-100 text-xs px-2 py-0.5 rounded font-mono">{s}</span>
+                  ))}
                 </div>
-                
-                <div className="grid grid-cols-2 gap-2 text-sm text-gray-500 mb-3">
-                  <div>
-                    <span className="text-gray-400">Rate Limit:</span>{' '}
-                    {key.rateLimit ? `${key.rateLimit}/min` : 'Unlimited'}
-                  </div>
-                  <div>
-                    <span className="text-gray-400">Created:</span>{' '}
-                    {new Date(key.createdAt * 1000).toLocaleDateString()}
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-gray-400">Last Used:</span>{' '}
-                    {key.lastUsedAt ? new Date(key.lastUsedAt * 1000).toLocaleDateString() : 'Never'}
-                  </div>
-                </div>
-
-                {key.active && (
-                  <div className="flex gap-3 pt-3 border-t border-gray-100">
-                    <button
-                      onClick={() => setShowEdit({ id: key.id, name: key.name, scopes: key.scopes, rateLimit: key.rateLimit })}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => revokeKey(key.id)}
-                      className="text-red-600 hover:text-red-800 text-sm font-medium"
-                    >
-                      Revoke
-                    </button>
-                  </div>
-                )}
               </div>
-            ))}
+              <span className={`shrink-0 px-2 py-1 text-xs rounded ${key.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                {key.active ? 'Active' : 'Revoked'}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm text-gray-500 mb-3">
+              <div><span className="text-gray-400">Rate Limit:</span> {key.rateLimit ? `${key.rateLimit}/min` : 'Unlimited'}</div>
+              <div><span className="text-gray-400">Created:</span> {new Date(key.createdAt * 1000).toLocaleDateString()}</div>
+              <div className="col-span-2"><span className="text-gray-400">Last Used:</span> {key.lastUsedAt ? new Date(key.lastUsedAt * 1000).toLocaleDateString() : 'Never'}</div>
+            </div>
+            {key.active && (
+              <div className="flex gap-3 pt-3 border-t border-gray-100">
+                <button onClick={() => setShowEdit({ id: key.id, name: key.name, scopes: key.scopes, rateLimit: key.rateLimit })} className="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</button>
+                <button onClick={() => revokeKey(key.id)} className="text-red-600 hover:text-red-800 text-sm font-medium">Revoke</button>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      />
     </div>
   );
 }
