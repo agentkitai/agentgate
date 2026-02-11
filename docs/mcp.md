@@ -48,7 +48,7 @@ After saving, restart Claude Desktop.
 
 ## Available Tools
 
-The MCP server exposes three tools:
+The MCP server exposes the following tools:
 
 ### `request_approval`
 
@@ -98,6 +98,87 @@ List pending approval requests.
 
 **Example usage:**
 > "Show me all pending approval requests"
+
+### `agentgate_list_policies`
+
+List all policies ordered by priority.
+
+**Parameters:** None
+
+**Example usage:**
+> "Show me all the approval policies"
+
+### `agentgate_create_policy`
+
+Create a new policy with rules.
+
+**Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | string | Yes | Policy name |
+| `rules` | array | Yes | Array of policy rules with match conditions and decisions |
+| `priority` | number | No | Policy priority (default: 100) |
+| `enabled` | boolean | No | Whether policy is enabled (default: true) |
+
+**Example usage:**
+> "Create a policy to auto-approve all send_notification actions"
+
+### `agentgate_update_policy`
+
+Replace an existing policy (all fields required).
+
+**Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | Yes | Policy ID |
+| `name` | string | Yes | Policy name |
+| `rules` | array | Yes | Array of policy rules |
+| `priority` | number | No | Policy priority |
+| `enabled` | boolean | No | Whether policy is enabled |
+
+**Example usage:**
+> "Disable policy pol_123"
+
+### `agentgate_delete_policy`
+
+Delete a policy by ID.
+
+**Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | Yes | Policy ID |
+
+**Example usage:**
+> "Delete the auto-approve policy pol_abc"
+
+### `agentgate_list_audit_logs`
+
+List audit log entries with optional filters and pagination.
+
+**Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `action` | string | No | Filter by action |
+| `status` | string | No | Filter by status (`pending`, `approved`, `denied`, `expired`) |
+| `eventType` | string | No | Filter by event type (`created`, `approved`, `denied`, `expired`, `viewed`) |
+| `actor` | string | No | Filter by actor (e.g., `dashboard:admin`) |
+| `from` | string | No | Start date (ISO format) |
+| `to` | string | No | End date (ISO format) |
+| `requestId` | string | No | Filter by request ID |
+| `limit` | number | No | Max results (default: 50, max: 100) |
+| `offset` | number | No | Offset for pagination |
+
+**Example usage:**
+> "Show me all audit logs for denied requests this week"
+
+### `agentgate_get_audit_actors`
+
+Get unique actor values from audit logs (useful for discovering who has been making decisions).
+
+**Parameters:** None
+
+**Example usage:**
+> "Who has been making approval decisions?"
 
 ## Conversation Example
 

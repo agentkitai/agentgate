@@ -52,6 +52,38 @@ Returns server health status. No authentication required.
 }
 ```
 
+#### Deep Health Check
+
+```http
+GET /health?deep=true
+```
+
+Performs a deep health check that verifies connectivity to the database and Redis (if configured). Useful for load balancer health probes.
+
+**Response (healthy):**
+```json
+{
+  "status": "ok",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "checks": {
+    "database": "ok",
+    "redis": "ok"
+  }
+}
+```
+
+**Response (degraded):** `503 Service Unavailable`
+```json
+{
+  "status": "degraded",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "checks": {
+    "database": "ok",
+    "redis": "error"
+  }
+}
+```
+
 ---
 
 ### Create Request
@@ -257,17 +289,31 @@ GET /api/policies
 
 **Required Scope:** `admin`
 
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `limit` | number | `50` | Max results per page |
+| `offset` | number | `0` | Pagination offset |
+
 **Response:** `200 OK`
 ```json
-[
-  {
-    "id": "pol_123",
-    "name": "auto-approve-emails",
-    "priority": 10,
-    "enabled": true,
-    "rules": [...]
+{
+  "policies": [
+    {
+      "id": "pol_123",
+      "name": "auto-approve-emails",
+      "priority": 10,
+      "enabled": true,
+      "rules": [...]
+    }
+  ],
+  "pagination": {
+    "total": 42,
+    "limit": 50,
+    "offset": 0,
+    "hasMore": false
   }
-]
+}
 ```
 
 ---
@@ -379,6 +425,30 @@ DELETE /api/webhooks/:id
 ```
 
 **Required Scope:** `webhook:manage`
+
+---
+
+## Request Body Size Limits
+
+All endpoints that accept a request body enforce a size limit (default: **100KB**). Requests exceeding this limit receive a `413 Payload Too Large` response. Configure via the `BODY_SIZE_LIMIT` environment variable (see [Configuration](/configuration)).
+
+---
+
+## `decidedBy` Namespace Format
+
+The `decidedBy` field on approval requests uses a namespaced format to identify who (or what) made the decision:
+
+| Namespace | Example | Description |
+|-----------|---------|-------------|
+| `dashboard` | `dashboard:admin` | Decision made via the web dashboard |
+| `discord` | `discord:123456789` | Decision made via Discord (user ID) |
+| `slack` | `slack:U12345` | Decision made via Slack (user ID) |
+| `mcp` | `mcp:user` | Decision made via MCP tool |
+| `policy` | `policy:auto` | Auto-decided by a policy rule |
+| `api` | `api:key_name` | Decision made via API key |
+| `system` | `system:expired` | System-generated (e.g., expiration) |
+
+This format appears in API responses, audit logs, and webhook payloads.
 
 ---
 

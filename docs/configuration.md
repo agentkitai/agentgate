@@ -54,6 +54,9 @@ DATABASE_URL=postgresql://user:pass@db.example.com:5432/agentgate?sslmode=requir
 | `ADMIN_API_KEY` | string | - | Admin API key (min 16 chars, **required** in production) |
 | `JWT_SECRET` | string | - | JWT signing secret (min 32 chars, recommended in production) |
 | `CORS_ALLOWED_ORIGINS` | string | `*` | Allowed CORS origins (comma-separated) |
+| `HSTS_ENABLED` | boolean | `false` | Enable HTTP Strict Transport Security header |
+| `WEBHOOK_ENCRYPTION_KEY` | string | - | AES-256-GCM key for encrypting webhook secrets at rest |
+| `BODY_SIZE_LIMIT` | string | `100kb` | Maximum request body size (e.g., `100kb`, `1mb`) |
 
 ::: danger Production Requirements
 In production (`NODE_ENV=production`), `ADMIN_API_KEY` is required and must be at least 16 characters.
@@ -73,6 +76,20 @@ In production (`NODE_ENV=production`), `ADMIN_API_KEY` is required and must be a
 | `REQUEST_TIMEOUT_SEC` | number | `3600` | Default request timeout (1 hour) |
 | `WEBHOOK_TIMEOUT_MS` | number | `5000` | Webhook delivery timeout |
 | `WEBHOOK_MAX_RETRIES` | number | `3` | Maximum webhook retry attempts |
+
+### Cleanup
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `CLEANUP_RETENTION_DAYS` | number | `30` | Retention period in days for expired tokens and webhook deliveries |
+| `CLEANUP_INTERVAL_MS` | number | `3600000` | How often the cleanup job runs (in milliseconds, default: 1 hour) |
+
+### API Key Cache
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `API_KEY_CACHE_TTL_SEC` | number | `60` | TTL in seconds for cached API key lookups |
+| `API_KEY_CACHE_MAX_SIZE` | number | `1000` | Maximum number of API keys held in the in-memory cache |
 
 ### Logging
 
@@ -183,6 +200,19 @@ SLACK_BOT_TOKEN=xoxb-your-bot-token
 SLACK_SIGNING_SECRET=your-signing-secret
 SLACK_DEFAULT_CHANNEL=#agentgate-alerts
 
+# Security (additional)
+HSTS_ENABLED=true
+WEBHOOK_ENCRYPTION_KEY=your-32-byte-hex-key
+BODY_SIZE_LIMIT=100kb
+
+# Cleanup
+CLEANUP_RETENTION_DAYS=30
+CLEANUP_INTERVAL_MS=3600000
+
+# API Key Cache
+API_KEY_CACHE_TTL_SEC=60
+API_KEY_CACHE_MAX_SIZE=1000
+
 # Logging
 LOG_LEVEL=info
 LOG_FORMAT=json
@@ -197,6 +227,8 @@ When running in production, ensure:
 - [ ] `CORS_ALLOWED_ORIGINS` is restricted (not `*`)
 - [ ] `DATABASE_URL` points to a persistent location
 - [ ] `LOG_FORMAT=json` for structured logging
+- [ ] `WEBHOOK_ENCRYPTION_KEY` is set for webhook secret encryption
+- [ ] `HSTS_ENABLED=true` if behind TLS
 - [ ] Rate limiting is enabled
 
 The server logs warnings at startup if these aren't configured.

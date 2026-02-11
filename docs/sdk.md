@@ -195,6 +195,211 @@ const decisions = await Promise.all(
 )
 ```
 
+### Policy Methods
+
+#### `listPolicies()`
+
+List all policies ordered by priority.
+
+```typescript
+const policies = await client.listPolicies()
+```
+
+**Returns:** `Promise<Policy[]>`
+
+#### `getPolicy(id)`
+
+Get a specific policy by ID.
+
+```typescript
+const policy = await client.getPolicy('pol_123')
+```
+
+**Returns:** `Promise<Policy>`
+
+#### `createPolicy(options)`
+
+Create a new policy.
+
+```typescript
+const policy = await client.createPolicy({
+  name: 'Auto-approve low-risk emails',
+  rules: [{ match: { action: 'send_email' }, decision: 'auto_approve' }],
+  priority: 100,   // Optional (default: 100)
+  enabled: true,    // Optional (default: true)
+})
+```
+
+**Returns:** `Promise<Policy>`
+
+#### `updatePolicy(id, options)`
+
+Replace an existing policy (PUT semantics — all fields required).
+
+```typescript
+const updated = await client.updatePolicy('pol_123', {
+  name: 'Updated policy',
+  rules: [{ match: { action: 'send_email' }, decision: 'auto_approve' }],
+  priority: 50,
+  enabled: false,
+})
+```
+
+**Returns:** `Promise<Policy>`
+
+#### `deletePolicy(id)`
+
+Delete a policy by ID.
+
+```typescript
+await client.deletePolicy('pol_123')
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+### Webhook Methods
+
+#### `listWebhooks()`
+
+List all registered webhooks.
+
+```typescript
+const webhooks = await client.listWebhooks()
+```
+
+**Returns:** `Promise<Webhook[]>`
+
+#### `createWebhook(options)`
+
+Create a new webhook. The `secret` is only returned once — save it immediately.
+
+```typescript
+const wh = await client.createWebhook({
+  url: 'https://example.com/webhook',
+  events: ['request.approved', 'request.denied'],
+  secret: 'optional-signing-secret', // Optional
+})
+console.log('Save this secret:', wh.secret)
+```
+
+**Returns:** `Promise<WebhookCreateResult>`
+
+#### `updateWebhook(id, options)`
+
+Update a webhook (PATCH semantics — only provided fields are changed).
+
+```typescript
+await client.updateWebhook('wh_123', {
+  url: 'https://new-url.com/hook',   // Optional
+  events: ['request.created'],        // Optional
+  enabled: false,                     // Optional
+})
+```
+
+**Returns:** `Promise<{ success: boolean }>`
+
+#### `deleteWebhook(id)`
+
+Delete a webhook by ID.
+
+```typescript
+await client.deleteWebhook('wh_123')
+```
+
+**Returns:** `Promise<void>`
+
+#### `testWebhook(id)`
+
+Send a test payload to a webhook to verify delivery.
+
+```typescript
+const result = await client.testWebhook('wh_123')
+console.log(result.success ? 'Delivered!' : 'Failed:', result.message)
+```
+
+**Returns:** `Promise<WebhookTestResult>`
+
+---
+
+### Audit Methods
+
+#### `listAuditLogs(options?)`
+
+List audit log entries with optional filters and pagination.
+
+```typescript
+const audit = await client.listAuditLogs({
+  action: 'send_email',       // Filter by action
+  status: 'approved',         // Filter by status
+  eventType: 'approved',      // Filter by event type
+  actor: 'dashboard:admin',   // Filter by actor
+  from: '2024-01-01',         // Start date (ISO format)
+  to: '2024-01-31',           // End date (ISO format)
+  requestId: 'req_123',       // Filter by request ID
+  limit: 50,                  // Max results (default: 50)
+  offset: 0,                  // Pagination offset
+})
+
+console.log(audit.entries)     // AuditEntry[]
+console.log(audit.pagination)  // { total, limit, offset, hasMore }
+```
+
+**Returns:** `Promise<AuditListResult>`
+
+#### `getAuditActors()`
+
+Get a list of unique actor values from audit logs (useful for filter dropdowns).
+
+```typescript
+const actors = await client.getAuditActors()
+// e.g. ['dashboard:admin', 'discord:12345', 'mcp:user', 'policy:auto']
+```
+
+**Returns:** `Promise<string[]>`
+
+---
+
+### API Key Methods
+
+#### `listApiKeys()`
+
+List all API keys (secrets are never returned).
+
+```typescript
+const keys = await client.listApiKeys()
+```
+
+**Returns:** `Promise<ApiKey[]>`
+
+#### `createApiKey(options)`
+
+Create a new API key. The `key` value is only returned once — save it immediately.
+
+```typescript
+const newKey = await client.createApiKey({
+  name: 'CI Pipeline',
+  scopes: ['request:create', 'request:read'],
+  rateLimit: 120,  // Optional: requests per minute
+})
+console.log('Save this key:', newKey.key)
+```
+
+**Returns:** `Promise<ApiKeyCreateResult>`
+
+#### `revokeApiKey(id)`
+
+Revoke an API key by ID.
+
+```typescript
+await client.revokeApiKey('key_123')
+```
+
+**Returns:** `Promise<void>`
+
+---
+
 ## Best Practices
 
 1. **Always set an API key** in production for authentication
