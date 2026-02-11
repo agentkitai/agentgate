@@ -11,10 +11,12 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-agentgate}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agentgate}
       POSTGRES_DB: ${POSTGRES_DB:-agentgate}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+    # Ports not exposed to host by default for security.
+    # To expose for debugging, use: docker-compose -f docker-compose.yml -f docker-compose.override.yml up
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    networks:
+      - agentgate-internal
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-agentgate} -d ${POSTGRES_DB:-agentgate}"]
       interval: 10s
@@ -28,10 +30,12 @@ services:
   redis:
     image: redis:7-alpine
     container_name: agentgate-redis
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
+    # Ports not exposed to host by default for security.
+    # To expose for debugging, use: docker-compose -f docker-compose.yml -f docker-compose.override.yml up
     volumes:
       - redis-data:/data
+    networks:
+      - agentgate-internal
     command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -100,6 +104,8 @@ services:
       CHANNEL_ROUTES: ${CHANNEL_ROUTES:-[]}
     ports:
       - "${SERVER_PORT:-3000}:3000"
+    networks:
+      - agentgate-internal
     depends_on:
       postgres:
         condition: service_healthy
@@ -123,6 +129,8 @@ services:
     container_name: agentgate-dashboard
     ports:
       - "${DASHBOARD_PORT:-8080}:80"
+    networks:
+      - agentgate-internal
     depends_on:
       server:
         condition: service_healthy
@@ -153,6 +161,8 @@ services:
       PORT: 3001
     ports:
       - "${SLACK_BOT_PORT:-3001}:3001"
+    networks:
+      - agentgate-internal
     depends_on:
       server:
         condition: service_healthy
@@ -161,3 +171,7 @@ services:
 volumes:
   postgres-data:
   redis-data:
+
+networks:
+  agentgate-internal:
+    driver: bridge

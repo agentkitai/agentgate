@@ -209,6 +209,46 @@ describe('evaluatePolicy', () => {
 
       expect(result.decision).toBe('auto_approve');
     });
+
+    it('should treat unsafe (ReDoS) regex as non-match', () => {
+      const request = createRequest({ action: 'aaaaaaaaaaaaaaaaaaaaaa!' });
+      const policy = createPolicy({
+        rules: [
+          { match: { action: { $regex: '(a+)+$' } }, decision: 'auto_approve' },
+        ],
+      });
+
+      const result = evaluatePolicy(request, [policy]);
+
+      // Unsafe regex should not match — falls through to default
+      expect(result.decision).toBe('route_to_human');
+    });
+
+    it('should treat another unsafe regex pattern as non-match', () => {
+      const request = createRequest({ action: 'test' });
+      const policy = createPolicy({
+        rules: [
+          { match: { action: { $regex: '(a+){10}$' } }, decision: 'auto_approve' },
+        ],
+      });
+
+      const result = evaluatePolicy(request, [policy]);
+
+      expect(result.decision).toBe('route_to_human');
+    });
+
+    it('should handle invalid regex gracefully', () => {
+      const request = createRequest({ action: 'test' });
+      const policy = createPolicy({
+        rules: [
+          { match: { action: { $regex: '[invalid' } }, decision: 'auto_approve' },
+        ],
+      });
+
+      const result = evaluatePolicy(request, [policy]);
+
+      expect(result.decision).toBe('route_to_human');
+    });
   });
 
   describe('nested path matching', () => {

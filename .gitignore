@@ -54,3 +54,9 @@ logs/security/
 # BMAD planning artifacts
 _bmad/
 _bmad-output/
+
+# Dev override - auto-loads and re-exposes DB/Redis ports
+docker-compose.override.yml
+phase2-*.md
+unified-sprint.md
+chrome-extension/

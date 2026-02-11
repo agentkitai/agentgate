@@ -7,7 +7,7 @@ import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
 import { nanoid } from "nanoid";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
 import * as schema from "../db/schema.js";
 
@@ -187,8 +187,13 @@ function createTestApp() {
 
     const decision = tokenRecord.action === "approve" ? "approved" : "denied";
 
-    // Mark token as used
-    await db.update(decisionTokens).set({ usedAt: now }).where(eq(decisionTokens.id, tokenRecord.id));
+    // Mark token as used and cross-invalidate sibling tokens atomically
+    await db.update(decisionTokens).set({ usedAt: now }).where(
+      and(
+        eq(decisionTokens.requestId, tokenRecord.requestId),
+        isNull(decisionTokens.usedAt)
+      )
+    );
 
     // Update request
     await db.update(approvalRequests).set({
@@ -441,7 +446,7 @@ describe("Decision Tokens", () => {
       expect(html).toContain("Expired");
     });
 
-    it("should reject token for already decided request", async () => {
+    it("should reject sibling token as Already Used after cross-invalidation (AC3)", async () => {
       const requestId = await createPendingRequest();
       
       // Generate tokens
@@ -456,11 +461,49 @@ describe("Decision Tokens", () => {
       // Approve using first token
       await app.request(`/api/decide/${approveToken}`);
 
-      // Try to deny using second token
+      // Try to deny using second token — should be "Already Used" not "Already Decided"
       const res = await app.request(`/api/decide/${denyToken}`);
       expect(res.status).toBe(400);
       const html = await res.text();
-      expect(html).toContain("Already Decided");
+      expect(html).toContain("Already Used");
+    });
+
+    it("should cross-invalidate deny token when approve token is used (AC1)", async () => {
+      const requestId = await createPendingRequest();
+      
+      const tokenRes = await app.request(`/api/requests/${requestId}/tokens`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      const tokenData = await tokenRes.json();
+
+      // Use approve token
+      await app.request(`/api/decide/${tokenData.tokens.approve.token}`);
+
+      // Verify deny token has usedAt set in DB
+      const denyTokenRecords = await db.select().from(decisionTokens)
+        .where(and(eq(decisionTokens.requestId, requestId), eq(decisionTokens.action, "deny")))
+        .limit(1);
+      expect(denyTokenRecords[0]!.usedAt).not.toBeNull();
+    });
+
+    it("should cross-invalidate approve token when deny token is used (AC2)", async () => {
+      const requestId = await createPendingRequest();
+      
+      const tokenRes = await app.request(`/api/requests/${requestId}/tokens`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      const tokenData = await tokenRes.json();
+
+      // Use deny token
+      await app.request(`/api/decide/${tokenData.tokens.deny.token}`);
+
+      // Verify approve token has usedAt set in DB
+      const approveTokenRecords = await db.select().from(decisionTokens)
+        .where(and(eq(decisionTokens.requestId, requestId), eq(decisionTokens.action, "approve")))
+        .limit(1);
+      expect(approveTokenRecords[0]!.usedAt).not.toBeNull();
     });
 
     it("should not require authentication (public endpoint)", async () => {

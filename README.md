@@ -508,8 +508,10 @@ docker-compose up -d
 |---------|-------------|------|
 | `server` | AgentGate API server | 3000 |
 | `dashboard` | Web dashboard (nginx) | 8080 |
-| `postgres` | PostgreSQL database | 5432 |
-| `redis` | Redis (rate limiting, queues) | 6379 |
+| `postgres` | PostgreSQL database | internal only* |
+| `redis` | Redis (rate limiting, queues) | internal only* |
+
+> \* PostgreSQL and Redis are on an internal Docker network (`agentgate-internal`) and are **not exposed to the host** by default. During development, `docker-compose.override.yml` is auto-loaded and exposes them on ports 5432/6379. For production, run `docker-compose -f docker-compose.yml up -d` to skip the override.
 
 ### With Slack or Discord Bots
 

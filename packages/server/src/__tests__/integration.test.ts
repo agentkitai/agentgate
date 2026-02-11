@@ -12,6 +12,7 @@ import Database from "better-sqlite3";
 import { nanoid } from "nanoid";
 import { eq, desc, and, sql, isNull } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
+import isSafeRegex from "safe-regex2";
 import * as schema from "../db/schema.js";
 import type { PolicyRule, ApprovalRequest as CoreApprovalRequest, Policy as CorePolicy } from "@agentgate/core";
 import { evaluatePolicy } from "@agentgate/core";
@@ -591,6 +592,15 @@ function createTestApp() {
       if (!["auto_approve", "auto_deny", "route_to_human", "route_to_agent"].includes(rule.decision)) {
         return c.json({ error: `rules[${i}].decision must be one of: auto_approve, auto_deny, route_to_human, route_to_agent` }, 400);
       }
+      // Validate regex matchers for ReDoS safety
+      for (const [key, matcher] of Object.entries(rule.match)) {
+        if (typeof matcher === "object" && matcher !== null && "$regex" in matcher) {
+          const regexMatcher = matcher as { $regex: string };
+          if (!isSafeRegex(regexMatcher.$regex)) {
+            return c.json({ error: `Unsafe regex in rule matcher for "${key}": ${regexMatcher.$regex}` }, 400);
+          }
+        }
+      }
     }
     
     const id = nanoid();
@@ -632,6 +642,21 @@ function createTestApp() {
     }
     if (!Array.isArray(body.rules)) {
       return c.json({ error: "rules is required and must be an array" }, 400);
+    }
+
+    // Validate regex matchers for ReDoS safety
+    for (let i = 0; i < body.rules.length; i++) {
+      const rule = body.rules[i];
+      if (rule?.match && typeof rule.match === "object") {
+        for (const [key, matcher] of Object.entries(rule.match)) {
+          if (typeof matcher === "object" && matcher !== null && "$regex" in matcher) {
+            const regexMatcher = matcher as { $regex: string };
+            if (!isSafeRegex(regexMatcher.$regex)) {
+              return c.json({ error: `Unsafe regex in rule matcher for "${key}": ${regexMatcher.$regex}` }, 400);
+            }
+          }
+        }
+      }
     }
     
     const priority = typeof body.priority === "number" ? body.priority : 100;
@@ -1321,6 +1346,73 @@ describe("Policies API", () => {
     expect(json.enabled).toBe(false);
   });
   
+  it("should reject policy creation with unsafe regex (ReDoS)", async () => {
+    const res = await app.request("/api/policies", {
+      method: "POST",
+      headers: {
+        ...authHeader(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "Unsafe Regex Policy",
+        rules: [{ match: { action: { $regex: "(a+)+$" } }, decision: "auto_approve" }],
+      }),
+    });
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain("Unsafe regex");
+  });
+
+  it("should reject policy update with unsafe regex (ReDoS)", async () => {
+    // Create a valid policy first
+    const createRes = await app.request("/api/policies", {
+      method: "POST",
+      headers: {
+        ...authHeader(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "Safe Policy",
+        rules: [{ match: { action: "test" }, decision: "auto_approve" }],
+      }),
+    });
+    const created = await createRes.json();
+
+    // Try to update with unsafe regex
+    const res = await app.request(`/api/policies/${created.id}`, {
+      method: "PUT",
+      headers: {
+        ...authHeader(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "Now Unsafe",
+        rules: [{ match: { action: { $regex: "(a+){10}$" } }, decision: "auto_approve" }],
+      }),
+    });
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain("Unsafe regex");
+  });
+
+  it("should accept policy with safe regex", async () => {
+    const res = await app.request("/api/policies", {
+      method: "POST",
+      headers: {
+        ...authHeader(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "Safe Regex Policy",
+        rules: [{ match: { action: { $regex: "^delete_.*" } }, decision: "route_to_human" }],
+      }),
+    });
+
+    expect(res.status).toBe(201);
+  });
+
   it("should delete a policy", async () => {
     // Create a policy
     const createRes = await app.request("/api/policies", {

@@ -182,6 +182,8 @@ decideRouter.get("/:token", async (c) => {
   const decidedBy = "token";
 
   // Atomic conditional update: only update if request exists AND status is still 'pending'
+  // Note: This WHERE clause prevents race conditions — concurrent token uses will see
+  // status != 'pending' and get 0 rows back, returning "Already Decided" (409).
   const result = await getDb()
     .update(approvalRequests)
     .set({
@@ -233,13 +235,7 @@ decideRouter.get("/:token", async (c) => {
 
   const updatedRequest = result[0]!;
 
-  // Mark token as used
-  await getDb()
-    .update(decisionTokens)
-    .set({ usedAt: now })
-    .where(eq(decisionTokens.id, tokenRecord.id));
-
-  // Cross-invalidate all other tokens for this request
+  // Mark token as used AND cross-invalidate all sibling tokens in one operation (AC4)
   await getDb()
     .update(decisionTokens)
     .set({ usedAt: now })

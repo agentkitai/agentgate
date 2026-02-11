@@ -1,0 +1,13 @@
+# Development override — exposes postgres and redis ports to the host.
+# This file is auto-loaded by `docker-compose up` when present.
+# In production, run: docker-compose -f docker-compose.yml up
+# (explicitly specify only the base file to skip this override)
+
+services:
+  postgres:
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+  redis:
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
