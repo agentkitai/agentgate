@@ -204,6 +204,13 @@ async function main() {
     if (shuttingDown) return; // Prevent double-shutdown
     shuttingDown = true;
 
+    // Safety net: force exit after 10 seconds if shutdown stalls
+    const forceExitTimeout = setTimeout(() => {
+      getLogger().error('Forced shutdown after timeout.');
+      process.exit(1);
+    }, 10_000);
+    forceExitTimeout.unref();
+
     getLogger().info(`${signal} received. Starting graceful shutdown...`);
 
     server.close(() => {
@@ -239,13 +246,6 @@ async function main() {
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
-
-  // Safety net: force exit after 10 seconds if shutdown stalls
-  const forceExitTimeout = setTimeout(() => {
-    getLogger().error('Forced shutdown after timeout.');
-    process.exit(1);
-  }, 10_000);
-  forceExitTimeout.unref();
 }
 
 main().catch((err) => {
