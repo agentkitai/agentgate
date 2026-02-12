@@ -33,6 +33,9 @@ auto-deny dangerous ones, and route everything else to a human — via dashboard
 - 📝 **Full audit trail** — every request, decision, and action logged
 - 🐳 **Docker-ready** — one `docker-compose up` for the full stack
 - 🔐 **Production-hardened** — SSRF protection, ReDoS defense, structured logging, graceful shutdown
+- 🔗 **One-click decision links** — approve or deny directly from notification emails and webhooks
+- ♿ **Accessible UI** — keyboard-navigable approval modals, focus trapping, ARIA labels
+- 💀 **Skeleton loading** — smooth loading states across every dashboard page
 - ⚡ **Fast & lightweight** — Hono server, SQLite or PostgreSQL
 
 #### Dashboard
@@ -49,6 +52,21 @@ Review, approve, or deny requests — filter by status to focus on what matters.
 Search through every decision with filters for event type, action, actor, and date range.
 
 ![Audit Log](docs/screenshots/audit-log.png)
+
+#### Request Detail
+Drill into any request to see parameters, context, timeline, and audit trail — with one-click Approve/Deny buttons.
+
+![Request Detail](docs/screenshots/request-detail.png)
+
+#### API Keys
+Manage API keys with fine-grained scopes, rate limits, and usage tracking. Create, edit, or revoke keys from the dashboard.
+
+![API Keys](docs/screenshots/api-keys.png)
+
+#### Webhooks
+Configure webhook endpoints for real-time notifications. Add URLs, pick events, and let AgentGate handle retries automatically.
+
+![Webhooks](docs/screenshots/webhooks.png)
 
 #### Login
 Sign in with your API key — create one via the CLI or ask your admin.
@@ -299,9 +317,13 @@ Add to your `claude_desktop_config.json`:
 
 | Tool | Description |
 |------|-------------|
-| `request_approval` | Create a new approval request |
-| `check_request` | Get status of an approval request |
-| `list_requests` | List pending approval requests |
+| `agentgate_request_approval` | Create a new approval request |
+| `agentgate_check_request` | Get status of an approval request |
+| `agentgate_list_requests` | List pending approval requests |
+| `agentgate_list_policies` | List configured policies |
+| `agentgate_create_policy` | Create a new policy rule |
+| `agentgate_update_policy` | Update an existing policy |
+| `agentgate_delete_policy` | Delete a policy |
 
 ## Authentication
 
@@ -354,6 +376,8 @@ POST /api/keys
 | `GET` | `/api/requests/:id/audit` | Get audit trail | `request:read` |
 | `GET` | `/api/policies` | List policies | `admin` |
 | `POST` | `/api/policies` | Create policy | `admin` |
+| `PUT` | `/api/policies/:id` | Update policy | `admin` |
+| `DELETE` | `/api/policies/:id` | Delete policy | `admin` |
 | `GET` | `/api/webhooks` | List webhooks | `webhook:manage` |
 | `POST` | `/api/webhooks` | Create webhook | `webhook:manage` |
 | `DELETE` | `/api/webhooks/:id` | Delete webhook | `webhook:manage` |
