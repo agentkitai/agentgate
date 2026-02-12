@@ -36,22 +36,22 @@ auto-deny dangerous ones, and route everything else to a human — via dashboard
 - ⚡ **Fast & lightweight** — Hono server, SQLite or PostgreSQL
 
 #### Dashboard
-Overview of pending requests and recent activity, color-coded by urgency.
+See all pending requests at a glance, color-coded by urgency so you know what needs attention first.
 
 ![Dashboard](docs/screenshots/dashboard.png)
 
 #### Approval Requests
-Filter and manage requests by status — approve, deny, or let policies decide.
+Review, approve, or deny requests — filter by status to focus on what matters.
 
 ![Requests](docs/screenshots/requests.png)
 
 #### Audit Log
-Full audit trail with filters by event type, action, actor, and date range.
+Search through every decision with filters for event type, action, actor, and date range.
 
 ![Audit Log](docs/screenshots/audit-log.png)
 
 #### Login
-API key authentication — create keys via CLI or the admin API.
+Sign in with your API key — create one via the CLI or ask your admin.
 
 ![Login](docs/screenshots/login.png)
 
