@@ -45,6 +45,9 @@ COPY --from=build /app/packages/core/dist/ packages/core/dist/
 COPY --from=build /app/packages/server/dist/ packages/server/dist/
 COPY --from=build /app/packages/dashboard/dist/ packages/dashboard/dist/
 
+# Copy drizzle migrations
+COPY packages/server/drizzle/ packages/server/drizzle/
+
 ENV NODE_ENV=production
 ENV PORT=3002
 
