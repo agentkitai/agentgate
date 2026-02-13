@@ -3,7 +3,7 @@
 import { Hono } from "hono";
 import { nanoid } from "nanoid";
 import { eq, desc, and, sql } from "drizzle-orm";
-import { getDb, approvalRequests, auditLogs, policies } from "../db/index.js";
+import { getDb, approvalRequests, auditLogs } from "../db/index.js";
 import {
   evaluatePolicy,
   EventNames,
@@ -11,7 +11,6 @@ import {
   getGlobalEmitter,
   type ApprovalRequest,
   type Policy as CorePolicy,
-  type PolicyRule,
   type RequestCreatedEvent,
   type RequestDecidedEvent,
 } from "@agentgate/core";
@@ -131,7 +130,7 @@ async function handleAutoDecision(opts: {
   action: string;
   status: "approved" | "denied";
   decidedBy: string;
-  decidedByType: "policy" | "human" | "agent" | "system";
+  decidedByType: "policy" | "human" | "agent";
   decisionReason: string | null;
   requestSnapshot: Record<string, unknown>;
   channels?: string[];

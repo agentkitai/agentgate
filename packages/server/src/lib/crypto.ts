@@ -6,7 +6,7 @@ import crypto from 'crypto';
 
 const PREFIX = 'enc:';
 const IV_BYTES = 12; // GCM standard
-const TAG_BYTES = 16;
+// TAG_BYTES = 16 (AES-GCM auth tag length, used implicitly by Node crypto)
 
 /**
  * Derive a 32-byte key from an arbitrary string using SHA-256.
@@ -49,6 +49,9 @@ export function decrypt(value: string, key: Buffer): string {
   }
 
   const [ivHex, tagHex, ciphertextHex] = parts;
+  if (!ivHex || !tagHex || !ciphertextHex) {
+    throw new Error('Invalid encrypted format: missing components');
+  }
   const iv = Buffer.from(ivHex, 'hex');
   const tag = Buffer.from(tagHex, 'hex');
   const ciphertext = Buffer.from(ciphertextHex, 'hex');

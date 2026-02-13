@@ -5,8 +5,8 @@
  * retention window, and webhook deliveries whose parent webhook no longer exists.
  */
 
-import { lt, and, notInArray, sql } from "drizzle-orm";
-import { getDb, decisionTokens, webhookDeliveries, webhooks } from "../db/index.js";
+import { lt, sql } from "drizzle-orm";
+import { getDb, decisionTokens, webhookDeliveries } from "../db/index.js";
 import { getConfig } from "../config.js";
 import { getLogger } from "./logger.js";
 
