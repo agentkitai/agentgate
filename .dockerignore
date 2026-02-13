@@ -1,62 +1,21 @@
-# Version control
-.git
-.gitignore
-
-# Dependencies (reinstalled in Docker)
 node_modules
-
-# Build outputs (rebuilt in Docker)
-**/dist
-**/build
-
-# Test files
-**/__tests__
-**/*.test.ts
-**/*.spec.ts
-coverage
-.nyc_output
-
-# Environment files (secrets!)
-.env
-.env.*
-!.env.example
-
-# IDE / Editor
-.vscode
-.idea
-*.swp
-*.swo
-*~
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# BMAD / project management
-_bmad
-_bmad-output
-
-# Data / databases
-data
-*.db
-*.sqlite
-
-# Documentation (not needed in image)
+.git
+.github
+.changeset
+.auto-claude
 docs
-specs
-tasks
 *.md
 !README.md
-
-# Demo / examples
-demo
-chrome-extension
-action
-
-# Docker files (avoid recursive context)
-docker-compose*.yml
-Dockerfile
-
-# Misc
+**/*.test.ts
+**/__tests__
+**/coverage
+**/.turbo
+.vscode
 .eslintcache
-.turbo
+apps
+action
+packages/cli
+packages/discord
+packages/mcp
+packages/sdk
+packages/slack
