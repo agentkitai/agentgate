@@ -49,7 +49,7 @@ export function decrypt(value: string, key: Buffer): string {
   }
 
   const [ivHex, tagHex, ciphertextHex] = parts;
-  if (!ivHex || !tagHex || !ciphertextHex) {
+  if (!ivHex || !tagHex || ciphertextHex === undefined) {
     throw new Error('Invalid encrypted format: missing components');
   }
   const iv = Buffer.from(ivHex, 'hex');
