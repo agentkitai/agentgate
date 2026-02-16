@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agentgate-sdk"
+version = "0.1.0"
+description = "Python SDK for AgentGate — async and sync approval-gate client"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [{ name = "AgentGate Team" }]
+keywords = ["agentgate", "sdk", "approval", "human-in-the-loop"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Typing :: Typed",
+]
+dependencies = ["httpx>=0.24.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-asyncio>=0.21", "respx>=0.21", "ruff>=0.1"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentgate"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py39"
