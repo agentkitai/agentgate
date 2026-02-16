@@ -257,6 +257,8 @@ export class AgentGateStack extends cdk.Stack {
       securityGroups: [ecsSg],
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       healthCheckGracePeriod: cdk.Duration.seconds(120),
+      minHealthyPercent: 100,
+      maxHealthyPercent: 200,
     });
 
     listener.addTargets('EcsTarget', {
