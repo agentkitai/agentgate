@@ -1,7 +1,7 @@
 // @agentgate/server - Authentication & authorization middleware
 //
 // Dual-mode auth: API key (agk_*) and OIDC JWT.
-// Uses @agentkit/auth middleware factory for JWT handling.
+// Uses agentkit-auth middleware factory for JWT handling.
 
 import type { Context, Next } from "hono";
 import { createHash } from "node:crypto";
@@ -13,7 +13,7 @@ import {
   verifyAccessToken,
   type AuthConfig,
   type Role,
-} from "@agentkit/auth";
+} from "agentkit-auth";
 import {
   type AgentGatePermission,
   mapScopesToPermissions,

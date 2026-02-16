@@ -1,8 +1,8 @@
 // @agentgate/server — RBAC permission model for AgentGate
 //
-// Extends @agentkit/auth's generic RBAC with AgentGate-specific permissions.
+// Extends agentkit-auth's generic RBAC with AgentGate-specific permissions.
 
-import type { Role } from '@agentkit/auth';
+import type { Role } from 'agentkit-auth';
 
 /**
  * AgentGate-specific permissions
