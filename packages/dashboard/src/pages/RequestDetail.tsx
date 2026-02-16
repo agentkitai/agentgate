@@ -5,6 +5,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { AuditLog } from '../components/AuditLog';
 import { SkeletonBox } from '../components/Skeleton';
 import { ReasonModal } from '../components/ReasonModal';
+import { useAuth } from '../context/AuthContext';
 
 const Spinner = () => (
   <svg className="animate-spin -ml-1 mr-2 h-4 w-4 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -15,6 +16,8 @@ const Spinner = () => (
 
 export default function RequestDetail() {
   const { id } = useParams<{ id: string }>();
+  const { hasPermission, user } = useAuth();
+  const canDecide = hasPermission('approvals:decide');
   
   const [request, setRequest] = useState<ApprovalRequest | null>(null);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
@@ -56,7 +59,8 @@ export default function RequestDetail() {
     try {
       // TODO: Dashboard currently uses single API-key auth with no user identity.
       // When per-user auth is added, replace 'dashboard:admin' with `dashboard:${user.id}`.
-      const updated = await api.decide(id, decision, 'dashboard:admin', reason);
+      const decidedBy = user ? `dashboard:${user.displayName}` : 'dashboard:unknown';
+      const updated = await api.decide(id, decision, decidedBy, reason);
       setRequest(updated);
       
       // Refresh audit log
@@ -133,8 +137,8 @@ export default function RequestDetail() {
             </p>
           </div>
           
-          {/* Approval actions */}
-          {request.status === 'pending' && (
+          {/* Approval actions — only visible to users with approvals:decide permission */}
+          {request.status === 'pending' && canDecide && (
             <div className="flex gap-3 pt-2 sm:pt-0">
               <button
                 ref={reasonModal === 'denied' ? triggerRef : undefined}

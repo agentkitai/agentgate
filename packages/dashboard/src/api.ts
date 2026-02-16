@@ -6,6 +6,7 @@ export type { ApprovalStatus, ApprovalUrgency };
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
 const STORAGE_KEY = 'agentgate_api_key';
+const REFRESH_TOKEN_KEY = 'agentgate_refresh_token';
 
 /**
  * Serialized version of ApprovalRequest (JSON dates are strings, nulls instead of undefined).
@@ -106,6 +107,78 @@ function getHeaders(contentType?: string): HeadersInit {
   return headers;
 }
 
+// ── 401 Interceptor with Token Refresh ─────────────────────────────
+
+let refreshPromise: Promise<boolean> | null = null;
+
+/**
+ * Attempt to refresh the session using the stored refresh token.
+ * Returns true if refresh succeeded, false otherwise.
+ */
+async function tryRefreshToken(): Promise<boolean> {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (!refreshToken) return false;
+
+  try {
+    const res = await fetch(`${baseUrl}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!res.ok) {
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
+      return false;
+    }
+
+    const data = await res.json();
+    if (data.refreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fetch wrapper that automatically retries on 401 after attempting token refresh.
+ * Includes credentials for cookie-based SSO sessions.
+ */
+async function authFetch(url: string, init?: RequestInit): Promise<Response> {
+  const opts: RequestInit = {
+    ...init,
+    credentials: 'include',
+  };
+
+  const response = await fetch(url, opts);
+
+  if (response.status === 401) {
+    // Deduplicate concurrent refresh attempts
+    if (!refreshPromise) {
+      refreshPromise = tryRefreshToken().finally(() => {
+        refreshPromise = null;
+      });
+    }
+
+    const refreshed = await refreshPromise;
+    if (refreshed) {
+      // Retry the original request with updated cookie/headers
+      return fetch(url, { ...opts, headers: getHeaders(undefined) });
+    }
+
+    // Refresh failed — redirect to login
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
+  }
+
+  return response;
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -127,7 +200,7 @@ export const api = {
     const query = searchParams.toString();
     const url = `${baseUrl}/api/policies${query ? `?${query}` : ''}`;
 
-    const response = await fetch(url, { headers: getHeaders() });
+    const response = await authFetch(url, { headers: getHeaders() });
     return handleResponse<ListPoliciesResponse>(response);
   },
 
@@ -147,13 +220,13 @@ export const api = {
     const query = searchParams.toString();
     const url = `${baseUrl}/api/requests${query ? `?${query}` : ''}`;
     
-    const response = await fetch(url, { headers: getHeaders() });
+    const response = await authFetch(url, { headers: getHeaders() });
     return handleResponse<ListRequestsResponse>(response);
   },
 
   // Get single request by ID
   async getRequest(id: string): Promise<ApprovalRequest> {
-    const response = await fetch(`${baseUrl}/api/requests/${id}`, {
+    const response = await authFetch(`${baseUrl}/api/requests/${id}`, {
       headers: getHeaders(),
     });
     return handleResponse<ApprovalRequest>(response);
@@ -166,7 +239,7 @@ export const api = {
     decidedBy: string,
     reason?: string
   ): Promise<ApprovalRequest> {
-    const response = await fetch(`${baseUrl}/api/requests/${id}/decide`, {
+    const response = await authFetch(`${baseUrl}/api/requests/${id}/decide`, {
       method: 'POST',
       headers: getHeaders('application/json'),
       body: JSON.stringify({ decision, decidedBy, reason }),
@@ -176,7 +249,7 @@ export const api = {
 
   // Get audit trail for a request
   async getAuditLog(id: string): Promise<AuditLogEntry[]> {
-    const response = await fetch(`${baseUrl}/api/requests/${id}/audit`, {
+    const response = await authFetch(`${baseUrl}/api/requests/${id}/audit`, {
       headers: getHeaders(),
     });
     return handleResponse<AuditLogEntry[]>(response);
@@ -187,6 +260,7 @@ export const api = {
     try {
       const response = await fetch(`${baseUrl}/health`, {
         headers: getHeaders(),
+        credentials: 'include',
       });
       return response.ok;
     } catch {
@@ -220,13 +294,13 @@ export const api = {
     const query = searchParams.toString();
     const url = `${baseUrl}/api/audit${query ? `?${query}` : ''}`;
 
-    const response = await fetch(url, { headers: getHeaders() });
+    const response = await authFetch(url, { headers: getHeaders() });
     return handleResponse<ListAuditResponse>(response);
   },
 
   // Get unique actions for filter dropdown
   async getAuditActions(): Promise<{ actions: string[] }> {
-    const response = await fetch(`${baseUrl}/api/audit/actions`, {
+    const response = await authFetch(`${baseUrl}/api/audit/actions`, {
       headers: getHeaders(),
     });
     return handleResponse<{ actions: string[] }>(response);
@@ -234,7 +308,7 @@ export const api = {
 
   // Get unique actors for filter dropdown
   async getAuditActors(): Promise<{ actors: string[] }> {
-    const response = await fetch(`${baseUrl}/api/audit/actors`, {
+    const response = await authFetch(`${baseUrl}/api/audit/actors`, {
       headers: getHeaders(),
     });
     return handleResponse<{ actors: string[] }>(response);
@@ -245,7 +319,7 @@ export const api = {
 export const adminApi = {
   // API Keys
   async listApiKeys() {
-    const response = await fetch(`${baseUrl}/api/api-keys`, {
+    const response = await authFetch(`${baseUrl}/api/api-keys`, {
       headers: getHeaders(),
     });
     return handleResponse<{ keys: Array<{
@@ -260,7 +334,7 @@ export const adminApi = {
   },
 
   async createApiKey(data: { name: string; scopes: string[]; rateLimit: number | null }) {
-    const response = await fetch(`${baseUrl}/api/api-keys`, {
+    const response = await authFetch(`${baseUrl}/api/api-keys`, {
       method: 'POST',
       headers: getHeaders('application/json'),
       body: JSON.stringify(data),
@@ -269,7 +343,7 @@ export const adminApi = {
   },
 
   async updateApiKey(id: string, data: { name?: string; scopes?: string[]; rateLimit?: number | null }) {
-    const response = await fetch(`${baseUrl}/api/api-keys/${id}`, {
+    const response = await authFetch(`${baseUrl}/api/api-keys/${id}`, {
       method: 'PATCH',
       headers: getHeaders('application/json'),
       body: JSON.stringify(data),
@@ -278,7 +352,7 @@ export const adminApi = {
   },
 
   async deleteApiKey(id: string) {
-    const response = await fetch(`${baseUrl}/api/api-keys/${id}`, {
+    const response = await authFetch(`${baseUrl}/api/api-keys/${id}`, {
       method: 'DELETE',
       headers: getHeaders(),
     });
@@ -287,7 +361,7 @@ export const adminApi = {
 
   // Webhooks
   async listWebhooks() {
-    const response = await fetch(`${baseUrl}/api/webhooks`, {
+    const response = await authFetch(`${baseUrl}/api/webhooks`, {
       headers: getHeaders(),
     });
     return handleResponse<{ webhooks: Array<{
@@ -300,7 +374,7 @@ export const adminApi = {
   },
 
   async getWebhook(id: string) {
-    const response = await fetch(`${baseUrl}/api/webhooks/${id}`, {
+    const response = await authFetch(`${baseUrl}/api/webhooks/${id}`, {
       headers: getHeaders(),
     });
     return handleResponse<{
@@ -321,7 +395,7 @@ export const adminApi = {
   },
 
   async createWebhook(data: { url: string; events: string[] }) {
-    const response = await fetch(`${baseUrl}/api/webhooks`, {
+    const response = await authFetch(`${baseUrl}/api/webhooks`, {
       method: 'POST',
       headers: getHeaders('application/json'),
       body: JSON.stringify(data),
@@ -330,7 +404,7 @@ export const adminApi = {
   },
 
   async updateWebhook(id: string, data: { enabled?: boolean }) {
-    const response = await fetch(`${baseUrl}/api/webhooks/${id}`, {
+    const response = await authFetch(`${baseUrl}/api/webhooks/${id}`, {
       method: 'PATCH',
       headers: getHeaders('application/json'),
       body: JSON.stringify(data),
@@ -339,7 +413,7 @@ export const adminApi = {
   },
 
   async deleteWebhook(id: string) {
-    const response = await fetch(`${baseUrl}/api/webhooks/${id}`, {
+    const response = await authFetch(`${baseUrl}/api/webhooks/${id}`, {
       method: 'DELETE',
       headers: getHeaders(),
     });
@@ -347,7 +421,7 @@ export const adminApi = {
   },
 
   async testWebhook(id: string) {
-    const response = await fetch(`${baseUrl}/api/webhooks/${id}/test`, {
+    const response = await authFetch(`${baseUrl}/api/webhooks/${id}/test`, {
       method: 'POST',
       headers: getHeaders(),
     });

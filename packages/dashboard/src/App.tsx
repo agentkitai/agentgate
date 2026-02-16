@@ -22,11 +22,26 @@ const Login = lazy(() => import('./pages/Login'));
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
+
+  if (loading) return null;
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  return <>{children}</>;
+}
+
+// Permission-gated route — redirects to home if user lacks permission
+function PermissionRoute({ permission, children }: { permission: string; children: React.ReactNode }) {
+  const { hasPermission, loading } = useAuth();
+
+  if (loading) return null;
+
+  if (!hasPermission(permission)) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
@@ -53,9 +68,24 @@ function NavLink({ to, children, onClick }: { to: string; children: React.ReactN
   );
 }
 
+// Role badge for header
+function RoleBadge({ role }: { role: string }) {
+  const colors: Record<string, string> = {
+    owner: 'bg-purple-100 text-purple-700',
+    admin: 'bg-red-100 text-red-700',
+    editor: 'bg-blue-100 text-blue-700',
+    viewer: 'bg-gray-100 text-gray-600',
+  };
+  return (
+    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${colors[role] || colors.viewer}`}>
+      {role}
+    </span>
+  );
+}
+
 function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, user, hasPermission, logout, loading } = useAuth();
   const location = useLocation();
 
   // Don't show header on login page
@@ -75,6 +105,18 @@ function App() {
       </ChunkErrorBoundary>
     );
   }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Role-based nav visibility
+  const canManageKeys = hasPermission('keys:manage');
+  const canManageWebhooks = hasPermission('webhooks:manage');
 
   return (
     <ToastProvider>
@@ -96,19 +138,27 @@ function App() {
               <NavLink to="/">Dashboard</NavLink>
               <NavLink to="/requests">Requests</NavLink>
               <NavLink to="/audit">Audit Log</NavLink>
-              <NavLink to="/settings/api-keys">API Keys</NavLink>
-              <NavLink to="/settings/webhooks">Webhooks</NavLink>
+              {canManageKeys && <NavLink to="/settings/api-keys">API Keys</NavLink>}
+              {canManageWebhooks && <NavLink to="/settings/webhooks">Webhooks</NavLink>}
             </nav>
 
-            {/* Desktop Logout */}
-            {isAuthenticated && (
-              <button
-                onClick={logout}
-                className="hidden md:block text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors"
-              >
-                Logout
-              </button>
-            )}
+            {/* User info + Logout */}
+            <div className="hidden md:flex items-center gap-3">
+              {user && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-gray-700 font-medium">{user.displayName}</span>
+                  <RoleBadge role={user.role} />
+                </div>
+              )}
+              {isAuthenticated && (
+                <button
+                  onClick={logout}
+                  className="text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors"
+                >
+                  Logout
+                </button>
+              )}
+            </div>
 
             {/* Mobile Menu Button */}
             <button
@@ -117,12 +167,10 @@ function App() {
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? (
-                // X icon
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               ) : (
-                // Hamburger icon
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
@@ -135,11 +183,17 @@ function App() {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-gray-200 bg-white">
             <nav className="px-4 py-3 space-y-1">
+              {user && (
+                <div className="flex items-center gap-2 py-2 px-3 text-sm text-gray-500">
+                  <span>{user.displayName}</span>
+                  <RoleBadge role={user.role} />
+                </div>
+              )}
               <NavLink to="/" onClick={closeMobileMenu}>Dashboard</NavLink>
               <NavLink to="/requests" onClick={closeMobileMenu}>Requests</NavLink>
               <NavLink to="/audit" onClick={closeMobileMenu}>Audit Log</NavLink>
-              <NavLink to="/settings/api-keys" onClick={closeMobileMenu}>API Keys</NavLink>
-              <NavLink to="/settings/webhooks" onClick={closeMobileMenu}>Webhooks</NavLink>
+              {canManageKeys && <NavLink to="/settings/api-keys" onClick={closeMobileMenu}>API Keys</NavLink>}
+              {canManageWebhooks && <NavLink to="/settings/webhooks" onClick={closeMobileMenu}>Webhooks</NavLink>}
               {isAuthenticated && (
                 <button
                   onClick={() => {
@@ -212,9 +266,11 @@ function App() {
             path="/settings/api-keys"
             element={
               <ProtectedRoute>
-                <Suspense fallback={<ApiKeysSkeleton />}>
-                  <ApiKeys />
-                </Suspense>
+                <PermissionRoute permission="keys:manage">
+                  <Suspense fallback={<ApiKeysSkeleton />}>
+                    <ApiKeys />
+                  </Suspense>
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />
@@ -222,9 +278,11 @@ function App() {
             path="/settings/webhooks"
             element={
               <ProtectedRoute>
-                <Suspense fallback={<WebhooksSkeleton />}>
-                  <Webhooks />
-                </Suspense>
+                <PermissionRoute permission="webhooks:manage">
+                  <Suspense fallback={<WebhooksSkeleton />}>
+                    <Webhooks />
+                  </Suspense>
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />

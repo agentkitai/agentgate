@@ -1,5 +1,6 @@
 // @agentgate/server — OIDC auth routes
 //
+// GET  /auth/mode      → Return current AUTH_MODE for dashboard detection
 // POST /auth/login     → Initiate OIDC login (returns redirect URL)
 // GET  /auth/callback  → Handle IdP callback, exchange code, mint JWT
 // POST /auth/refresh   → Rotate refresh token, get new access token
@@ -185,6 +186,16 @@ async function rotateRefreshTokenInDb(rawToken: string): Promise<{
 // ── Routes ─────────────────────────────────────────────────────────
 
 /**
+ * GET /auth/mode
+ * Returns the current auth mode so the dashboard can show SSO vs API key login.
+ * Public endpoint — no auth required.
+ */
+authRouter.get("/mode", async (c) => {
+  const config = getConfig();
+  return c.json({ mode: config.authMode || 'api-key-only' });
+});
+
+/**
  * POST /auth/login
  * Initiates OIDC login — returns the authorization URL for the client to redirect to.
  */
@@ -256,27 +267,48 @@ authRouter.get("/callback", async (c) => {
     // Create refresh token
     const refreshToken = await storeRefreshToken(user.id, user.tenantId);
 
-    // Set session cookie
+    // Set session cookie (httpOnly, Secure in production, SameSite=Strict)
     const isProduction = getConfig().nodeEnv === 'production';
     c.header(
       'Set-Cookie',
       `session=${accessToken}; HttpOnly; ${isProduction ? 'Secure; ' : ''}SameSite=Strict; Path=/; Max-Age=${authConfig.jwt.accessTokenTtlSeconds}`,
     );
 
-    return c.json({
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        displayName: user.displayName,
-        email: user.email,
-        role: user.role,
-        tenantId: user.tenantId,
-      },
-    });
+    // Check Accept header — if the client wants JSON (API call), return JSON.
+    // Otherwise (browser redirect from IdP), redirect to dashboard.
+    const accept = c.req.header('Accept') || '';
+    if (accept.includes('application/json')) {
+      return c.json({
+        accessToken,
+        refreshToken,
+        user: {
+          id: user.id,
+          displayName: user.displayName,
+          email: user.email,
+          role: user.role,
+          tenantId: user.tenantId,
+        },
+      });
+    }
+
+    // Browser redirect — store refresh token in a short-lived cookie for the dashboard to pick up
+    c.header(
+      'Set-Cookie',
+      `agentgate_refresh=${refreshToken}; ${isProduction ? 'Secure; ' : ''}SameSite=Strict; Path=/; Max-Age=60`,
+    );
+
+    // Redirect to dashboard root
+    const dashboardUrl = getConfig().dashboardUrl || '/';
+    return c.redirect(dashboardUrl);
   } catch (err) {
     getLogger().error({ err }, "OIDC callback failed");
-    return c.json({ error: "Authentication failed" }, 401);
+    // Redirect to login with error on browser callbacks
+    const accept = c.req.header('Accept') || '';
+    if (accept.includes('application/json')) {
+      return c.json({ error: "Authentication failed" }, 401);
+    }
+    const dashboardUrl = getConfig().dashboardUrl || '/';
+    return c.redirect(`${dashboardUrl}/login?error=authentication_failed`);
   }
 });
 
