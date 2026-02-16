@@ -194,8 +194,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       '@agentkit/auth':
-        specifier: file:/home/amit/projects/agentlens/packages/auth
-        version: file:../agentlens/packages/auth(hono@4.11.7)
+        specifier: file:../../vendor/agentkit-auth-0.1.0.tgz
+        version: file:vendor/agentkit-auth-0.1.0.tgz(hono@4.11.7)
       '@hono/node-server':
         specifier: ^1.13.0
         version: 1.19.9(hono@4.11.7)
@@ -303,8 +303,9 @@ packages:
   '@actions/io@1.1.3':
     resolution: {integrity: sha512-wi9JjgKLYS7U/z8PPbco+PvTb/nRWjeoFlJ1Qer83k/3C5PHQi28hiVdeE2kHXmIL99mQFawx8qt/JPjZilJ8Q==}
 
-  '@agentkit/auth@file:../agentlens/packages/auth':
-    resolution: {directory: ../agentlens/packages/auth, type: directory}
+  '@agentkit/auth@file:vendor/agentkit-auth-0.1.0.tgz':
+    resolution: {integrity: sha512-l1b7PM5NTYhpV5BYGLwSfjZukwIkcw61OdLfi3+2X8BaZ3wooiTstBuO2yhsXWBGYn5AY3cJl+VMK7ko/MwDuA==, tarball: file:vendor/agentkit-auth-0.1.0.tgz}
+    version: 0.1.0
     peerDependencies:
       hono: ^4.0.0
 
@@ -4333,7 +4334,7 @@ snapshots:
 
   '@actions/io@1.1.3': {}
 
-  '@agentkit/auth@file:../agentlens/packages/auth(hono@4.11.7)':
+  '@agentkit/auth@file:vendor/agentkit-auth-0.1.0.tgz(hono@4.11.7)':
     dependencies:
       hono: 4.11.7
       jose: 6.1.3
@@ -5889,14 +5890,6 @@ snapshots:
       magic-string: 0.30.21
     optionalDependencies:
       vite: 5.4.21(@types/node@22.19.7)
-
-  '@vitest/mocker@2.1.9(vite@5.4.21(@types/node@25.2.0))':
-    dependencies:
-      '@vitest/spy': 2.1.9
-      estree-walker: 3.0.3
-      magic-string: 0.30.21
-    optionalDependencies:
-      vite: 5.4.21(@types/node@25.2.0)
 
   '@vitest/mocker@3.2.4(vite@6.4.1(@types/node@22.19.7)(jiti@1.21.7)(tsx@4.21.0))':
     dependencies:
@@ -8327,7 +8320,7 @@ snapshots:
   vitest@2.1.9(@types/node@25.2.0):
     dependencies:
       '@vitest/expect': 2.1.9
-      '@vitest/mocker': 2.1.9(vite@5.4.21(@types/node@25.2.0))
+      '@vitest/mocker': 2.1.9(vite@5.4.21(@types/node@22.19.7))
       '@vitest/pretty-format': 2.1.9
       '@vitest/runner': 2.1.9
       '@vitest/snapshot': 2.1.9

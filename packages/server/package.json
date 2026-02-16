@@ -33,7 +33,7 @@
   ],
   "dependencies": {
     "@agentgate/core": "workspace:*",
-    "@agentkit/auth": "file:/home/amit/projects/agentlens/packages/auth",
+    "@agentkit/auth": "file:../../vendor/agentkit-auth-0.1.0.tgz",
     "@hono/node-server": "^1.13.0",
     "@hono/zod-validator": "^0.7.6",
     "better-sqlite3": "^11.6.0",
