@@ -183,6 +183,13 @@ async function rotateRefreshTokenInDb(rawToken: string): Promise<{
   };
 }
 
+/** Extract a cookie value from the request */
+function getCookieValue(c: { req: { header: (name: string) => string | undefined } }, name: string): string | null {
+  const cookies = c.req.header('Cookie') || '';
+  const match = cookies.split('; ').find(s => s.startsWith(`${name}=`));
+  return match ? match.split('=')[1] ?? null : null;
+}
+
 // ── Routes ─────────────────────────────────────────────────────────
 
 /**
@@ -291,10 +298,10 @@ authRouter.get("/callback", async (c) => {
       });
     }
 
-    // Browser redirect — store refresh token in a short-lived cookie for the dashboard to pick up
+    // Browser redirect — store refresh token in httpOnly cookie for the refresh endpoint
     c.header(
       'Set-Cookie',
-      `agentgate_refresh=${refreshToken}; ${isProduction ? 'Secure; ' : ''}SameSite=Strict; Path=/; Max-Age=60`,
+      `agentgate_refresh=${refreshToken}; HttpOnly; ${isProduction ? 'Secure; ' : ''}SameSite=Strict; Path=/auth/refresh; Max-Age=${authConfig.jwt.refreshTokenTtlSeconds}`,
     );
 
     // Redirect to dashboard root
@@ -317,14 +324,15 @@ authRouter.get("/callback", async (c) => {
  * Rotates refresh token and issues new access token.
  */
 authRouter.post("/refresh", async (c) => {
-  let body: Record<string, unknown>;
+  let body: Record<string, unknown> = {};
   try {
     body = await c.req.json();
   } catch {
-    return c.json({ error: "Request body required" }, 400);
+    // Body may be empty when using cookie-based refresh
   }
 
-  const refreshToken = body.refreshToken as string;
+  // Accept refresh token from body (API clients) or httpOnly cookie (browser)
+  const refreshToken = (body.refreshToken as string) || getCookieValue(c, 'agentgate_refresh');
   if (!refreshToken) {
     return c.json({ error: "refreshToken is required" }, 400);
   }
@@ -366,6 +374,12 @@ authRouter.post("/refresh", async (c) => {
     `session=${accessToken}; HttpOnly; ${isProduction ? 'Secure; ' : ''}SameSite=Strict; Path=/; Max-Age=${authConfig.jwt.accessTokenTtlSeconds}`,
   );
 
+  // Also rotate the refresh token cookie (httpOnly)
+  c.header(
+    'Set-Cookie',
+    `agentgate_refresh=${result.newToken}; HttpOnly; ${isProduction ? 'Secure; ' : ''}SameSite=Strict; Path=/auth/refresh; Max-Age=${authConfig.jwt.refreshTokenTtlSeconds}`,
+  );
+
   return c.json({
     accessToken,
     refreshToken: result.newToken,
@@ -384,7 +398,7 @@ authRouter.post("/logout", async (c) => {
     body = {};
   }
 
-  const refreshToken = body.refreshToken as string;
+  const refreshToken = (body.refreshToken as string) || getCookieValue(c, 'agentgate_refresh');
   if (refreshToken) {
     const hash = hashToken(refreshToken);
     const results = await getDb()
@@ -401,8 +415,9 @@ authRouter.post("/logout", async (c) => {
     }
   }
 
-  // Clear session cookie
+  // Clear session and refresh cookies
   c.header('Set-Cookie', 'session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
+  c.header('Set-Cookie', 'agentgate_refresh=; HttpOnly; SameSite=Strict; Path=/auth/refresh; Max-Age=0');
 
   return c.json({ success: true });
 });

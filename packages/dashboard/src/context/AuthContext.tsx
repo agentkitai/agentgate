@@ -45,7 +45,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const API_KEY_STORAGE = 'agentgate_api_key';
-const REFRESH_TOKEN_STORAGE = 'agentgate_refresh_token';
 const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
 
 /**
@@ -58,8 +57,8 @@ async function detectAuthMode(): Promise<AuthMode> {
     if (res.ok) {
       const data = await res.json();
       // Server returns { mode: 'api-key-only' | 'dual' | 'oidc-required' }
-      if (data.mode === 'oidc-required' || data.mode === 'dual') return 'sso';
       if (data.mode === 'dual') return 'dual';
+      if (data.mode === 'oidc-required') return 'sso';
     }
   } catch {
     // Server might not have this endpoint yet — fall back
@@ -93,19 +92,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // Pick up refresh token from cookie (set by server after OIDC callback redirect)
-      const refreshCookie = document.cookie
-        .split('; ')
-        .find(c => c.startsWith('agentgate_refresh='));
-      if (refreshCookie) {
-        const token = refreshCookie.split('=')[1];
-        if (token) {
-          localStorage.setItem(REFRESH_TOKEN_STORAGE, token);
-          // Clear the cookie
-          document.cookie = 'agentgate_refresh=; Max-Age=0; Path=/';
-        }
-      }
-
       const mode = await detectAuthMode();
       if (cancelled) return;
       setAuthMode(mode);
@@ -152,19 +138,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    const refreshToken = localStorage.getItem(REFRESH_TOKEN_STORAGE);
     try {
       await fetch(`${baseUrl}/auth/logout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ refreshToken: refreshToken || undefined }),
+        body: JSON.stringify({}),
       });
     } catch {
       // Best effort
     }
     localStorage.removeItem(API_KEY_STORAGE);
-    localStorage.removeItem(REFRESH_TOKEN_STORAGE);
     setUser(null);
   }, []);
 
