@@ -60,3 +60,7 @@ docker-compose.override.yml
 phase2-*.md
 unified-sprint.md
 chrome-extension/
+
+# CDK
+infra/cdk.out/
+infra/node_modules/
