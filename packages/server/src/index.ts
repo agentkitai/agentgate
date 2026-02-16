@@ -16,13 +16,16 @@ import tokensRouter from "./routes/tokens.js";
 import decideRouter from "./routes/decide.js";
 import overridesRouter from "./routes/overrides.js";
 import { startOverrideCleanup, stopOverrideCleanup } from "./routes/overrides.js";
+import probesRouter from "./routes/probes.js";
+import { registry, httpRequestsTotal, httpRequestDuration } from "./lib/metrics.js";
 import { authMiddleware, type AuthVariables } from "./middleware/auth.js";
 import authRouter from "./routes/auth.js";
 import { getConfig, validateProductionConfig } from "./config.js";
 import { securityHeadersMiddleware } from "./middleware/security-headers.js";
 import { initDatabase, runMigrations, closeDatabase, getDb, approvalRequests } from "./db/index.js";
 import { getRateLimiter, resetRateLimiter } from "./lib/rate-limiter/index.js";
-import { initLogger, getLogger } from "./lib/logger.js";
+import { initLogger, getLogger, createRequestLogger } from "./lib/logger.js";
+import { randomUUID } from "node:crypto";
 import { startRetryScanner, encryptExistingSecrets } from "./lib/webhook.js";
 import { startLastUsedFlusher, stopLastUsedFlusher } from "./lib/api-keys.js";
 import { startCleanup, stopCleanup } from "./lib/cleanup.js";
@@ -49,6 +52,16 @@ if (config.isProduction) {
   warnings.filter(w => !w.includes('ADMIN_API_KEY')).forEach(w => log.warn(w));
 }
 
+// Request correlation ID middleware
+app.use("*", async (c, next) => {
+  const requestId = c.req.header("X-Request-Id") || randomUUID();
+  c.set("requestId" as any, requestId);
+  c.header("X-Request-Id", requestId);
+  // Attach a child logger with the correlation ID
+  c.set("log" as any, createRequestLogger(requestId));
+  await next();
+});
+
 // Middleware
 app.use("*", logger());
 
@@ -71,6 +84,29 @@ app.use("*", securityHeadersMiddleware);
 
 // Body size limit for API routes (1MB) - prevents oversized payload attacks
 app.use("/api/*", bodyLimit({ maxSize: 1024 * 1024 }));
+
+// HTTP RED metrics middleware
+app.use("*", async (c, next) => {
+  const start = performance.now();
+  await next();
+  const durationSec = (performance.now() - start) / 1000;
+  // Normalise route: replace UUIDs/nanoids with :id
+  const route = c.req.path.replace(/\/[a-zA-Z0-9_-]{10,}(?=\/|$)/g, "/:id");
+  const labels = { method: c.req.method, route, status: String(c.res.status) };
+  httpRequestsTotal.inc(labels);
+  httpRequestDuration.observe(labels, durationSec);
+});
+
+// Prometheus metrics endpoint (public, no auth)
+if (config.metricsEnabled) {
+  app.get("/metrics", async (c) => {
+    const metrics = await registry.metrics();
+    return c.text(metrics, 200, { "Content-Type": registry.contentType });
+  });
+}
+
+// Readiness + Startup probes (public, no auth required)
+app.route("/", probesRouter);
 
 // Health check endpoint (public, no auth required)
 // GET /health        → shallow check (fast, backward compatible)

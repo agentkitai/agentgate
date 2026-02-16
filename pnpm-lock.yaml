@@ -210,7 +210,7 @@ importers:
         version: 16.6.1
       drizzle-orm:
         specifier: ^0.38.0
-        version: 0.38.4(@types/better-sqlite3@7.6.13)(@types/react@18.3.27)(better-sqlite3@11.10.0)(postgres@3.4.8)(react@18.3.1)
+        version: 0.38.4(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(@types/react@18.3.27)(better-sqlite3@11.10.0)(postgres@3.4.8)(react@18.3.1)
       hono:
         specifier: ^4.6.0
         version: 4.11.7
@@ -229,6 +229,9 @@ importers:
       postgres:
         specifier: ^3.4.0
         version: 3.4.8
+      prom-client:
+        specifier: ^15.1.3
+        version: 15.1.3
       safe-regex2:
         specifier: ^5.0.0
         version: 5.0.0
@@ -1502,6 +1505,10 @@ packages:
   '@octokit/types@13.10.0':
     resolution: {integrity: sha512-ifLaO34EbbPj0Xgro4G5lP5asESjwHracYJvVaPIyXMuiuXLlhic3S47cBdTb+jfODkTE5YtGCLt3Ay3+J97sA==}
 
+  '@opentelemetry/api@1.9.0':
+    resolution: {integrity: sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg==}
+    engines: {node: '>=8.0.0'}
+
   '@petamoriken/float16@3.9.3':
     resolution: {integrity: sha512-8awtpHXCx/bNpFt4mt2xdkgtgVvKqty8VbjHI/WWWQuEw+KLzFot3f4+LkQY9YmOtq7A5GdOnqoIC8Pdygjk2g==}
 
@@ -2178,6 +2185,9 @@ packages:
 
   bindings@1.5.0:
     resolution: {integrity: sha512-p2q/t/mhvuOj/UeLlV6566GD/guowlr0hHxClI0W9m7MWYkL1F0hLo+0Aexs9HSPCtR1SXQ0TD3MMKrXZajbiQ==}
+
+  bintrees@1.0.2:
+    resolution: {integrity: sha512-VOMgTMwjAaUG580SXn3LacVgjurrbMme7ZZNYGSSV7mmtY6QQRh0Eg3pwIcntQ77DErK1L0NxkbetjcoXzVwKw==}
 
   birpc@2.9.0:
     resolution: {integrity: sha512-KrayHS5pBi69Xi9JmvoqrIgYGDkD6mcSe/i6YKi3w5kekCLzrX4+nawcXqrj2tIp50Kw/mT/s3p+GVK0A0sKxw==}
@@ -3560,6 +3570,10 @@ packages:
   process-warning@5.0.0:
     resolution: {integrity: sha512-a39t9ApHNx2L4+HBnQKqxxHNs1r7KF+Intd8Q/g1bUh6q0WIp9voPXJ/x0j+ZL45KF1pJd9+q2jLIRMfvEshkA==}
 
+  prom-client@15.1.3:
+    resolution: {integrity: sha512-6ZiOBfCywsD4k1BN9IX0uZhF+tJkV8q8llP64G5Hajs4JOeVLPCwpPVcpXy3BwYiUGgyJzsJJQeOIv7+hDSq8g==}
+    engines: {node: ^16 || ^18 || >=20}
+
   property-information@7.1.0:
     resolution: {integrity: sha512-TwEZ+X+yCJmYfL7TPUOcvBZ4QfoT5YenQiJuX//0th53DE6w0xxLEtfK3iyryQFddXuvkIk51EEgrJQ0WJkOmQ==}
 
@@ -3917,6 +3931,9 @@ packages:
   tar-stream@2.2.0:
     resolution: {integrity: sha512-ujeqbceABgwMZxEJnk2HDY2DlnUZ+9oEcb1KzTVfYHio0UE6dG71n60d8D2I4qNvleWrrXpmjpt7vZeF1LnMZQ==}
     engines: {node: '>=6'}
+
+  tdigest@0.1.2:
+    resolution: {integrity: sha512-+G0LLgjjo9BZX2MfdvPfH+MKLCrxlXSYec5DaPYP1fe6Iyhf0/fSmJ0bFiZ1F8BT6cGXl2LpltQptzjXKWEkKA==}
 
   term-size@2.2.1:
     resolution: {integrity: sha512-wK0Ri4fOGjv/XPy8SBHZChl8CM7uMc5VML7SqiQ0zG7+J5Vr+RMQDoHa2CNT6KHUnTGIXH34UDMkPzAUyapBZg==}
@@ -5381,6 +5398,8 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 24.2.0
 
+  '@opentelemetry/api@1.9.0': {}
+
   '@petamoriken/float16@3.9.3': {}
 
   '@pinojs/redact@0.4.0': {}
@@ -5884,6 +5903,14 @@ snapshots:
     optionalDependencies:
       vite: 5.4.21(@types/node@22.19.7)
 
+  '@vitest/mocker@2.1.9(vite@5.4.21(@types/node@25.2.0))':
+    dependencies:
+      '@vitest/spy': 2.1.9
+      estree-walker: 3.0.3
+      magic-string: 0.30.21
+    optionalDependencies:
+      vite: 5.4.21(@types/node@25.2.0)
+
   '@vitest/mocker@3.2.4(vite@6.4.1(@types/node@22.19.7)(jiti@1.21.7)(tsx@4.21.0))':
     dependencies:
       '@vitest/spy': 3.2.4
@@ -6172,6 +6199,8 @@ snapshots:
     dependencies:
       file-uri-to-path: 1.0.0
 
+  bintrees@1.0.2: {}
+
   birpc@2.9.0: {}
 
   bl@4.1.0:
@@ -6409,8 +6438,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.38.4(@types/better-sqlite3@7.6.13)(@types/react@18.3.27)(better-sqlite3@11.10.0)(postgres@3.4.8)(react@18.3.1):
+  drizzle-orm@0.38.4(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(@types/react@18.3.27)(better-sqlite3@11.10.0)(postgres@3.4.8)(react@18.3.1):
     optionalDependencies:
+      '@opentelemetry/api': 1.9.0
       '@types/better-sqlite3': 7.6.13
       '@types/react': 18.3.27
       better-sqlite3: 11.10.0
@@ -7549,6 +7579,11 @@ snapshots:
 
   process-warning@5.0.0: {}
 
+  prom-client@15.1.3:
+    dependencies:
+      '@opentelemetry/api': 1.9.0
+      tdigest: 0.1.2
+
   property-information@7.1.0: {}
 
   proxy-addr@2.0.7:
@@ -7971,6 +8006,10 @@ snapshots:
       inherits: 2.0.4
       readable-stream: 3.6.2
 
+  tdigest@0.1.2:
+    dependencies:
+      bintrees: 1.0.2
+
   term-size@2.2.1: {}
 
   test-exclude@7.0.1:
@@ -8319,7 +8358,7 @@ snapshots:
   vitest@2.1.9(@types/node@25.2.0):
     dependencies:
       '@vitest/expect': 2.1.9
-      '@vitest/mocker': 2.1.9(vite@5.4.21(@types/node@22.19.7))
+      '@vitest/mocker': 2.1.9(vite@5.4.21(@types/node@25.2.0))
       '@vitest/pretty-format': 2.1.9
       '@vitest/runner': 2.1.9
       '@vitest/snapshot': 2.1.9

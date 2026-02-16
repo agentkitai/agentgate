@@ -181,6 +181,16 @@ export const ConfigSchema = z.object({
   /** Refresh token TTL in seconds (default: 604800 = 7 days) */
   jwtRefreshTtl: z.coerce.number().int().min(60).default(604800),
 
+  // Metrics
+  /** Enable Prometheus metrics endpoint (default true) */
+  metricsEnabled: z
+    .union([z.boolean(), z.string()])
+    .transform((val) => {
+      if (typeof val === "boolean") return val;
+      return ["true", "1", "yes"].includes(val.toLowerCase());
+    })
+    .default(true),
+
   // Logging
   logLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
   logFormat: z.enum(["json", "pretty"]).default("pretty"),
@@ -237,6 +247,7 @@ const ENV_MAP: Record<string, keyof z.infer<typeof ConfigSchema>> = {
   CLEANUP_INTERVAL_MS: "cleanupIntervalMs",
   API_KEY_CACHE_TTL_SEC: "apiKeyCacheTtlSec",
   API_KEY_CACHE_MAX_SIZE: "apiKeyCacheMaxSize",
+  METRICS_ENABLED: "metricsEnabled",
   LOG_LEVEL: "logLevel",
   LOG_FORMAT: "logFormat",
   OIDC_ISSUER: "oidcIssuer",
