@@ -130,6 +130,34 @@ export const overrides = pgTable("overrides", {
   idxOverridesExpiresAt: index("idx_overrides_expires_at").on(table.expiresAt),
 }));
 
+// Users table (OIDC-authenticated users)
+export const users = pgTable("users", {
+  id: text("id").primaryKey(),
+  oidcSub: text("oidc_sub").notNull().unique(),
+  email: text("email"),
+  displayName: text("display_name"),
+  role: text("role", {
+    enum: ["viewer", "editor", "admin", "owner"],
+  }).notNull().default("viewer"),
+  tenantId: text("tenant_id").notNull().default("default"),
+  createdAt: integer("created_at").notNull(), // unix timestamp
+  disabledAt: integer("disabled_at"), // unix timestamp, nullable
+}, (table) => ({
+  idxUsersSub: index("idx_users_sub").on(table.oidcSub),
+}));
+
+// Refresh tokens table
+export const refreshTokens = pgTable("refresh_tokens", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  tenantId: text("tenant_id").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: integer("expires_at").notNull(), // unix timestamp
+  revokedAt: integer("revoked_at"), // unix timestamp, nullable
+}, (table) => ({
+  idxRefreshTokensHash: index("idx_refresh_tokens_hash").on(table.tokenHash),
+}));
+
 // Type exports
 export type ApprovalRequest = typeof approvalRequests.$inferSelect;
 export type NewApprovalRequest = typeof approvalRequests.$inferInsert;
@@ -147,3 +175,7 @@ export type DecisionToken = typeof decisionTokens.$inferSelect;
 export type NewDecisionToken = typeof decisionTokens.$inferInsert;
 export type Override = typeof overrides.$inferSelect;
 export type NewOverride = typeof overrides.$inferInsert;
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+export type RefreshToken = typeof refreshTokens.$inferSelect;
+export type NewRefreshToken = typeof refreshTokens.$inferInsert;

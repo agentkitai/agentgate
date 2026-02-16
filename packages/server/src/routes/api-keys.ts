@@ -5,12 +5,12 @@ import { eq } from 'drizzle-orm';
 import { getDb } from '../db/index.js';
 import { apiKeys } from '../db/schema.js';
 import { createApiKey, revokeApiKey } from '../lib/api-keys.js';
-import { requireScope } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/auth.js';
 
 const router = new Hono();
 
 // All routes require admin scope
-router.use('*', requireScope('admin'));
+router.use('*', requirePermission('keys:manage'));
 
 // Create new API key
 const createKeySchema = z.object({

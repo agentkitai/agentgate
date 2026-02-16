@@ -264,6 +264,7 @@ describe("config edge cases", () => {
         jwtSecret: "very-long-jwt-secret-that-is-32-chars!!",
         corsAllowedOrigins: "https://myapp.com,https://admin.myapp.com",
         webhookEncryptionKey: "my-encryption-key",
+        authMode: "api-key-only",
       });
       const warnings = validateProductionConfig(config);
       expect(warnings).toHaveLength(0);

@@ -304,6 +304,7 @@ describe("config", () => {
         jwtSecret: "a-very-long-jwt-secret-at-least-32-chars",
         corsAllowedOrigins: "https://example.com",
         webhookEncryptionKey: "my-encryption-key",
+        authMode: "api-key-only",
       });
 
       const warnings = validateProductionConfig(config);
@@ -456,6 +457,7 @@ describe("config", () => {
     it("should support full configuration scenario", () => {
       process.env.PORT = "8080";
       process.env.NODE_ENV = "production";
+      process.env.AUTH_MODE = "api-key-only";
       process.env.DATABASE_URL = "/var/data/agentgate.db";
       process.env.ADMIN_API_KEY = "production-admin-key-1234";
       process.env.JWT_SECRET = "production-jwt-secret-must-be-32-chars!";

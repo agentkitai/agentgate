@@ -17,6 +17,7 @@ import decideRouter from "./routes/decide.js";
 import overridesRouter from "./routes/overrides.js";
 import { startOverrideCleanup, stopOverrideCleanup } from "./routes/overrides.js";
 import { authMiddleware, type AuthVariables } from "./middleware/auth.js";
+import authRouter from "./routes/auth.js";
 import { getConfig, validateProductionConfig } from "./config.js";
 import { securityHeadersMiddleware } from "./middleware/security-headers.js";
 import { initDatabase, runMigrations, closeDatabase, getDb, approvalRequests } from "./db/index.js";
@@ -122,6 +123,10 @@ app.get("/health", async (c) => {
 
 // Decision endpoint (public, no auth required - uses tokens)
 app.route("/api/decide", decideRouter);
+
+// Auth routes (mostly public — login, callback, refresh, logout)
+// /auth/me requires auth and is handled inside the router
+app.route("/auth", authRouter);
 
 // Apply auth middleware to all /api/* routes
 app.use("/api/*", authMiddleware);

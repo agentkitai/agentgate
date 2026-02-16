@@ -161,6 +161,26 @@ export const ConfigSchema = z.object({
   /** Max API key cache entries (default: 1000) */
   apiKeyCacheMaxSize: z.coerce.number().int().min(1).default(1000),
 
+  // OIDC / SSO
+  /** OIDC issuer URL (e.g., https://login.corp.com) */
+  oidcIssuer: z.string().optional(),
+  /** OIDC client ID */
+  oidcClientId: z.string().optional(),
+  /** OIDC client secret */
+  oidcClientSecret: z.string().optional(),
+  /** OIDC callback redirect URI */
+  oidcRedirectUri: z.string().optional(),
+  /** JWT claim for tenant/org ID */
+  oidcTenantClaim: z.string().default("tenant_id"),
+  /** JWT claim for user role */
+  oidcRoleClaim: z.string().default("role"),
+  /** Auth mode: dual (API key + OIDC), oidc-required, api-key-only */
+  authMode: z.enum(["dual", "oidc-required", "api-key-only"]).default("dual"),
+  /** Access token TTL in seconds (default: 900 = 15 min) */
+  jwtAccessTtl: z.coerce.number().int().min(60).default(900),
+  /** Refresh token TTL in seconds (default: 604800 = 7 days) */
+  jwtRefreshTtl: z.coerce.number().int().min(60).default(604800),
+
   // Logging
   logLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
   logFormat: z.enum(["json", "pretty"]).default("pretty"),
@@ -219,6 +239,15 @@ const ENV_MAP: Record<string, keyof z.infer<typeof ConfigSchema>> = {
   API_KEY_CACHE_MAX_SIZE: "apiKeyCacheMaxSize",
   LOG_LEVEL: "logLevel",
   LOG_FORMAT: "logFormat",
+  OIDC_ISSUER: "oidcIssuer",
+  OIDC_CLIENT_ID: "oidcClientId",
+  OIDC_CLIENT_SECRET: "oidcClientSecret",
+  OIDC_REDIRECT_URI: "oidcRedirectUri",
+  OIDC_TENANT_CLAIM: "oidcTenantClaim",
+  OIDC_ROLE_CLAIM: "oidcRoleClaim",
+  AUTH_MODE: "authMode",
+  JWT_ACCESS_TTL: "jwtAccessTtl",
+  JWT_REFRESH_TTL: "jwtRefreshTtl",
 };
 
 // ============================================================================
@@ -240,6 +269,7 @@ const SECRET_KEYS = [
   "DISCORD_BOT_TOKEN",
   "SMTP_PASS",
   "WEBHOOK_ENCRYPTION_KEY",
+  "OIDC_CLIENT_SECRET",
 ] as const;
 
 /**
@@ -338,6 +368,21 @@ export function validateProductionConfig(config: Config): string[] {
     }
     if (!config.webhookEncryptionKey) {
       warnings.push("WEBHOOK_ENCRYPTION_KEY should be set to encrypt webhook secrets at rest");
+    }
+    // Require OIDC config when auth mode needs it
+    if (config.authMode !== "api-key-only") {
+      if (!config.oidcIssuer) {
+        warnings.push("OIDC_ISSUER is required when AUTH_MODE is not api-key-only");
+      }
+      if (!config.oidcClientId) {
+        warnings.push("OIDC_CLIENT_ID is required when AUTH_MODE is not api-key-only");
+      }
+      if (!config.oidcClientSecret) {
+        warnings.push("OIDC_CLIENT_SECRET is required when AUTH_MODE is not api-key-only");
+      }
+      if (!config.oidcRedirectUri) {
+        warnings.push("OIDC_REDIRECT_URI is required when AUTH_MODE is not api-key-only");
+      }
     }
   }
 

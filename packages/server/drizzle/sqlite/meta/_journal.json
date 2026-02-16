@@ -43,6 +43,13 @@
       "when": 1770823718453,
       "tag": "0005_magical_captain_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1771227695081,
+      "tag": "0006_tough_loa",
+      "breakpoints": true
     }
   ]
 }

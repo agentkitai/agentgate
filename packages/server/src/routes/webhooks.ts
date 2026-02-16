@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { getDb } from '../db/index.js';
 import { webhooks, webhookDeliveries } from '../db/schema.js';
-import { requireScope } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/auth.js';
 import { eq, desc } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import crypto from 'crypto';
@@ -14,7 +14,7 @@ import { getConfig } from '../config.js';
 const router = new Hono();
 
 // All routes require admin scope
-router.use('*', requireScope('admin'));
+router.use('*', requirePermission('webhooks:manage'));
 
 // Create webhook
 const createWebhookSchema = z.object({
