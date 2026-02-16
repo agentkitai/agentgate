@@ -239,6 +239,8 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
 import { mkdirSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { migrate as migrateSqlite } from "drizzle-orm/better-sqlite3/migrator";
 import * as schema from "./schema.sqlite.js";
 
 function initSqliteSync(): BetterSQLite3Database<typeof schema> {
@@ -278,6 +280,18 @@ function initSqliteSync(): BetterSQLite3Database<typeof schema> {
   // Create Drizzle instance
   const drizzleDb = drizzle(sqliteDb, { schema });
   _db = drizzleDb as unknown as Database;
+
+  // Auto-run migrations for in-memory databases (tests) and file-based (dev)
+  try {
+    const currentDir = dirname(fileURLToPath(import.meta.url));
+    const packageRoot = resolve(currentDir, "..", "..");
+    const migrationsFolder = resolve(packageRoot, "drizzle", "sqlite");
+    if (existsSync(migrationsFolder)) {
+      migrateSqlite(drizzleDb, { migrationsFolder });
+    }
+  } catch {
+    // Migrations may fail if drizzle meta files are missing; non-fatal for dev
+  }
 
   return drizzleDb;
 }

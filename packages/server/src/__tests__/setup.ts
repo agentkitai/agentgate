@@ -102,6 +102,31 @@ CREATE TABLE IF NOT EXISTS \`overrides\` (
 );
 CREATE INDEX IF NOT EXISTS \`idx_overrides_agent_id\` ON \`overrides\` (\`agent_id\`);
 CREATE INDEX IF NOT EXISTS \`idx_overrides_expires_at\` ON \`overrides\` (\`expires_at\`);
+
+CREATE TABLE IF NOT EXISTS \`users\` (
+	\`id\` text PRIMARY KEY NOT NULL,
+	\`oidc_sub\` text NOT NULL,
+	\`email\` text,
+	\`display_name\` text,
+	\`role\` text DEFAULT 'viewer' NOT NULL,
+	\`tenant_id\` text DEFAULT 'default' NOT NULL,
+	\`created_at\` integer NOT NULL,
+	\`disabled_at\` integer
+);
+CREATE UNIQUE INDEX IF NOT EXISTS \`users_oidc_sub_unique\` ON \`users\` (\`oidc_sub\`);
+CREATE INDEX IF NOT EXISTS \`idx_users_sub\` ON \`users\` (\`oidc_sub\`);
+
+CREATE TABLE IF NOT EXISTS \`refresh_tokens\` (
+	\`id\` text PRIMARY KEY NOT NULL,
+	\`user_id\` text NOT NULL,
+	\`tenant_id\` text NOT NULL,
+	\`token_hash\` text NOT NULL,
+	\`expires_at\` integer NOT NULL,
+	\`revoked_at\` integer,
+	FOREIGN KEY (\`user_id\`) REFERENCES \`users\`(\`id\`) ON UPDATE no action ON DELETE no action
+);
+CREATE UNIQUE INDEX IF NOT EXISTS \`refresh_tokens_token_hash_unique\` ON \`refresh_tokens\` (\`token_hash\`);
+CREATE INDEX IF NOT EXISTS \`idx_refresh_tokens_hash\` ON \`refresh_tokens\` (\`token_hash\`);
 `;
 
 export type TestDb = BetterSQLite3Database<typeof schema>;
