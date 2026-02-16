@@ -296,9 +296,16 @@ async function main() {
   process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
-main().catch((err) => {
-  getLogger().fatal({ err }, "Failed to start server");
-  process.exit(1);
-});
+// Only start the server when executed directly (not when imported by tests)
+const isDirectRun =
+  typeof process.argv[1] === "string" &&
+  resolve(process.argv[1]).includes("index");
+
+if (isDirectRun && !process.env.VITEST) {
+  main().catch((err) => {
+    getLogger().fatal({ err }, "Failed to start server");
+    process.exit(1);
+  });
+}
 
 export default app;
