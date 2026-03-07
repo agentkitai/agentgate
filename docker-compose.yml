@@ -103,7 +103,7 @@ services:
       # Channel routing
       CHANNEL_ROUTES: ${CHANNEL_ROUTES:-[]}
     ports:
-      - "${SERVER_PORT:-3000}:3000"
+      - "${SERVER_PORT:-3002}:3000"
     networks:
       - agentgate-internal
     depends_on:
@@ -128,7 +128,7 @@ services:
       dockerfile: packages/dashboard/Dockerfile
     container_name: agentgate-dashboard
     ports:
-      - "${DASHBOARD_PORT:-8080}:80"
+      - "${DASHBOARD_PORT:-3003}:80"
     networks:
       - agentgate-internal
     depends_on:
@@ -160,7 +160,7 @@ services:
       SLACK_APP_TOKEN: ${SLACK_APP_TOKEN:-}
       PORT: 3001
     ports:
-      - "${SLACK_BOT_PORT:-3001}:3001"
+      - "${SLACK_BOT_PORT:-3004}:3001"
     networks:
       - agentgate-internal
     depends_on:
