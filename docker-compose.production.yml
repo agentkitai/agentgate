@@ -23,10 +23,13 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-agentgate}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agentgate}
       POSTGRES_DB: ${POSTGRES_DB:-agentgate}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+    # Not exposed to host — only accessible within the internal network
+    expose:
+      - "5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    networks:
+      - agentgate-internal
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-agentgate} -d ${POSTGRES_DB:-agentgate}"]
       interval: 10s
@@ -40,13 +43,16 @@ services:
   redis:
     image: redis:7-alpine
     container_name: agentgate-redis
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
+    # Not exposed to host — only accessible within the internal network
+    expose:
+      - "6379"
     volumes:
       - redis-data:/data
-    command: redis-server --appendonly yes
+    networks:
+      - agentgate-internal
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -69,7 +75,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-agentgate}:${POSTGRES_PASSWORD:-agentgate}@postgres:5432/${POSTGRES_DB:-agentgate}
 
       # Redis
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
       RATE_LIMIT_BACKEND: redis
 
       # Security
@@ -116,6 +122,8 @@ services:
       CHANNEL_ROUTES: ${CHANNEL_ROUTES:-[]}
     ports:
       - "${SERVER_PORT:-3000}:3000"
+    networks:
+      - agentgate-internal
     depends_on:
       postgres:
         condition: service_healthy
@@ -137,6 +145,8 @@ services:
     container_name: agentgate-dashboard
     ports:
       - "${DASHBOARD_PORT:-8080}:80"
+    networks:
+      - agentgate-internal
     depends_on:
       server:
         condition: service_healthy
@@ -151,3 +161,7 @@ services:
 volumes:
   postgres-data:
   redis-data:
+
+networks:
+  agentgate-internal:
+    driver: bridge

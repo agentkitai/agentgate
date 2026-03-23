@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { api, type ApprovalRequest, type ApprovalStatus } from '../api';
 import { StatusBadge } from '../components/StatusBadge';
-import { RequestListSkeleton } from '../components/Skeleton';
+import { ResponsiveTable, type Column } from '../components/ResponsiveTable';
 
 type StatusFilter = 'all' | ApprovalStatus;
 
@@ -83,7 +83,7 @@ export default function RequestList() {
     setLoading(true);
   };
 
-  const urgencyColors = {
+  const urgencyColors: Record<string, string> = {
     low: 'text-gray-500 bg-gray-100',
     normal: 'text-blue-600 bg-blue-100',
     high: 'text-orange-600 bg-orange-100',
@@ -96,6 +96,56 @@ export default function RequestList() {
     { value: 'approved', label: 'Approved' },
     { value: 'denied', label: 'Denied' },
     { value: 'expired', label: 'Expired' },
+  ];
+
+  const columns: Column<ApprovalRequest>[] = [
+    {
+      header: 'ID',
+      span: 3,
+      tabletSpan: 2,
+      mobileLabel: 'ID',
+      accessor: (r) => (
+        <span className="font-mono text-sm text-gray-600 truncate">{r.id}</span>
+      ),
+    },
+    {
+      header: 'Action',
+      span: 3,
+      tabletSpan: 2,
+      mobileLabel: false,
+      accessor: (r) => (
+        <span className="font-medium text-gray-900 truncate">{r.action}</span>
+      ),
+    },
+    {
+      header: 'Status',
+      span: 2,
+      tabletSpan: 1,
+      mobileLabel: 'Status',
+      accessor: (r) => <StatusBadge status={r.status} />,
+    },
+    {
+      header: 'Urgency',
+      span: 2,
+      hideOnTablet: true,
+      mobileLabel: 'Urgency',
+      accessor: (r) => (
+        <span className={`px-2 py-0.5 text-xs font-medium rounded ${urgencyColors[r.urgency]}`}>
+          {r.urgency.toUpperCase()}
+        </span>
+      ),
+    },
+    {
+      header: 'Created',
+      span: 2,
+      tabletSpan: 1,
+      mobileLabel: 'Created',
+      accessor: (r) => (
+        <span className="text-sm text-gray-500">
+          {new Date(r.createdAt).toLocaleDateString()}
+        </span>
+      ),
+    },
   ];
 
   return (
@@ -133,9 +183,8 @@ export default function RequestList() {
         </div>
       )}
 
-      {loading ? (
-        <RequestListSkeleton />
-      ) : requests.length === 0 ? (
+      {/* When not loading and empty, show custom empty state to preserve "Show all" button */}
+      {!loading && requests.length === 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
           <p className="text-gray-500">No requests found</p>
           {statusFilter !== 'all' && (
@@ -148,75 +197,36 @@ export default function RequestList() {
           )}
         </div>
       ) : (
-        <>
-          {/* Desktop Table */}
-          <div className="hidden md:block bg-white rounded-lg border border-gray-200 overflow-hidden">
-            {/* Table Header */}
-            <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-gray-50 border-b border-gray-200 text-sm font-medium text-gray-500">
-              <div className="col-span-3">ID</div>
-              <div className="col-span-3">Action</div>
-              <div className="col-span-2">Status</div>
-              <div className="col-span-2">Urgency</div>
-              <div className="col-span-2">Created</div>
-            </div>
-
-            {/* Table Body */}
-            <div className="divide-y divide-gray-200">
-              {requests.map((request) => (
-                <div
-                  key={request.id}
-                  onClick={() => navigate(`/requests/${request.id}`)}
-                  className="grid grid-cols-12 gap-4 px-4 py-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                >
-                  <div className="col-span-3 font-mono text-sm text-gray-600 truncate">
-                    {request.id}
-                  </div>
-                  <div className="col-span-3 font-medium text-gray-900 truncate">
-                    {request.action}
-                  </div>
-                  <div className="col-span-2">
-                    <StatusBadge status={request.status} />
-                  </div>
-                  <div className="col-span-2">
-                    <span className={`px-2 py-0.5 text-xs font-medium rounded ${urgencyColors[request.urgency]}`}>
-                      {request.urgency.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="col-span-2 text-sm text-gray-500">
-                    {new Date(request.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Mobile Cards */}
-          <div className="md:hidden space-y-3">
-            {requests.map((request) => (
-              <div
-                key={request.id}
-                onClick={() => navigate(`/requests/${request.id}`)}
-                className="bg-white rounded-lg border border-gray-200 p-4 active:bg-gray-50 cursor-pointer"
-              >
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <h3 className="font-medium text-gray-900">{request.action}</h3>
-                  <StatusBadge status={request.status} />
-                </div>
-                <p className="font-mono text-xs text-gray-500 truncate mb-3">
-                  {request.id}
-                </p>
-                <div className="flex items-center justify-between text-sm">
-                  <span className={`px-2 py-0.5 text-xs font-medium rounded ${urgencyColors[request.urgency]}`}>
-                    {request.urgency.toUpperCase()}
-                  </span>
-                  <span className="text-gray-500">
-                    {new Date(request.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
+        <ResponsiveTable
+          columns={columns}
+          rows={requests}
+          keyExtractor={(r) => r.id}
+          loading={loading}
+          emptyMessage="No requests found"
+          onRowClick={(r) => navigate(`/requests/${r.id}`)}
+          renderMobileCard={(request) => (
+            <div
+              onClick={() => navigate(`/requests/${request.id}`)}
+              className="bg-white rounded-lg border border-gray-200 p-4 active:bg-gray-50 cursor-pointer"
+            >
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <h3 className="font-medium text-gray-900">{request.action}</h3>
+                <StatusBadge status={request.status} />
               </div>
-            ))}
-          </div>
-        </>
+              <p className="font-mono text-xs text-gray-500 truncate mb-3">
+                {request.id}
+              </p>
+              <div className="flex items-center justify-between text-sm">
+                <span className={`px-2 py-0.5 text-xs font-medium rounded ${urgencyColors[request.urgency]}`}>
+                  {request.urgency.toUpperCase()}
+                </span>
+                <span className="text-gray-500">
+                  {new Date(request.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+          )}
+        />
       )}
     </div>
   );

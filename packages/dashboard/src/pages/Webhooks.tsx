@@ -3,6 +3,7 @@ import { adminApi } from '../api';
 import { ResponsiveTable, type Column } from '../components/ResponsiveTable';
 import { useToast } from '../components/Toast';
 import { Modal } from '../components/Modal';
+import { WebhooksSkeleton } from '../components/Skeleton';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 
 interface WebhookDelivery {
@@ -193,6 +194,8 @@ export default function Webhooks() {
       ),
     },
   ];
+
+  if (loading) return <WebhooksSkeleton />;
 
   if (error) {
     return (

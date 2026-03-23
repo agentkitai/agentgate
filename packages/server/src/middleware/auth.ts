@@ -4,11 +4,11 @@
 // Uses agentkit-auth middleware factory for JWT handling.
 
 import type { Context, Next } from "hono";
-import { createHash } from "node:crypto";
-import { eq, and, isNull } from "drizzle-orm";
-import { getDb, apiKeys, users, type ApiKey } from "../db/index.js";
+import { eq } from "drizzle-orm";
+import { getDb, users, type ApiKey } from "../db/index.js";
 import { getRateLimiter, type RateLimitResult } from "../lib/rate-limiter/index.js";
 import { getConfig } from "../config.js";
+import { validateApiKey } from "../lib/api-keys.js";
 import {
   verifyAccessToken,
   type AuthConfig,
@@ -42,10 +42,6 @@ export type AuthVariables = {
 };
 
 // ── Helpers ────────────────────────────────────────────────────────
-
-function hashApiKey(key: string): string {
-  return createHash("sha256").update(key).digest("hex");
-}
 
 function getAuthConfig(): AuthConfig {
   const config = getConfig();
@@ -86,28 +82,25 @@ function getCookie(c: Context, name: string): string | undefined {
 
 // ── API Key Resolution ─────────────────────────────────────────────
 
-async function resolveApiKeyAuth(key: string): Promise<AgentGateAuthContext | null> {
-  const hash = hashApiKey(key);
-  const results = await getDb()
-    .select()
-    .from(apiKeys)
-    .where(and(eq(apiKeys.keyHash, hash), isNull(apiKeys.revokedAt)))
-    .limit(1);
+async function resolveApiKeyAuth(key: string): Promise<{ auth: AgentGateAuthContext; apiKey: ApiKey } | null> {
+  const apiKey = await validateApiKey(key);
+  if (!apiKey) return null;
 
-  if (!results[0]) return null;
-  const apiKey = results[0];
   const scopes = JSON.parse(apiKey.scopes) as string[];
   const role: Role = scopes.includes('admin') ? 'admin' : 'editor';
 
   return {
-    identity: {
-      type: 'api_key',
-      id: apiKey.id,
-      displayName: apiKey.name,
-      role,
+    auth: {
+      identity: {
+        type: 'api_key',
+        id: apiKey.id,
+        displayName: apiKey.name,
+        role,
+      },
+      tenantId: 'default',
+      permissions: mapScopesToPermissions(scopes),
     },
-    tenantId: 'default',
-    permissions: mapScopesToPermissions(scopes),
+    apiKey,
   };
 }
 
@@ -175,44 +168,30 @@ export async function authMiddleware(
       return c.json({ error: "API key authentication is not allowed in oidc-required mode" }, 401);
     }
 
-    const authCtx = await resolveApiKeyAuth(token);
-    if (!authCtx) {
+    const resolved = await resolveApiKeyAuth(token);
+    if (!resolved) {
       return c.json({ error: "Invalid API key" }, 401);
     }
 
     // Rate limiting (only for API keys, not JWT users)
-    const hash = hashApiKey(token);
-    const apiKeyResults = await getDb()
-      .select()
-      .from(apiKeys)
-      .where(and(eq(apiKeys.keyHash, hash), isNull(apiKeys.revokedAt)))
-      .limit(1);
+    const rateLimiter = getRateLimiter();
+    const rateLimitResult = await rateLimiter.checkLimit(resolved.apiKey.id, resolved.apiKey.rateLimit);
 
-    const apiKeyRecord = apiKeyResults[0];
-    if (apiKeyRecord) {
-      const rateLimiter = getRateLimiter();
-      const rateLimitResult = await rateLimiter.checkLimit(apiKeyRecord.id, apiKeyRecord.rateLimit);
-
-      if (!rateLimitResult.allowed) {
-        setRateLimitHeaders(c, rateLimitResult);
-        c.header("Retry-After", Math.ceil(rateLimitResult.resetMs / 1000).toString());
-        return c.json({ error: "Rate limit exceeded" }, 429);
-      }
-
-      c.set("apiKey", apiKeyRecord);
-      c.set("rateLimit", rateLimitResult);
-
-      // Set auth context
-      c.set("auth", authCtx);
-      await next();
-
-      if (rateLimitResult.limit > 0) {
-        setRateLimitHeaders(c, rateLimitResult);
-      }
-      return;
+    if (!rateLimitResult.allowed) {
+      setRateLimitHeaders(c, rateLimitResult);
+      c.header("Retry-After", Math.ceil(rateLimitResult.resetMs / 1000).toString());
+      return c.json({ error: "Rate limit exceeded" }, 429);
     }
 
-    return c.json({ error: "Invalid API key" }, 401);
+    c.set("apiKey", resolved.apiKey);
+    c.set("rateLimit", rateLimitResult);
+    c.set("auth", resolved.auth);
+    await next();
+
+    if (rateLimitResult.limit > 0) {
+      setRateLimitHeaders(c, rateLimitResult);
+    }
+    return;
   }
 
   // ── JWT flow ───────────────────────────────────────────────

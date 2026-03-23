@@ -36,9 +36,9 @@ services:
       - redis-data:/data
     networks:
       - agentgate-internal
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-agentgate}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-agentgate}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -63,7 +63,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-agentgate}:${POSTGRES_PASSWORD:-agentgate}@postgres:5432/${POSTGRES_DB:-agentgate}
       
       # Redis
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-agentgate}@redis:6379
       RATE_LIMIT_BACKEND: redis
       
       # Security

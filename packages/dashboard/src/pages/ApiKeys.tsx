@@ -3,6 +3,7 @@ import { adminApi } from '../api';
 import { ResponsiveTable, type Column } from '../components/ResponsiveTable';
 import { useToast } from '../components/Toast';
 import { Modal } from '../components/Modal';
+import { ApiKeysSkeleton } from '../components/Skeleton';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 
 interface ApiKey {
@@ -197,6 +198,8 @@ export default function ApiKeys() {
         ) : null,
     },
   ];
+
+  if (loading) return <ApiKeysSkeleton />;
 
   if (error) {
     return (

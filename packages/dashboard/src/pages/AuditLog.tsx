@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { api, type AuditEntryWithRequest, type ApprovalStatus } from '../api';
 import { StatusBadge } from '../components/StatusBadge';
 import { ResponsiveTable, type Column } from '../components/ResponsiveTable';
+import { AuditLogSkeleton } from '../components/Skeleton';
 
 const EVENT_TYPES = [
   { value: '', label: 'All Events' },
@@ -184,6 +185,8 @@ export default function AuditLog() {
       ),
     },
   ];
+
+  if (loading) return <AuditLogSkeleton />;
 
   return (
     <div className="space-y-6">

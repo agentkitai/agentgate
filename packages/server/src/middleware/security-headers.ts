@@ -25,8 +25,9 @@ export async function securityHeadersMiddleware(
   // Control referrer information
   c.header("Referrer-Policy", "strict-origin-when-cross-origin");
 
-  // HSTS (opt-in)
-  if (getConfig().hstsEnabled) {
+  // HSTS — enabled by explicit config, or automatically in production
+  const config = getConfig();
+  if (config.hstsEnabled || config.nodeEnv === "production") {
     c.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
 

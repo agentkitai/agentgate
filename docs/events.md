@@ -67,6 +67,82 @@ const base = createBaseEvent("request.created", "my-plugin");
 
 ---
 
+## Subscribing to Events
+
+Use the `AgentGateEmitter` class to subscribe to events. The global singleton is available via `getGlobalEmitter()`, or create an isolated instance with `createEmitter()`.
+
+```typescript
+import { getGlobalEmitter, createEmitter } from "@agentgate/core";
+
+const emitter = getGlobalEmitter();
+```
+
+### `emitter.on(eventType, listener)`
+
+Subscribe to events of a specific type. Returns an unsubscribe function.
+
+```typescript
+const unsub = emitter.on("request.created", (event) => {
+  console.log("New request:", event.payload.requestId);
+});
+
+// Later: unsubscribe
+unsub();
+```
+
+### `emitter.once(eventType, listener)`
+
+Subscribe to a single event — the listener is automatically removed after the first emission.
+
+```typescript
+emitter.once("request.decided", (event) => {
+  console.log("First decision:", event.payload.status);
+});
+```
+
+### `emitter.onAll(listener)`
+
+Subscribe to all events regardless of type. Useful for logging and audit.
+
+```typescript
+const unsub = emitter.onAll((event) => {
+  console.log(`[${event.type}]`, event.eventId);
+});
+```
+
+### `emitter.off(eventType, listener)` / `emitter.offAll(listener)`
+
+Explicitly unsubscribe a listener (alternative to calling the function returned by `on`).
+
+### `emitter.emit(event)` / `emitter.emitSync(event)`
+
+Emit an event. `emit` is async and awaits all listeners; `emitSync` is fire-and-forget.
+
+```typescript
+import { createBaseEvent, EventNames } from "@agentgate/core";
+
+const event = {
+  ...createBaseEvent(EventNames.SYSTEM_ERROR, "my-plugin"),
+  payload: { message: "Something went wrong" },
+};
+
+// Await all listeners
+await emitter.emit(event);
+
+// Or fire-and-forget
+emitter.emitSync(event);
+```
+
+### Utility Methods
+
+| Method | Description |
+|--------|-------------|
+| `listenerCount(eventType?)` | Number of listeners (specific type + wildcards, or total) |
+| `removeAllListeners(eventType?)` | Remove all listeners (optionally for a specific event type) |
+| `eventTypes()` | List all event types with registered listeners |
+
+---
+
 ## Event Payload Types
 
 Each event type carries a typed `payload`. All fields are listed below.

@@ -35,9 +35,17 @@ export async function deliverWebhook(event: string, data: unknown): Promise<void
     return events.includes(event) || events.includes('*');
   });
 
-  await Promise.allSettled(
+  const results = await Promise.allSettled(
     filtered.map(webhook => deliverToWebhook(webhook, event, data))
   );
+
+  // Log any failed deliveries
+  const log = getLogger();
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      log.error({ err: result.reason, event }, 'Webhook delivery failed');
+    }
+  }
 }
 
 async function deliverToWebhook(webhook: typeof webhooks.$inferSelect, event: string, data: unknown) {
