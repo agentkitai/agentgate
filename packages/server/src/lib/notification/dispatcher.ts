@@ -26,6 +26,7 @@ import { DiscordAdapter } from "./adapters/discord.js";
 import { WebhookAdapter } from "./adapters/webhook.js";
 import { getConfig } from "../../config.js";
 import { getLogger } from "../logger.js";
+import { getHealthTracker } from "./health.js";
 
 /**
  * Notification Dispatcher
@@ -203,6 +204,63 @@ export class NotificationDispatcher {
   }
 
   /**
+   * Get fallback channels for a given channel type from config
+   */
+  private getFallbackChannels(channelType: NotificationChannelType): NotificationChannelType[] {
+    const config = getConfig();
+    const fallbacks = config.channelFallbacks?.[channelType];
+    if (!fallbacks) return [];
+    return fallbacks.filter(
+      (fb: string): fb is NotificationChannelType => this.adapters.has(fb as NotificationChannelType)
+    );
+  }
+
+  /**
+   * Attempt to send to a specific channel, with health tracking.
+   * Returns the result of the send attempt.
+   */
+  private async sendToChannel(
+    channelType: NotificationChannelType,
+    target: string,
+    event: AgentGateEvent
+  ): Promise<NotificationResult> {
+    const adapter = this.adapters.get(channelType);
+    const tracker = getHealthTracker();
+
+    if (!adapter) {
+      return {
+        success: false,
+        channel: channelType,
+        target,
+        error: `No adapter registered for channel type: ${channelType}`,
+        timestamp: Date.now(),
+      };
+    }
+
+    try {
+      const result = await adapter.send(target, event);
+
+      if (result.success) {
+        tracker.recordSuccess(channelType);
+      } else {
+        tracker.recordFailure(channelType);
+      }
+
+      return result;
+    } catch (error) {
+      tracker.recordFailure(channelType);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      return {
+        success: false,
+        channel: channelType,
+        target,
+        error: errorMessage,
+        timestamp: Date.now(),
+      };
+    }
+  }
+
+  /**
    * Dispatch an event to all matching channels
    *
    * @param event - The event to dispatch
@@ -215,41 +273,87 @@ export class NotificationDispatcher {
   ): Promise<NotificationResult[]> {
     const routes = this.matchRoutes(event, policyChannels);
     const results: NotificationResult[] = [];
+    const tracker = getHealthTracker();
 
     for (const route of routes) {
-      const adapter = this.adapters.get(route.channel);
-      if (!adapter) {
-        results.push({
-          success: false,
-          channel: route.channel,
-          target: route.target,
-          error: `No adapter registered for channel type: ${route.channel}`,
-          timestamp: Date.now(),
-        });
+      // Check if the primary channel is healthy
+      if (!tracker.isHealthy(route.channel)) {
+        getLogger().warn(
+          `[NotificationDispatcher] Channel "${route.channel}" is unhealthy, attempting fallback`
+        );
+
+        // Try fallback channels
+        const fallbacks = this.getFallbackChannels(route.channel);
+        let delivered = false;
+
+        for (const fallbackChannel of fallbacks) {
+          if (!tracker.isHealthy(fallbackChannel)) {
+            getLogger().warn(
+              `[NotificationDispatcher] Fallback channel "${fallbackChannel}" is also unhealthy, skipping`
+            );
+            continue;
+          }
+
+          const fallbackResult = await this.sendToChannel(fallbackChannel, route.target, event);
+          results.push(fallbackResult);
+
+          if (fallbackResult.success) {
+            getLogger().info(
+              `[NotificationDispatcher] Failover succeeded: ${route.channel} -> ${fallbackChannel}`
+            );
+            delivered = true;
+            break;
+          }
+        }
+
+        // If no fallback succeeded, still try the original (it might recover)
+        if (!delivered) {
+          const result = await this.sendToChannel(route.channel, route.target, event);
+          results.push(result);
+
+          if (!result.success && this.options.logLevel !== "error") {
+            getLogger().warn(
+              `[NotificationDispatcher] Failed to deliver to ${route.channel}:${route.target} (all fallbacks exhausted): ${result.error}`
+            );
+          }
+
+          if (!result.success && !this.options.failSilently) {
+            throw new Error(result.error);
+          }
+        }
+
         continue;
       }
 
-      try {
-        const result = await adapter.send(route.target, event);
-        results.push(result);
+      // Primary channel is healthy — send directly
+      const result = await this.sendToChannel(route.channel, route.target, event);
+      results.push(result);
 
-        if (!result.success && this.options.logLevel !== "error") {
+      if (!result.success) {
+        if (this.options.logLevel !== "error") {
           getLogger().warn(
             `[NotificationDispatcher] Failed to deliver to ${route.channel}:${route.target}: ${result.error}`
           );
         }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        results.push({
-          success: false,
-          channel: route.channel,
-          target: route.target,
-          error: errorMessage,
-          timestamp: Date.now(),
-        });
+
+        // Try fallback channels on failure
+        const fallbacks = this.getFallbackChannels(route.channel);
+        for (const fallbackChannel of fallbacks) {
+          if (!tracker.isHealthy(fallbackChannel)) continue;
+
+          const fallbackResult = await this.sendToChannel(fallbackChannel, route.target, event);
+          results.push(fallbackResult);
+
+          if (fallbackResult.success) {
+            getLogger().info(
+              `[NotificationDispatcher] Failover succeeded: ${route.channel} -> ${fallbackChannel}`
+            );
+            break;
+          }
+        }
 
         if (!this.options.failSilently) {
-          throw error;
+          throw new Error(result.error);
         }
       }
     }

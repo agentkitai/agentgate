@@ -12,10 +12,14 @@ import policiesRouter from "./routes/policies.js";
 import apiKeysRouter from "./routes/api-keys.js";
 import webhooksRouter from "./routes/webhooks.js";
 import auditRouter from "./routes/audit.js";
+import analyticsRouter from "./routes/analytics.js";
 import tokensRouter from "./routes/tokens.js";
 import decideRouter from "./routes/decide.js";
 import overridesRouter from "./routes/overrides.js";
 import { startOverrideCleanup, stopOverrideCleanup } from "./routes/overrides.js";
+import channelsRouter from "./routes/channels.js";
+import escalationsRouter from "./routes/escalations.js";
+import { startEscalationScanner, stopEscalationScanner } from "./lib/escalation.js";
 import probesRouter from "./routes/probes.js";
 import { registry, httpRequestsTotal, httpRequestDuration } from "./lib/metrics.js";
 import { authMiddleware, type AuthVariables } from "./middleware/auth.js";
@@ -174,7 +178,10 @@ app.route("/api/policies", policiesRouter);
 app.route("/api/api-keys", apiKeysRouter);
 app.route("/api/webhooks", webhooksRouter);
 app.route("/api/audit", auditRouter);
+app.route("/api/analytics", analyticsRouter);
 app.route("/api/overrides", overridesRouter);
+app.route("/api/channels", channelsRouter);
+app.route("/api", escalationsRouter);
 
 // Global error handler
 app.onError((err, c) => {
@@ -276,6 +283,10 @@ async function main() {
   // Start background cleanup for expired overrides
   startOverrideCleanup();
   getLogger().info('Override cleanup started (60s interval).');
+
+  // Start escalation scanner for pending requests
+  startEscalationScanner();
+  getLogger().info('Escalation scanner started (30s interval).');
   getLogger().info(`Cleanup job started (${config.cleanupIntervalMs}ms interval, ${config.cleanupRetentionDays}d retention).`);
 
   // --- Graceful shutdown ---
@@ -309,6 +320,9 @@ async function main() {
 
     stopOverrideCleanup();
     getLogger().info('Override cleanup stopped.');
+
+    stopEscalationScanner();
+    getLogger().info('Escalation scanner stopped.');
 
     try {
       await resetRateLimiter();

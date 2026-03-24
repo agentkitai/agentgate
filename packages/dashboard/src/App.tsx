@@ -3,6 +3,7 @@ import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
 import { ChunkErrorBoundary } from './components/ChunkErrorBoundary';
+import { MobileNav } from './components/MobileNav';
 import {
   HomeSkeleton,
   RequestListSkeleton,
@@ -18,7 +19,13 @@ const RequestDetail = lazy(() => import('./pages/RequestDetail'));
 const ApiKeys = lazy(() => import('./pages/ApiKeys'));
 const Webhooks = lazy(() => import('./pages/Webhooks'));
 const AuditLog = lazy(() => import('./pages/AuditLog'));
+const Policies = lazy(() => import('./pages/Policies'));
 const Login = lazy(() => import('./pages/Login'));
+const Settings = lazy(() => import('./pages/Settings'));
+const WebhookObservability = lazy(() => import('./pages/WebhookObservability'));
+const PolicySimulator = lazy(() => import('./pages/PolicySimulator'));
+const Analytics = lazy(() => import('./pages/Analytics'));
+const RequestQueue = lazy(() => import('./pages/RequestQueue'));
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -137,9 +144,15 @@ function App() {
             <nav className="hidden md:flex items-center gap-1">
               <NavLink to="/">Dashboard</NavLink>
               <NavLink to="/requests">Requests</NavLink>
+              <NavLink to="/queue">Queue</NavLink>
+              <NavLink to="/policies">Policies</NavLink>
+              <NavLink to="/simulator">Simulator</NavLink>
               <NavLink to="/audit">Audit Log</NavLink>
+              <NavLink to="/analytics">Analytics</NavLink>
               {canManageKeys && <NavLink to="/settings/api-keys">API Keys</NavLink>}
               {canManageWebhooks && <NavLink to="/settings/webhooks">Webhooks</NavLink>}
+              {canManageWebhooks && <NavLink to="/webhooks/observability">Webhook Health</NavLink>}
+              <NavLink to="/settings">Settings</NavLink>
             </nav>
 
             {/* User info + Logout */}
@@ -191,9 +204,15 @@ function App() {
               )}
               <NavLink to="/" onClick={closeMobileMenu}>Dashboard</NavLink>
               <NavLink to="/requests" onClick={closeMobileMenu}>Requests</NavLink>
+              <NavLink to="/queue" onClick={closeMobileMenu}>Queue</NavLink>
+              <NavLink to="/policies" onClick={closeMobileMenu}>Policies</NavLink>
+              <NavLink to="/simulator" onClick={closeMobileMenu}>Simulator</NavLink>
               <NavLink to="/audit" onClick={closeMobileMenu}>Audit Log</NavLink>
+              <NavLink to="/analytics" onClick={closeMobileMenu}>Analytics</NavLink>
               {canManageKeys && <NavLink to="/settings/api-keys" onClick={closeMobileMenu}>API Keys</NavLink>}
               {canManageWebhooks && <NavLink to="/settings/webhooks" onClick={closeMobileMenu}>Webhooks</NavLink>}
+              {canManageWebhooks && <NavLink to="/webhooks/observability" onClick={closeMobileMenu}>Webhook Health</NavLink>}
+              <NavLink to="/settings" onClick={closeMobileMenu}>Settings</NavLink>
               {isAuthenticated && (
                 <button
                   onClick={() => {
@@ -219,7 +238,7 @@ function App() {
       )}
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-24 md:pb-8">
         <ChunkErrorBoundary>
         <Routes>
           <Route
@@ -243,6 +262,16 @@ function App() {
             }
           />
           <Route
+            path="/queue"
+            element={
+              <ProtectedRoute>
+                <Suspense fallback={<RequestListSkeleton />}>
+                  <RequestQueue />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/requests/:id"
             element={
               <ProtectedRoute>
@@ -253,11 +282,41 @@ function App() {
             }
           />
           <Route
+            path="/policies"
+            element={
+              <ProtectedRoute>
+                <Suspense fallback={<div className="space-y-6"><SkeletonBox className="h-8 w-40" /><SkeletonBox className="h-16 w-full" /><SkeletonBox className="h-16 w-full" /></div>}>
+                  <Policies />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/simulator"
+            element={
+              <ProtectedRoute>
+                <Suspense fallback={<div className="space-y-6"><SkeletonBox className="h-8 w-48" /><SkeletonBox className="h-64 w-full" /></div>}>
+                  <PolicySimulator />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/audit"
             element={
               <ProtectedRoute>
                 <Suspense fallback={<AuditLogSkeleton />}>
                   <AuditLog />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute>
+                <Suspense fallback={<div className="space-y-6"><SkeletonBox className="h-8 w-48" /><div className="grid grid-cols-2 sm:grid-cols-4 gap-4"><SkeletonBox className="h-24" /><SkeletonBox className="h-24" /><SkeletonBox className="h-24" /><SkeletonBox className="h-24" /></div></div>}>
+                  <Analytics />
                 </Suspense>
               </ProtectedRoute>
             }
@@ -286,11 +345,36 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/webhooks/observability"
+            element={
+              <ProtectedRoute>
+                <PermissionRoute permission="webhooks:manage">
+                  <Suspense fallback={<div className="space-y-6"><SkeletonBox className="h-8 w-64" /><div className="grid grid-cols-1 sm:grid-cols-3 gap-4"><SkeletonBox className="h-24" /><SkeletonBox className="h-24" /><SkeletonBox className="h-24" /></div></div>}>
+                    <WebhookObservability />
+                  </Suspense>
+                </PermissionRoute>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Suspense fallback={<SkeletonBox className="h-64 w-full" />}>
+                  <Settings />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
           <Route path="/login" element={<Suspense fallback={null}><Login /></Suspense>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </ChunkErrorBoundary>
       </main>
+
+      {/* Mobile bottom navigation */}
+      {isAuthenticated && <MobileNav />}
     </div>
     </ToastProvider>
   );

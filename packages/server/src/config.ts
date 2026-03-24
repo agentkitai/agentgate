@@ -145,6 +145,20 @@ export const ConfigSchema = z.object({
     })
     .pipe(z.array(ChannelRouteSchema)),
 
+  // Channel Failover
+  /** Fallback channel chains (JSON string, e.g. {"slack":["email","webhook"]}) */
+  channelFallbacks: z
+    .string()
+    .default("{}")
+    .transform((val): Record<string, string[]> => {
+      if (!val) return {};
+      try {
+        return JSON.parse(val) as Record<string, string[]>;
+      } catch {
+        return {};
+      }
+    }),
+
   // Webhook Encryption
   /** AES-256-GCM key for encrypting webhook secrets at rest */
   webhookEncryptionKey: z.string().optional(),
@@ -162,6 +176,27 @@ export const ConfigSchema = z.object({
   apiKeyCacheMaxSize: z.coerce.number().int().min(1).default(1000),
 
   // OIDC / SSO
+  /** When true, API key auth is blocked — only SSO login is accepted */
+  ssoEnforced: z
+    .union([z.boolean(), z.string()])
+    .transform((val) => {
+      if (typeof val === "boolean") return val;
+      return ["true", "1", "yes"].includes(val.toLowerCase());
+    })
+    .default(false),
+  /** Maps OIDC groups to roles (JSON string, e.g. {"engineering":"editor","security":"admin"}) */
+  oidcGroupMapping: z
+    .string()
+    .default("{}")
+    .transform((val) => {
+      try {
+        return JSON.parse(val) as Record<string, string>;
+      } catch {
+        return {} as Record<string, string>;
+      }
+    }),
+  /** Max JWT session lifetime in seconds (default: 86400 = 24h) */
+  maxSessionDurationSec: z.coerce.number().int().min(60).default(86400),
   /** OIDC issuer URL (e.g., https://login.corp.com) */
   oidcIssuer: z.string().optional(),
   /** OIDC client ID */
@@ -242,6 +277,7 @@ const ENV_MAP: Record<string, keyof z.infer<typeof ConfigSchema>> = {
   SMTP_FROM: "smtpFrom",
   DASHBOARD_URL: "dashboardUrl",
   CHANNEL_ROUTES: "channelRoutes",
+  CHANNEL_FALLBACKS: "channelFallbacks",
   WEBHOOK_ENCRYPTION_KEY: "webhookEncryptionKey",
   CLEANUP_RETENTION_DAYS: "cleanupRetentionDays",
   CLEANUP_INTERVAL_MS: "cleanupIntervalMs",
@@ -250,6 +286,9 @@ const ENV_MAP: Record<string, keyof z.infer<typeof ConfigSchema>> = {
   METRICS_ENABLED: "metricsEnabled",
   LOG_LEVEL: "logLevel",
   LOG_FORMAT: "logFormat",
+  SSO_ENFORCED: "ssoEnforced",
+  OIDC_GROUP_MAPPING: "oidcGroupMapping",
+  MAX_SESSION_DURATION_SEC: "maxSessionDurationSec",
   OIDC_ISSUER: "oidcIssuer",
   OIDC_CLIENT_ID: "oidcClientId",
   OIDC_CLIENT_SECRET: "oidcClientSecret",

@@ -447,4 +447,44 @@ authRouter.get("/me", authMiddleware, async (c) => {
   });
 });
 
+/**
+ * GET /auth/providers
+ * Returns configured auth modes, SSO enforcement status, and OIDC availability.
+ * Public endpoint — no auth required.
+ */
+authRouter.get("/providers", async (c) => {
+  const config = getConfig();
+  return c.json({
+    authMode: config.authMode,
+    ssoEnforced: config.ssoEnforced,
+    oidcConfigured: Boolean(config.oidcIssuer && config.oidcClientId),
+    oidcIssuer: config.oidcIssuer || null,
+  });
+});
+
+/**
+ * GET /auth/session
+ * Returns current user session info (identity, role, permissions, session expiry).
+ * Requires authentication.
+ */
+authRouter.get("/session", authMiddleware, async (c) => {
+  const auth = c.get("auth") as AgentGateAuthContext | undefined;
+
+  if (!auth) {
+    return c.json({ error: "Authentication required" }, 401);
+  }
+
+  const config = getConfig();
+  const now = Math.floor(Date.now() / 1000);
+  const sessionExpiresAt = now + config.maxSessionDurationSec;
+
+  return c.json({
+    identity: auth.identity,
+    tenantId: auth.tenantId,
+    permissions: auth.permissions,
+    maxSessionDurationSec: config.maxSessionDurationSec,
+    sessionExpiresAt,
+  });
+});
+
 export default authRouter;

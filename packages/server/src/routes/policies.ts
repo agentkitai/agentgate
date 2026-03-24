@@ -2,11 +2,13 @@
 
 import { Hono } from "hono";
 import { nanoid } from "nanoid";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, gte, lte } from "drizzle-orm";
 import isSafeRegex from "safe-regex2";
-import { getDb, policies } from "../db/index.js";
-import type { PolicyRule } from "@agentgate/core";
+import { getDb, policies, approvalRequests } from "../db/index.js";
+import type { PolicyRule, Policy, ApprovalRequest } from "@agentgate/core";
+import { evaluatePolicy } from "@agentgate/core";
 import { invalidatePolicyCache } from "../lib/policy-cache.js";
+import { getTemplates, getTemplateById } from "../lib/policy-templates.js";
 
 const policiesRouter = new Hono();
 
@@ -149,6 +151,233 @@ policiesRouter.post("/", async (c) => {
     },
     201
   );
+});
+
+// GET /api/policies/templates - List policy templates
+policiesRouter.get("/templates", async (c) => {
+  return c.json({ templates: getTemplates() });
+});
+
+// POST /api/policies/from-template - Create a policy from a template
+policiesRouter.post("/from-template", async (c) => {
+  const body = await c.req.json();
+  const { templateId, overrides } = body as {
+    templateId?: string;
+    overrides?: { name?: string; priority?: number; enabled?: boolean };
+  };
+
+  if (!templateId || typeof templateId !== "string") {
+    return c.json({ error: "templateId is required" }, 400);
+  }
+
+  const template = getTemplateById(templateId);
+  if (!template) {
+    return c.json({ error: `Template not found: ${templateId}` }, 404);
+  }
+
+  const name = overrides?.name ?? template.name;
+  const priority = overrides?.priority ?? template.priority;
+  const enabled = overrides?.enabled ?? true;
+  const rules = template.rules;
+
+  const id = nanoid();
+  const now = new Date();
+
+  await getDb().insert(policies).values({
+    id,
+    name,
+    rules: JSON.stringify(rules),
+    priority,
+    enabled,
+    createdAt: now,
+  });
+
+  invalidatePolicyCache();
+
+  return c.json(
+    {
+      id,
+      name,
+      rules,
+      priority,
+      enabled,
+      createdAt: now.toISOString(),
+      templateId,
+    },
+    201
+  );
+});
+
+// POST /api/policies/simulate - Simulate a candidate policy against historical requests
+policiesRouter.post("/simulate", async (c) => {
+  const body = await c.req.json();
+  const { rules, priority, from, to, limit } = body as {
+    rules?: PolicyRule[];
+    priority?: number;
+    from?: string;
+    to?: string;
+    limit?: number;
+  };
+
+  if (!Array.isArray(rules) || rules.length === 0) {
+    return c.json({ error: "rules is required and must be a non-empty array" }, 400);
+  }
+
+  // Validate rules
+  for (let i = 0; i < rules.length; i++) {
+    const rule = rules[i];
+    if (!rule || typeof rule !== "object" || !rule.match || typeof rule.match !== "object") {
+      return c.json({ error: `rules[${i}].match is required and must be an object` }, 400);
+    }
+    if (!["auto_approve", "auto_deny", "route_to_human", "route_to_agent"].includes(rule.decision)) {
+      return c.json({
+        error: `rules[${i}].decision must be one of: auto_approve, auto_deny, route_to_human, route_to_agent`,
+      }, 400);
+    }
+  }
+
+  const queryLimit = Math.max(1, Math.min(limit || 100, 500));
+
+  // Build date filters
+  const conditions = [];
+  if (from) {
+    conditions.push(gte(approvalRequests.createdAt, new Date(from)));
+  }
+  if (to) {
+    conditions.push(lte(approvalRequests.createdAt, new Date(to)));
+  }
+
+  // Load historical requests
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  const historicalRows = await getDb()
+    .select()
+    .from(approvalRequests)
+    .where(whereClause)
+    .orderBy(approvalRequests.createdAt)
+    .limit(queryLimit);
+
+  // Build candidate policy
+  const candidatePolicy: Policy = {
+    id: "__simulation__",
+    name: "Simulation Candidate",
+    rules,
+    priority: typeof priority === "number" ? priority : 0,
+    enabled: true,
+  };
+
+  // Load current active policies
+  const currentPolicyRows = await getDb()
+    .select()
+    .from(policies)
+    .orderBy(policies.priority);
+
+  const currentPolicies: Policy[] = currentPolicyRows.map((p) => ({
+    id: p.id,
+    name: p.name,
+    rules: JSON.parse(p.rules) as PolicyRule[],
+    priority: p.priority,
+    enabled: p.enabled,
+  }));
+
+  // Evaluate each request
+  const summary = { autoApproved: 0, autoDenied: 0, routedToHuman: 0 };
+  let changed = 0;
+  const details: Array<{
+    requestId: string;
+    action: string;
+    candidateDecision: string;
+    currentDecision: string;
+    changed: boolean;
+  }> = [];
+
+  for (const row of historicalRows) {
+    const request: ApprovalRequest = {
+      id: row.id,
+      action: row.action,
+      params: row.params ? JSON.parse(row.params) : {},
+      context: row.context ? JSON.parse(row.context) : {},
+      status: row.status as ApprovalRequest["status"],
+      urgency: row.urgency as ApprovalRequest["urgency"],
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+
+    const candidateResult = evaluatePolicy(request, [candidatePolicy]);
+    const currentResult = evaluatePolicy(request, currentPolicies);
+
+    const isChanged = candidateResult.decision !== currentResult.decision;
+    if (isChanged) changed++;
+
+    if (candidateResult.decision === "auto_approve") summary.autoApproved++;
+    else if (candidateResult.decision === "auto_deny") summary.autoDenied++;
+    else summary.routedToHuman++;
+
+    details.push({
+      requestId: row.id,
+      action: row.action,
+      candidateDecision: candidateResult.decision,
+      currentDecision: currentResult.decision,
+      changed: isChanged,
+    });
+  }
+
+  return c.json({
+    total: historicalRows.length,
+    results: summary,
+    changed,
+    details,
+  });
+});
+
+// POST /api/policies/:id/dry-run - Dry-run a single synthetic request against a policy
+policiesRouter.post("/:id/dry-run", async (c) => {
+  const { id } = c.req.param();
+
+  const existing = await getDb().select().from(policies).where(eq(policies.id, id)).limit(1);
+  if (existing.length === 0) {
+    return c.json({ error: "Policy not found" }, 404);
+  }
+
+  const body = await c.req.json();
+  const { action, params, context, urgency } = body as {
+    action?: string;
+    params?: Record<string, unknown>;
+    context?: Record<string, unknown>;
+    urgency?: string;
+  };
+
+  if (!action || typeof action !== "string") {
+    return c.json({ error: "action is required and must be a string" }, 400);
+  }
+
+  const syntheticRequest: ApprovalRequest = {
+    id: "__dry_run__",
+    action,
+    params: params || {},
+    context: context || {},
+    status: "pending",
+    urgency: (urgency as ApprovalRequest["urgency"]) || "normal",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const policy: Policy = {
+    id: existing[0]!.id,
+    name: existing[0]!.name,
+    rules: JSON.parse(existing[0]!.rules) as PolicyRule[],
+    priority: existing[0]!.priority,
+    enabled: existing[0]!.enabled,
+  };
+
+  const result = evaluatePolicy(syntheticRequest, [policy]);
+
+  return c.json({
+    decision: result.decision,
+    matchedRule: result.matchedRule || null,
+    reason: result.matchedRule
+      ? `Matched rule with decision "${result.decision}"`
+      : "No rule matched; defaulted to route_to_human",
+  });
 });
 
 // PUT /api/policies/:id - Update policy

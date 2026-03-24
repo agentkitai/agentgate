@@ -158,6 +158,32 @@ export const refreshTokens = pgTable("refresh_tokens", {
   idxRefreshTokensHash: index("idx_refresh_tokens_hash").on(table.tokenHash),
 }));
 
+// Escalation rules table
+export const escalationRules = pgTable("escalation_rules", {
+  id: text("id").primaryKey(),
+  policyId: text("policy_id"), // nullable — null means global
+  triggerAfterSec: integer("trigger_after_sec").notNull().default(1800), // 30 minutes
+  escalateTo: text("escalate_to").notNull(), // format "channel:target", e.g., "slack:#escalation"
+  priority: integer("priority").notNull().default(0),
+  enabled: integer("enabled").notNull().default(1), // 0 or 1
+  createdAt: integer("created_at").notNull(), // unix timestamp
+}, (table) => ({
+  idxEscalationRulesPolicyId: index("idx_escalation_rules_policy_id").on(table.policyId),
+}));
+
+// Escalation history table
+export const escalationHistory = pgTable("escalation_history", {
+  id: text("id").primaryKey(),
+  requestId: text("request_id").notNull(),
+  ruleId: text("rule_id").notNull(),
+  escalatedAt: integer("escalated_at").notNull(), // unix timestamp
+  fromChannel: text("from_channel"),
+  toChannel: text("to_channel").notNull(),
+}, (table) => ({
+  idxEscalationHistoryRequestId: index("idx_escalation_history_request_id").on(table.requestId),
+  idxEscalationHistoryRuleId: index("idx_escalation_history_rule_id").on(table.ruleId),
+}));
+
 // Type exports
 export type ApprovalRequest = typeof approvalRequests.$inferSelect;
 export type NewApprovalRequest = typeof approvalRequests.$inferInsert;
@@ -179,3 +205,7 @@ export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type RefreshToken = typeof refreshTokens.$inferSelect;
 export type NewRefreshToken = typeof refreshTokens.$inferInsert;
+export type EscalationRule = typeof escalationRules.$inferSelect;
+export type NewEscalationRule = typeof escalationRules.$inferInsert;
+export type EscalationHistory = typeof escalationHistory.$inferSelect;
+export type NewEscalationHistory = typeof escalationHistory.$inferInsert;

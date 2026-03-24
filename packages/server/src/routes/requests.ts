@@ -2,7 +2,7 @@
 
 import { Hono } from "hono";
 import { nanoid } from "nanoid";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, asc, and, sql } from "drizzle-orm";
 import { getDb, approvalRequests, auditLogs } from "../db/index.js";
 import {
   evaluatePolicy,
@@ -180,6 +180,7 @@ function formatRequest(row: typeof approvalRequests.$inferSelect) {
     decidedBy: row.decidedBy,
     decisionReason: row.decisionReason,
     expiresAt: row.expiresAt?.toISOString() || null,
+    slaRemainingMs: row.expiresAt ? row.expiresAt.getTime() - Date.now() : null,
   };
 }
 
@@ -342,6 +343,37 @@ requestsRouter.post("/", async (c) => {
   return c.json(response, 201);
 });
 
+// GET /api/requests/queue-stats - Get pending queue statistics
+requestsRouter.get("/queue-stats", async (c) => {
+  const pendingCondition = eq(approvalRequests.status, "pending");
+
+  // Get all pending requests for stats computation
+  const pendingRows = await getDb()
+    .select({
+      urgency: approvalRequests.urgency,
+      createdAt: approvalRequests.createdAt,
+    })
+    .from(approvalRequests)
+    .where(pendingCondition);
+
+  const byUrgency = { critical: 0, high: 0, normal: 0, low: 0 };
+  let oldestCreatedAt: Date | null = null;
+
+  for (const row of pendingRows) {
+    const u = row.urgency as keyof typeof byUrgency;
+    if (u in byUrgency) byUrgency[u]++;
+    if (!oldestCreatedAt || row.createdAt < oldestCreatedAt) {
+      oldestCreatedAt = row.createdAt;
+    }
+  }
+
+  return c.json({
+    total_pending: pendingRows.length,
+    by_urgency: byUrgency,
+    oldest_pending_age_ms: oldestCreatedAt ? Date.now() - oldestCreatedAt.getTime() : null,
+  });
+});
+
 // GET /api/requests/:id - Get request by ID
 requestsRouter.get("/:id", async (c) => {
   const { id } = c.req.param();
@@ -363,6 +395,7 @@ requestsRouter.get("/:id", async (c) => {
 requestsRouter.get("/", async (c) => {
   const status = c.req.query("status");
   const action = c.req.query("action");
+  const sort = c.req.query("sort");
   const limit = Math.min(parseInt(c.req.query("limit") || "50", 10), 100);
   const offset = parseInt(c.req.query("offset") || "0", 10);
 
@@ -375,15 +408,29 @@ requestsRouter.get("/", async (c) => {
     conditions.push(eq(approvalRequests.action, action));
   }
 
+  // Determine sort order
+  const urgencyOrder = sql`CASE ${approvalRequests.urgency} WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 WHEN 'low' THEN 3 ELSE 4 END`;
+  let orderClause;
+  if (sort === "urgency") {
+    orderClause = asc(urgencyOrder);
+  } else if (sort === "created_at") {
+    orderClause = asc(approvalRequests.createdAt);
+  } else if (sort === "sla_remaining") {
+    // Sort by expiresAt ascending; NULLs last
+    orderClause = sql`CASE WHEN ${approvalRequests.expiresAt} IS NULL THEN 1 ELSE 0 END, ${approvalRequests.expiresAt} ASC`;
+  } else {
+    orderClause = desc(approvalRequests.createdAt);
+  }
+
   // Build query
   let query = getDb().select().from(approvalRequests);
-  
+
   if (conditions.length > 0) {
     query = query.where(and(...conditions)) as typeof query;
   }
 
   const results = await query
-    .orderBy(desc(approvalRequests.createdAt))
+    .orderBy(orderClause)
     .limit(limit)
     .offset(offset);
 

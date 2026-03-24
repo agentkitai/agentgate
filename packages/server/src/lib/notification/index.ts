@@ -21,6 +21,15 @@ export {
   createDispatcher,
 } from "./dispatcher.js";
 
+// Health Tracker
+export {
+  ChannelHealthTracker,
+  getHealthTracker,
+  resetHealthTracker,
+  type ChannelHealth,
+  type ChannelStatus,
+} from "./health.js";
+
 // Adapters
 export {
   EmailAdapter,

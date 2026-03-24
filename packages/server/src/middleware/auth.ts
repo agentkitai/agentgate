@@ -106,6 +106,35 @@ async function resolveApiKeyAuth(key: string): Promise<{ auth: AgentGateAuthCont
 
 // ── JWT Resolution ─────────────────────────────────────────────────
 
+/** Role priority (higher index = higher privilege) */
+const ROLE_PRIORITY: Role[] = ['viewer', 'editor', 'admin', 'owner'];
+
+/**
+ * Resolve a role from OIDC group claims using oidcGroupMapping config.
+ * Returns the highest-priority mapped role, or null if no mapping matches.
+ */
+function resolveRoleFromGroups(groups: string[]): Role | null {
+  const config = getConfig();
+  const mapping = config.oidcGroupMapping;
+  if (!mapping || Object.keys(mapping).length === 0) return null;
+
+  let bestRole: Role | null = null;
+  let bestPriority = -1;
+
+  for (const group of groups) {
+    const mappedRole = mapping[group] as Role | undefined;
+    if (mappedRole) {
+      const priority = ROLE_PRIORITY.indexOf(mappedRole);
+      if (priority > bestPriority) {
+        bestPriority = priority;
+        bestRole = mappedRole;
+      }
+    }
+  }
+
+  return bestRole;
+}
+
 async function resolveJwtAuth(token: string): Promise<AgentGateAuthContext | null> {
   const authConfig = getAuthConfig();
   const claims = await verifyAccessToken(token, authConfig);
@@ -123,7 +152,16 @@ async function resolveJwtAuth(token: string): Promise<AgentGateAuthContext | nul
 
   if (user.disabledAt) return null;
 
-  const role = (user.role as Role) || 'viewer';
+  let role = (user.role as Role) || 'viewer';
+
+  // Apply OIDC group-to-role mapping if groups claim is present
+  const groups = (claims as Record<string, unknown>).groups as string[] | undefined;
+  if (groups && Array.isArray(groups)) {
+    const mappedRole = resolveRoleFromGroups(groups);
+    if (mappedRole) {
+      role = mappedRole;
+    }
+  }
 
   return {
     identity: {
@@ -166,6 +204,10 @@ export async function authMiddleware(
   if (token?.startsWith('agk_')) {
     if (authMode === 'oidc-required') {
       return c.json({ error: "API key authentication is not allowed in oidc-required mode" }, 401);
+    }
+
+    if (config.ssoEnforced) {
+      return c.json({ error: "API key authentication disabled. SSO login required." }, 401);
     }
 
     const resolved = await resolveApiKeyAuth(token);

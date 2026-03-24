@@ -144,7 +144,7 @@ export default function RequestDetail() {
                 ref={reasonModal === 'denied' ? triggerRef : undefined}
                 onClick={() => setReasonModal('denied')}
                 disabled={deciding !== null}
-                className="flex-1 sm:flex-none px-4 py-2.5 bg-red-100 text-red-700 rounded-lg font-medium hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 sm:flex-none min-h-[3rem] px-6 py-3 bg-red-100 text-red-700 rounded-lg font-medium text-base hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {deciding === 'denied' ? <><Spinner />Denying...</> : 'Deny'}
               </button>
@@ -152,7 +152,7 @@ export default function RequestDetail() {
                 ref={reasonModal === 'approved' ? triggerRef : undefined}
                 onClick={() => setReasonModal('approved')}
                 disabled={deciding !== null}
-                className="flex-1 sm:flex-none px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 sm:flex-none min-h-[3rem] px-6 py-3 bg-green-600 text-white rounded-lg font-medium text-base hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {deciding === 'approved' ? <><Spinner />Approving...</> : 'Approve'}
               </button>

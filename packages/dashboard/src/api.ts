@@ -55,6 +55,16 @@ export interface ListAuditResponse {
   };
 }
 
+export interface PolicyTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  rules: Array<{ match: Record<string, unknown>; decision: string }>;
+  decision: string;
+  priority: number;
+}
+
 export interface ListPoliciesResponse {
   policies: Array<{
     id: string;
@@ -72,14 +82,29 @@ export interface ListPoliciesResponse {
   };
 }
 
+export interface ApprovalRequestWithSla extends ApprovalRequest {
+  slaRemainingMs: number | null;
+}
+
 export interface ListRequestsResponse {
-  requests: ApprovalRequest[];
+  requests: ApprovalRequestWithSla[];
   pagination: {
     total: number;
     limit: number;
     offset: number;
     hasMore: boolean;
   };
+}
+
+export interface QueueStatsResponse {
+  total_pending: number;
+  by_urgency: {
+    critical: number;
+    high: number;
+    normal: number;
+    low: number;
+  };
+  oldest_pending_age_ms: number | null;
 }
 
 /**
@@ -187,6 +212,45 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json();
 }
 
+// SSO / Auth info types
+export interface AuthProvidersResponse {
+  authMode: string;
+  ssoEnforced: boolean;
+  oidcConfigured: boolean;
+  oidcIssuer: string | null;
+}
+
+export interface AuthSessionResponse {
+  identity: {
+    type: 'user' | 'api_key';
+    id: string;
+    displayName: string;
+    email?: string;
+    role: string;
+  };
+  tenantId: string;
+  permissions: string[];
+  maxSessionDurationSec: number;
+  sessionExpiresAt: number;
+}
+
+// Auth info API (public + authenticated endpoints)
+export const authApi = {
+  async getProviders(): Promise<AuthProvidersResponse> {
+    const response = await fetch(`${baseUrl}/auth/providers`, {
+      credentials: 'include',
+    });
+    return handleResponse<AuthProvidersResponse>(response);
+  },
+
+  async getSession(): Promise<AuthSessionResponse> {
+    const response = await authFetch(`${baseUrl}/auth/session`, {
+      headers: getHeaders(),
+    });
+    return handleResponse<AuthSessionResponse>(response);
+  },
+};
+
 export const api = {
   // List policies with pagination
   async listPolicies(params?: {
@@ -204,24 +268,55 @@ export const api = {
     return handleResponse<ListPoliciesResponse>(response);
   },
 
+  // List policy templates
+  async listPolicyTemplates(): Promise<{ templates: PolicyTemplate[] }> {
+    const response = await authFetch(`${baseUrl}/api/policies/templates`, {
+      headers: getHeaders(),
+    });
+    return handleResponse<{ templates: PolicyTemplate[] }>(response);
+  },
+
+  // Create a policy from a template
+  async createPolicyFromTemplate(
+    templateId: string,
+    overrides?: { name?: string; priority?: number; enabled?: boolean }
+  ): Promise<ListPoliciesResponse['policies'][number] & { templateId: string }> {
+    const response = await authFetch(`${baseUrl}/api/policies/from-template`, {
+      method: 'POST',
+      headers: getHeaders('application/json'),
+      body: JSON.stringify({ templateId, overrides }),
+    });
+    return handleResponse(response);
+  },
+
   // List requests with optional filters
   async listRequests(params?: {
     status?: string;
     action?: string;
+    sort?: string;
     limit?: number;
     offset?: number;
   }): Promise<ListRequestsResponse> {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.set('status', params.status);
     if (params?.action) searchParams.set('action', params.action);
+    if (params?.sort) searchParams.set('sort', params.sort);
     if (params?.limit) searchParams.set('limit', params.limit.toString());
     if (params?.offset) searchParams.set('offset', params.offset.toString());
 
     const query = searchParams.toString();
     const url = `${baseUrl}/api/requests${query ? `?${query}` : ''}`;
-    
+
     const response = await authFetch(url, { headers: getHeaders() });
     return handleResponse<ListRequestsResponse>(response);
+  },
+
+  // Get queue stats for pending requests
+  async getQueueStats(): Promise<QueueStatsResponse> {
+    const response = await authFetch(`${baseUrl}/api/requests/queue-stats`, {
+      headers: getHeaders(),
+    });
+    return handleResponse<QueueStatsResponse>(response);
   },
 
   // Get single request by ID
@@ -314,6 +409,168 @@ export const api = {
     return handleResponse<{ actors: string[] }>(response);
   },
 };
+
+// Analytics types
+export interface AnalyticsOverview {
+  totalRequests: number;
+  approved: number;
+  denied: number;
+  expired: number;
+  pending: number;
+  approvalRate: number;
+  avgDecisionTimeMs: number;
+  autoApproveRate: number;
+}
+
+export interface TrendBucket {
+  bucket: string;
+  requests: number;
+  approved: number;
+  denied: number;
+  expired: number;
+  avgDecisionTimeMs: number;
+}
+
+export interface PolicyStat {
+  policyId: string;
+  policyName: string;
+  hitCount: number;
+  autoApproveCount: number;
+  autoDenyCount: number;
+  routeToHumanCount: number;
+}
+
+export const analyticsApi = {
+  async getOverview(params?: { from?: string; to?: string }): Promise<AnalyticsOverview> {
+    const searchParams = new URLSearchParams();
+    if (params?.from) searchParams.set('from', params.from);
+    if (params?.to) searchParams.set('to', params.to);
+    const query = searchParams.toString();
+    const url = `${baseUrl}/api/analytics/overview${query ? `?${query}` : ''}`;
+    const response = await authFetch(url, { headers: getHeaders() });
+    return handleResponse<AnalyticsOverview>(response);
+  },
+
+  async getTrends(params?: { from?: string; to?: string; bucket?: string }): Promise<{ trends: TrendBucket[] }> {
+    const searchParams = new URLSearchParams();
+    if (params?.from) searchParams.set('from', params.from);
+    if (params?.to) searchParams.set('to', params.to);
+    if (params?.bucket) searchParams.set('bucket', params.bucket);
+    const query = searchParams.toString();
+    const url = `${baseUrl}/api/analytics/trends${query ? `?${query}` : ''}`;
+    const response = await authFetch(url, { headers: getHeaders() });
+    return handleResponse<{ trends: TrendBucket[] }>(response);
+  },
+
+  async getPolicies(): Promise<{ policies: PolicyStat[] }> {
+    const response = await authFetch(`${baseUrl}/api/analytics/policies`, {
+      headers: getHeaders(),
+    });
+    return handleResponse<{ policies: PolicyStat[] }>(response);
+  },
+};
+
+// Simulation API types
+export interface SimulateRequest {
+  rules: Array<{ match: Record<string, unknown>; decision: string }>;
+  priority?: number;
+  from?: string;
+  to?: string;
+  limit?: number;
+}
+
+export interface SimulateResponse {
+  total: number;
+  results: {
+    autoApproved: number;
+    autoDenied: number;
+    routedToHuman: number;
+  };
+  changed: number;
+  details: Array<{
+    requestId: string;
+    action: string;
+    candidateDecision: string;
+    currentDecision: string;
+    changed: boolean;
+  }>;
+}
+
+export interface DryRunRequest {
+  action: string;
+  params?: Record<string, unknown>;
+  context?: Record<string, unknown>;
+  urgency?: string;
+}
+
+export interface DryRunResponse {
+  decision: string;
+  matchedRule: Record<string, unknown> | null;
+  reason: string;
+}
+
+// Simulation API
+export const simulationApi = {
+  async simulate(data: SimulateRequest): Promise<SimulateResponse> {
+    const response = await authFetch(`${baseUrl}/api/policies/simulate`, {
+      method: 'POST',
+      headers: getHeaders('application/json'),
+      body: JSON.stringify(data),
+    });
+    return handleResponse<SimulateResponse>(response);
+  },
+
+  async dryRun(policyId: string, data: DryRunRequest): Promise<DryRunResponse> {
+    const response = await authFetch(`${baseUrl}/api/policies/${policyId}/dry-run`, {
+      method: 'POST',
+      headers: getHeaders('application/json'),
+      body: JSON.stringify(data),
+    });
+    return handleResponse<DryRunResponse>(response);
+  },
+};
+
+// Webhook Observability types
+export interface WebhookDeliveryRecord {
+  id: string;
+  webhookId: string;
+  event: string;
+  payload: string;
+  status: 'pending' | 'success' | 'failed';
+  attempts: number;
+  lastAttemptAt: number | null;
+  responseCode: number | null;
+  responseBody: string | null;
+}
+
+export interface WebhookStatsPerWebhook {
+  webhookId: string;
+  url: string;
+  successRate: number;
+  avgLatencyMs: number;
+  pendingRetries: number;
+  lastDeliveryAt: number | null;
+}
+
+export interface WebhookStatsResponse {
+  totalDeliveries: number;
+  successCount: number;
+  failureCount: number;
+  successRate: number;
+  avgResponseTimeMs: number;
+  pendingRetryCount: number;
+  perWebhook: WebhookStatsPerWebhook[];
+}
+
+export interface WebhookDeliveriesResponse {
+  deliveries: WebhookDeliveryRecord[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+}
 
 // API for admin endpoints (API Keys, Webhooks)
 export const adminApi = {
@@ -426,5 +683,38 @@ export const adminApi = {
       headers: getHeaders(),
     });
     return handleResponse<{ success: boolean; message?: string }>(response);
+  },
+
+  // Webhook Observability
+  async getWebhookStats() {
+    const response = await authFetch(`${baseUrl}/api/webhooks/stats`, {
+      headers: getHeaders(),
+    });
+    return handleResponse<WebhookStatsResponse>(response);
+  },
+
+  async getWebhookDeliveries(webhookId: string, params?: {
+    limit?: number;
+    offset?: number;
+    status?: string;
+  }) {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', params.limit.toString());
+    if (params?.offset) searchParams.set('offset', params.offset.toString());
+    if (params?.status) searchParams.set('status', params.status);
+
+    const query = searchParams.toString();
+    const url = `${baseUrl}/api/webhooks/${webhookId}/deliveries${query ? `?${query}` : ''}`;
+
+    const response = await authFetch(url, { headers: getHeaders() });
+    return handleResponse<WebhookDeliveriesResponse>(response);
+  },
+
+  async replayDelivery(deliveryId: string) {
+    const response = await authFetch(`${baseUrl}/api/webhooks/deliveries/${deliveryId}/replay`, {
+      method: 'POST',
+      headers: getHeaders(),
+    });
+    return handleResponse<{ success: boolean; delivery: WebhookDeliveryRecord }>(response);
   },
 };
