@@ -1,6 +1,6 @@
 {
   "name": "@agentgate/core",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Core types and utilities for AgentGate",
   "type": "module",
   "main": "./dist/index.js",
