@@ -1,6 +1,6 @@
 {
   "name": "@agentgate/sdk",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "SDK for integrating AgentGate into your applications",
   "type": "module",
   "main": "./dist/index.js",

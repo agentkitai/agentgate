@@ -1,6 +1,6 @@
 {
   "name": "@agentgate/cli",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "CLI for AgentGate approval management",
   "type": "module",
   "main": "./dist/index.js",
