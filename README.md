@@ -10,7 +10,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/search?q=%40agentgate"><img src="https://img.shields.io/npm/v/@agentgate/sdk?label=sdk&color=blue" alt="npm version"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License"></a>
-  <a href="#"><img src="https://img.shields.io/badge/tests-passing-brightgreen" alt="Tests Passing"></a>
+  <a href="https://github.com/agentkitai/agentgate/actions"><img src="https://img.shields.io/github/actions/workflow/status/agentkitai/agentgate/ci.yml?branch=main" alt="CI"></a>
   <a href="#"><img src="https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript&logoColor=white" alt="TypeScript"></a>
 </p>
 
