@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/amitpaz1-agentgate-badge.png)](https://mseep.ai/app/amitpaz1-agentgate)
+
 <p align="center">
   <h1 align="center">AgentGate</h1>
   <p align="center">
