@@ -16,11 +16,11 @@
   },
   "dependencies": {
     "@agentgate/core": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "@modelcontextprotocol/sdk": "^1.26.0"
   },
   "devDependencies": {
     "@types/node": "^22.12.0",
     "typescript": "^5.7.3",
-    "vitest": "^2.1.8"
+    "vitest": "^3.2.6"
   }
 }
