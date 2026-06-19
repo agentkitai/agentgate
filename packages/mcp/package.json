@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@agentgate/core": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "@modelcontextprotocol/sdk": "^1.26.0"
   },
   "devDependencies": {
     "@types/node": "^22.12.0",
