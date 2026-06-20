@@ -50,9 +50,9 @@ After saving, restart Claude Desktop.
 
 The MCP server exposes the following tools:
 
-### `request_approval`
+### `agentgate_request`
 
-Create a new approval request.
+Submit a new approval request.
 
 **Parameters:**
 | Parameter | Type | Required | Description |
@@ -74,30 +74,45 @@ Claude will call:
 }
 ```
 
-### `check_request`
+### `agentgate_get`
 
-Get the status of an approval request.
+Get the status of an approval request by ID.
 
 **Parameters:**
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `requestId` | string | Yes | Request ID to check |
+| `id` | string | Yes | Request ID to check |
 
 **Example usage:**
 > "Check the status of request req_abc123"
 
-### `list_requests`
+### `agentgate_list`
 
-List pending approval requests.
+List approval requests with optional filters.
 
 **Parameters:**
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `status` | string | No | Filter by status |
+| `status` | string | No | Filter by status (`pending`, `approved`, `denied`, `expired`) |
 | `limit` | number | No | Max results (default: 10) |
 
 **Example usage:**
 > "Show me all pending approval requests"
+
+### `agentgate_decide`
+
+Approve or deny a pending request. Use when you are the designated approver.
+
+**Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | Yes | Request ID |
+| `decision` | string | Yes | `approved` or `denied` |
+| `reason` | string | No | Reason for the decision |
+| `decidedBy` | string | No | Who is making the decision (default: `mcp:user`) |
+
+**Example usage:**
+> "Approve request req_abc123"
 
 ### `agentgate_list_policies`
 
@@ -188,13 +203,13 @@ Here's how a typical conversation might flow:
 >
 > **Claude:** I'll need approval to send that email. Let me request that.
 > 
-> *[Claude calls request_approval]*
+> *[Claude calls agentgate_request]*
 >
 > I've created approval request `req_abc123` to send the email. You can approve it in the AgentGate dashboard or Slack. Would you like me to check on the status?
 >
 > **User:** Yes, check if it's been approved.
 >
-> *[Claude calls check_request]*
+> *[Claude calls agentgate_get]*
 >
 > **Claude:** The request has been approved by @jane. I'll send the email now.
 

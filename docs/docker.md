@@ -34,20 +34,24 @@ docker-compose up -d
 
 | Service | URL |
 |---------|-----|
-| Dashboard | http://localhost:8080 |
-| API Server | http://localhost:3000 |
-| Health Check | http://localhost:3000/health |
+| Dashboard | http://localhost:3003 |
+| API Server | http://localhost:3002 |
+| Health Check | http://localhost:3002/health |
+
+Host ports are configurable via `SERVER_PORT` (default `3002`) and `DASHBOARD_PORT` (default `3003`).
 
 ## Services
 
 The docker-compose configuration includes:
 
-| Service | Description | Port |
+| Service | Description | Host Port |
 |---------|-------------|------|
-| `server` | AgentGate API server | 3000 |
-| `dashboard` | Web dashboard (nginx) | 8080 |
-| `postgres` | PostgreSQL database | 5432 |
-| `redis` | Redis (rate limiting, queues) | 6379 |
+| `server` | AgentGate API server | 3002 |
+| `dashboard` | Web dashboard (nginx) | 3003 |
+| `postgres` | PostgreSQL database | 5432* |
+| `redis` | Redis (rate limiting, queues) | 6379* |
+
+\* PostgreSQL and Redis are only exposed to the host when the development `docker-compose.override.yml` is present.
 
 ## Including the Slack Bot
 
@@ -141,14 +145,14 @@ server {
 
     # Dashboard
     location / {
-        proxy_pass http://localhost:8080;
+        proxy_pass http://localhost:3003;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
 
     # API
     location /api {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:3002;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
@@ -182,7 +186,7 @@ secrets:
 Monitor the `/health` endpoint for uptime checks:
 
 ```bash
-curl http://localhost:3000/health
+curl http://localhost:3002/health
 # {"status":"ok","timestamp":"..."}
 ```
 

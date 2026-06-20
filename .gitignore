@@ -5,6 +5,10 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# VitePress build cache/output
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+
 # Environment files
 .env
 .env.local
@@ -54,6 +58,7 @@ logs/security/
 # BMAD planning artifacts
 _bmad/
 _bmad-output/
+.claude/commands/bmad-*
 
 # Dev override - auto-loads and re-exposes DB/Redis ports
 docker-compose.override.yml

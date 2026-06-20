@@ -63,7 +63,7 @@ This guide covers common issues when running AgentGate, organized by **Symptom �
    - `X-RateLimit-Remaining` — remaining in current window
    - `X-RateLimit-Reset` — seconds until window resets
 2. Wait for the reset window, then retry.
-3. Increase the per-key rate limit via `POST /api/keys` (set `rateLimit` to a higher value, or `null` for unlimited).
+3. Increase the per-key rate limit via `PATCH /api/api-keys/:id` (set `rateLimit` to a higher value, or `null` for unlimited).
 4. The global default is controlled by `RATE_LIMIT_RPM` (default: `60`). Adjust if needed:
    ```bash
    RATE_LIMIT_RPM=120
