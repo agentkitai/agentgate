@@ -11,7 +11,7 @@ import { Hono } from "hono";
 import { nanoid } from "nanoid";
 import { eq } from "drizzle-orm";
 import { getDb, users, refreshTokens } from "../db/index.js";
-import { getConfig } from "../config.js";
+import { getConfig, resolveJwtSecret } from "../config.js";
 import {
   OidcClient,
   signAccessToken,
@@ -54,7 +54,7 @@ function getAuthConfig(): AuthConfig {
         }
       : null,
     jwt: {
-      secret: config.jwtSecret || 'dev-secret-not-for-production',
+      secret: resolveJwtSecret(config),
       accessTokenTtlSeconds: config.jwtAccessTtl,
       refreshTokenTtlSeconds: config.jwtRefreshTtl,
     },

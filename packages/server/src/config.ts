@@ -440,6 +440,47 @@ export function validateProductionConfig(config: Config): string[] {
 }
 
 // ============================================================================
+// JWT Secret Resolution (fail-closed)
+// ============================================================================
+
+/** The dev placeholder that must never be used as a real signing secret. */
+export const DEV_JWT_SECRET_PLACEHOLDER = "dev-secret-not-for-production";
+
+/**
+ * Resolve the JWT signing/verification secret, failing closed.
+ *
+ * JWT is only used when auth mode is "dual" or "oidc-required". In
+ * "api-key-only" mode JWT auth is never exercised, so a secret is not
+ * required and this returns the (unused) placeholder to keep that
+ * fully-supported mode working.
+ *
+ * In any JWT-enabled mode, if JWT_SECRET is unset or equals the dev
+ * placeholder, this THROWS — we refuse to sign/verify tokens with a
+ * known secret rather than silently weakening auth.
+ *
+ * @throws {Error} when JWT is enabled but no real secret is configured
+ */
+export function resolveJwtSecret(config: Config): string {
+  const jwtEnabled = config.authMode !== "api-key-only";
+
+  if (!jwtEnabled) {
+    // JWT is not used in api-key-only mode; secret value is irrelevant.
+    return config.jwtSecret ?? DEV_JWT_SECRET_PLACEHOLDER;
+  }
+
+  if (!config.jwtSecret || config.jwtSecret === DEV_JWT_SECRET_PLACEHOLDER) {
+    throw new Error(
+      `JWT_SECRET is required when AUTH_MODE is "${config.authMode}" ` +
+        `(JWT/OIDC auth is enabled). Set JWT_SECRET to a strong secret of ` +
+        `at least 32 characters. Refusing to start with a known/placeholder ` +
+        `signing secret.`
+    );
+  }
+
+  return config.jwtSecret;
+}
+
+// ============================================================================
 // Singleton Config Instance
 // ============================================================================
 

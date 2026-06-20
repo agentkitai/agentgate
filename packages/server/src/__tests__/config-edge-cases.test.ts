@@ -8,7 +8,11 @@ import {
   resetConfig,
   setConfig,
   ConfigSchema,
+  resolveJwtSecret,
+  DEV_JWT_SECRET_PLACEHOLDER,
 } from "../config.js";
+
+const REAL_SECRET = "a-real-jwt-secret-that-is-at-least-32-chars!!";
 
 describe("config edge cases", () => {
   const originalEnv = process.env;
@@ -318,6 +322,32 @@ describe("config edge cases", () => {
       resetConfig();
       process.env.PORT = "5000";
       expect(getConfig().port).toBe(5000);
+    });
+  });
+
+  describe("resolveJwtSecret (fail-closed)", () => {
+    for (const authMode of ["dual", "oidc-required"] as const) {
+      it(`throws when JWT_SECRET is unset in ${authMode} mode`, () => {
+        const config = parseConfig({ authMode });
+        expect(() => resolveJwtSecret(config)).toThrow(/JWT_SECRET is required/);
+      });
+
+      it(`throws when JWT_SECRET equals the dev placeholder in ${authMode} mode`, () => {
+        // The placeholder is <32 chars, so inject it past schema validation.
+        const config = { ...parseConfig({ authMode }), jwtSecret: DEV_JWT_SECRET_PLACEHOLDER };
+        expect(() => resolveJwtSecret(config)).toThrow(/JWT_SECRET is required/);
+      });
+
+      it(`returns the real secret in ${authMode} mode when set`, () => {
+        const config = parseConfig({ authMode, jwtSecret: REAL_SECRET });
+        expect(resolveJwtSecret(config)).toBe(REAL_SECRET);
+      });
+    }
+
+    it("does not throw in api-key-only mode when JWT_SECRET is unset (JWT unused)", () => {
+      const config = parseConfig({ authMode: "api-key-only" });
+      expect(() => resolveJwtSecret(config)).not.toThrow();
+      expect(resolveJwtSecret(config)).toBe(DEV_JWT_SECRET_PLACEHOLDER);
     });
   });
 

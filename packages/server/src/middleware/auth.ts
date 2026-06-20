@@ -7,7 +7,7 @@ import type { Context, Next } from "hono";
 import { eq } from "drizzle-orm";
 import { getDb, users, type ApiKey } from "../db/index.js";
 import { getRateLimiter, type RateLimitResult } from "../lib/rate-limiter/index.js";
-import { getConfig } from "../config.js";
+import { getConfig, resolveJwtSecret } from "../config.js";
 import { validateApiKey } from "../lib/api-keys.js";
 import {
   verifyAccessToken,
@@ -56,7 +56,7 @@ function getAuthConfig(): AuthConfig {
         }
       : null,
     jwt: {
-      secret: config.jwtSecret || 'dev-secret-not-for-production',
+      secret: resolveJwtSecret(config),
       accessTokenTtlSeconds: config.jwtAccessTtl,
       refreshTokenTtlSeconds: config.jwtRefreshTtl,
     },
