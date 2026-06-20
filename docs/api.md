@@ -348,7 +348,7 @@ POST /api/policies
 #### Create API Key
 
 ```http
-POST /api/keys
+POST /api/api-keys
 ```
 
 **Required Scope:** `admin`
@@ -376,15 +376,32 @@ POST /api/keys
 #### List API Keys
 
 ```http
-GET /api/keys
+GET /api/api-keys
 ```
 
 **Required Scope:** `admin`
 
+#### Update API Key
+
+```http
+PATCH /api/api-keys/:id
+```
+
+**Required Scope:** `admin`
+
+**Body:** (any subset)
+```json
+{
+  "name": "Renamed Agent",
+  "scopes": ["request:read"],
+  "rateLimit": 120
+}
+```
+
 #### Revoke API Key
 
 ```http
-DELETE /api/keys/:id
+DELETE /api/api-keys/:id
 ```
 
 **Required Scope:** `admin`

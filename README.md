@@ -317,13 +317,16 @@ Add to your `claude_desktop_config.json`:
 
 | Tool | Description |
 |------|-------------|
-| `agentgate_request_approval` | Create a new approval request |
-| `agentgate_check_request` | Get status of an approval request |
-| `agentgate_list_requests` | List pending approval requests |
-| `agentgate_list_policies` | List configured policies |
-| `agentgate_create_policy` | Create a new policy rule |
-| `agentgate_update_policy` | Update an existing policy |
-| `agentgate_delete_policy` | Delete a policy |
+| `agentgate_request` | Submit a new approval request |
+| `agentgate_get` | Get the status of an approval request by ID |
+| `agentgate_list` | List approval requests with optional filters |
+| `agentgate_decide` | Approve or deny a pending request |
+| `agentgate_list_policies` | List all policies ordered by priority |
+| `agentgate_create_policy` | Create a new policy with rules |
+| `agentgate_update_policy` | Replace an existing policy |
+| `agentgate_delete_policy` | Delete a policy by ID |
+| `agentgate_list_audit_logs` | List audit log entries with filters and pagination |
+| `agentgate_get_audit_actors` | Get unique actor values from audit logs |
 
 ## Authentication
 
@@ -358,7 +361,7 @@ const client = new AgentGateClient({
 
 ```typescript
 // Via API (requires admin scope)
-POST /api/keys
+POST /api/api-keys
 {
   "name": "My Agent",
   "scopes": ["request:create", "request:read"]
@@ -378,6 +381,10 @@ POST /api/keys
 | `POST` | `/api/policies` | Create policy | `admin` |
 | `PUT` | `/api/policies/:id` | Update policy | `admin` |
 | `DELETE` | `/api/policies/:id` | Delete policy | `admin` |
+| `POST` | `/api/api-keys` | Create API key | `admin` |
+| `GET` | `/api/api-keys` | List API keys | `admin` |
+| `PATCH` | `/api/api-keys/:id` | Update API key | `admin` |
+| `DELETE` | `/api/api-keys/:id` | Revoke API key | `admin` |
 | `GET` | `/api/webhooks` | List webhooks | `webhook:manage` |
 | `POST` | `/api/webhooks` | Create webhook | `webhook:manage` |
 | `DELETE` | `/api/webhooks/:id` | Delete webhook | `webhook:manage` |
@@ -408,7 +415,7 @@ Set rate limits when creating or updating API keys:
 
 ```typescript
 // Via API (requires admin scope)
-POST /api/keys
+POST /api/api-keys
 {
   "name": "My Agent",
   "scopes": ["request:create", "request:read"],
@@ -582,16 +589,18 @@ docker-compose up -d
 
 4. **Access the services:**
 
-- **Dashboard:** http://localhost:8080
-- **API Server:** http://localhost:3000
-- **Health Check:** http://localhost:3000/health
+- **Dashboard:** http://localhost:3003
+- **API Server:** http://localhost:3002
+- **Health Check:** http://localhost:3002/health
+
+> Host ports are configurable via `SERVER_PORT` (default `3002`) and `DASHBOARD_PORT` (default `3003`); both map to the container's internal port 3000/80.
 
 ### Services
 
-| Service | Description | Port |
+| Service | Description | Host Port |
 |---------|-------------|------|
-| `server` | AgentGate API server | 3000 |
-| `dashboard` | Web dashboard (nginx) | 8080 |
+| `server` | AgentGate API server | 3002 |
+| `dashboard` | Web dashboard (nginx) | 3003 |
 | `postgres` | PostgreSQL database | internal only* |
 | `redis` | Redis (rate limiting, queues) | internal only* |
 
