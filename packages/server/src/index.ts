@@ -15,6 +15,7 @@ import auditRouter from "./routes/audit.js";
 import analyticsRouter from "./routes/analytics.js";
 import tokensRouter from "./routes/tokens.js";
 import decideRouter from "./routes/decide.js";
+import { createGuardrailsRouter } from "./routes/guardrails.js";
 import overridesRouter from "./routes/overrides.js";
 import { startOverrideCleanup, stopOverrideCleanup } from "./routes/overrides.js";
 import channelsRouter from "./routes/channels.js";
@@ -174,6 +175,10 @@ app.get("/health", async (c) => {
 
 // Decision endpoint (public, no auth required - uses tokens)
 app.route("/api/decide", decideRouter);
+
+// Reactive guardrails webhook from AgentLens (public — authenticated by a shared
+// secret inside the router, so it must be mounted before the user-auth middleware).
+app.route("/api/guardrails", createGuardrailsRouter());
 
 // Auth routes (mostly public — login, callback, refresh, logout)
 // /auth/me requires auth and is handled inside the router

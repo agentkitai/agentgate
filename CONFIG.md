@@ -91,6 +91,17 @@ DATABASE_URL=postgresql://user:pass@db.example.com:5432/agentgate?sslmode=requir
 | `RATE_LIMIT_ENABLED` | boolean | `true` | Enable rate limiting |
 | `RATE_LIMIT_RPM` | number | `60` | Requests per minute per API key |
 
+### Reactive Guardrails
+
+AgentGate can react to AgentLens metric alerts: when a monitored metric is breached,
+it creates a policy override (require approval for matching tools) and removes it on
+recovery. AgentLens posts to `POST /api/guardrails/webhook` with a shared secret.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `GUARDRAILS_WEBHOOK_SECRET` | string | - | Shared secret for the AgentLens webhook (sent as `x-guardrails-secret`). **Unset = fail closed** (every webhook is rejected). |
+| `GUARDRAILS_RULES` | JSON | `[]` | Array of rules: `{ "metric": "error_rate", "toolPattern": "*", "ttlSeconds": 3600, "reason": "…" }`. On `breach` of `metric`, tools matching `toolPattern` require approval until `recovery` (or `ttlSeconds` elapses). |
+
 ### Request Handling
 
 | Variable | Type | Default | Description |
