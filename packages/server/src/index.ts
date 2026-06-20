@@ -24,7 +24,7 @@ import probesRouter from "./routes/probes.js";
 import { registry, httpRequestsTotal, httpRequestDuration } from "./lib/metrics.js";
 import { authMiddleware, type AuthVariables } from "./middleware/auth.js";
 import authRouter from "./routes/auth.js";
-import { getConfig, validateProductionConfig } from "./config.js";
+import { getConfig, validateProductionConfig, resolveJwtSecret } from "./config.js";
 import { securityHeadersMiddleware } from "./middleware/security-headers.js";
 import { initDatabase, runMigrations, closeDatabase, getDb, approvalRequests } from "./db/index.js";
 import { getRateLimiter, resetRateLimiter } from "./lib/rate-limiter/index.js";
@@ -54,6 +54,17 @@ if (config.isProduction) {
   }
   // Log non-critical warnings
   warnings.filter(w => !w.includes('ADMIN_API_KEY')).forEach(w => log.warn(w));
+}
+
+// Fail closed at startup (every env): if JWT/OIDC auth is enabled, a real
+// JWT_SECRET is mandatory. resolveJwtSecret throws when it is unset or equals
+// the dev placeholder — refuse to start rather than sign/verify with a known
+// secret. (api-key-only mode never uses JWT, so this is a no-op there.)
+try {
+  resolveJwtSecret(config);
+} catch (err) {
+  log.fatal((err as Error).message);
+  process.exit(1);
 }
 
 // Request correlation ID middleware
