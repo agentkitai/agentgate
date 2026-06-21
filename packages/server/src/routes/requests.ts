@@ -15,6 +15,7 @@ import {
   type RequestDecidedEvent,
 } from "@agentgate/core";
 import { logAuditEvent } from "../lib/audit.js";
+import { owaspRiskForPolicyDecision } from "../lib/owasp.js";
 import { deliverWebhook } from "../lib/webhook.js";
 import { getGlobalDispatcher } from "../lib/notification/index.js";
 import { getCachedPolicies } from "../lib/policy-cache.js";
@@ -274,6 +275,9 @@ requestsRouter.post("/", async (c) => {
     urgency,
     policyDecision: policyDecision.decision,
     matchedRule: policyDecision.matchedRule,
+    // Compliance evidence: tag the decision with the OWASP LLM risk it
+    // mitigates (gating/escalating a tool action = LLM06 Excessive Agency).
+    owaspRisk: owaspRiskForPolicyDecision(policyDecision.decision),
   });
 
   // Emit request.created event

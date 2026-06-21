@@ -1,6 +1,7 @@
 {
   "name": "@agentgate/mcp",
   "version": "0.0.1",
+  "mcpName": "io.github.agentkitai/agentgate",
   "type": "module",
   "bin": {
     "agentgate-mcp": "./dist/index.js"
