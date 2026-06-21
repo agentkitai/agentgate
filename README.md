@@ -30,13 +30,29 @@ auto-deny dangerous ones, and route everything else to a human — via dashboard
 - 👥 **Multi-channel approvals** — Slack, Discord, email, or web dashboard
 - 🔌 **TypeScript SDK + MCP** — works with any agent framework or Claude Desktop
 - 🪝 **Webhooks with retry** — real-time notifications with exponential backoff
-- 📝 **Full audit trail** — every request, decision, and action logged
+- 📝 **Full audit trail** — every request, decision, and action logged, each policy decision tagged with the **OWASP LLM Top-10** risk it mitigates (compliance evidence)
 - 🐳 **Docker-ready** — one `docker-compose up` for the full stack
 - 🔐 **Production-hardened** — SSRF protection, ReDoS defense, structured logging, graceful shutdown
 - 🔗 **One-click decision links** — approve or deny directly from notification emails and webhooks
 - ♿ **Accessible UI** — keyboard-navigable approval modals, focus trapping, ARIA labels
 - 💀 **Skeleton loading** — smooth loading states across every dashboard page
 - ⚡ **Fast & lightweight** — Hono server, SQLite or PostgreSQL
+
+## Quickstart
+
+```bash
+# Self-host the full stack (server + dashboard + Postgres):
+docker compose up
+
+# …or from source:
+pnpm install && pnpm migrate && pnpm bootstrap && pnpm dev
+```
+
+Drop AgentGate into an MCP client (Claude Desktop / Cursor / VS Code) — point it at the gateway:
+
+```jsonc
+{ "mcpServers": { "agentgate": { "command": "npx", "args": ["@agentgate/mcp"] } } }
+```
 
 #### Dashboard
 See all pending requests at a glance, color-coded by urgency so you know what needs attention first.

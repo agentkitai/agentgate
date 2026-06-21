@@ -1,0 +1,24 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.agentkitai/agentgate",
+  "description": "Human-in-the-loop approval gateway for AI agents: agents request, policies decide, humans approve — over MCP.",
+  "title": "AgentGate",
+  "websiteUrl": "https://github.com/agentkitai/agentgate",
+  "repository": {
+    "url": "https://github.com/agentkitai/agentgate",
+    "source": "github"
+  },
+  "version": "0.0.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@agentgate/mcp",
+      "version": "0.0.1",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
