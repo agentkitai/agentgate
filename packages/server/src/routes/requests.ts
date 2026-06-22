@@ -18,6 +18,7 @@ import { logAuditEvent } from "../lib/audit.js";
 import { owaspRiskForPolicyDecision } from "../lib/owasp.js";
 import { resolveVerifiedAgentId, resolveEffectiveAgentId } from "../lib/agent-tokens.js";
 import { checkAgentBudget } from "../lib/agent-budget.js";
+import { decideInitialStatus } from "../lib/request-decision.js";
 import { getConfig } from "../config.js";
 import type { ApiKey } from "../db/schema.js";
 import { deliverWebhook } from "../lib/webhook.js";
@@ -279,39 +280,13 @@ requestsRouter.post("/", async (c) => {
     tool: action,
   });
 
-  // Determine initial status — budget deny takes precedence over override/policy.
-  let status: "pending" | "approved" | "denied" = "pending";
-  let decidedBy: string | null = null;
-  let decidedByType: "policy" | "budget_limiter" = "policy";
-  let decidedAt: Date | null = null;
-  let decisionReason: string | null = null;
-
-  if (budgetReason) {
-    status = "denied";
-    decidedBy = "budget";
-    decidedByType = "budget_limiter";
-    decidedAt = now;
-    decisionReason = budgetReason;
-  } else if (overrideMatch) {
-    // Override forces require_approval → stays pending (route to human)
-    status = "pending";
-    decisionReason = `Override active: ${overrideMatch.reason || "dynamic override"}`;
-  } else if (policyDecision.decision === "auto_approve") {
-    status = "approved";
-    decidedBy = "policy";
-    decidedAt = now;
-    decisionReason = policyDecision.matchedRule 
-      ? `Auto-approved by policy rule matching: ${JSON.stringify(policyDecision.matchedRule.match)}`
-      : "Auto-approved by policy";
-  } else if (policyDecision.decision === "auto_deny") {
-    status = "denied";
-    decidedBy = "policy";
-    decidedAt = now;
-    decisionReason = policyDecision.matchedRule
-      ? `Auto-denied by policy rule matching: ${JSON.stringify(policyDecision.matchedRule.match)}`
-      : "Auto-denied by policy";
-  }
-  // route_to_human and route_to_agent stay pending
+  // Determine initial status — budget deny > override > policy (see helper).
+  const { status, decidedBy, decidedByType, decidedAt, decisionReason } = decideInitialStatus({
+    budgetReason,
+    overrideMatch,
+    policyDecision,
+    now,
+  });
 
   // Insert into database
   await getDb().insert(approvalRequests).values({

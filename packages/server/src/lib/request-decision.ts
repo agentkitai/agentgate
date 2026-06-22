@@ -1,0 +1,72 @@
+// @agentgate/server — Initial decision for a new approval request.
+//
+// Precedence (highest first): a per-agent budget overage (#13) denies outright,
+// then a dynamic override forces human review (pending), then static policy
+// auto-approve/deny. Anything else stays pending. Extracted as a pure function
+// so the precedence is unit-testable without driving the whole request route.
+
+import type { PolicyDecision } from "@agentgate/core";
+
+export interface InitialDecision {
+  status: "pending" | "approved" | "denied";
+  decidedBy: string | null;
+  decidedByType: "policy" | "budget_limiter";
+  decidedAt: Date | null;
+  decisionReason: string | null;
+}
+
+export function decideInitialStatus(input: {
+  /** Non-null when the verified agent is over its budget; the reason string. */
+  budgetReason: string | null;
+  /** A matching dynamic override (forces human review), or null. */
+  overrideMatch: { reason?: string | null } | null;
+  policyDecision: PolicyDecision;
+  /** Decision timestamp, stamped on auto-decided (approved/denied) outcomes. */
+  now: Date;
+}): InitialDecision {
+  const { budgetReason, overrideMatch, policyDecision, now } = input;
+
+  if (budgetReason) {
+    return {
+      status: "denied",
+      decidedBy: "budget",
+      decidedByType: "budget_limiter",
+      decidedAt: now,
+      decisionReason: budgetReason,
+    };
+  }
+  if (overrideMatch) {
+    // Override forces require_approval → stays pending (route to human).
+    return {
+      status: "pending",
+      decidedBy: null,
+      decidedByType: "policy",
+      decidedAt: null,
+      decisionReason: `Override active: ${overrideMatch.reason || "dynamic override"}`,
+    };
+  }
+  if (policyDecision.decision === "auto_approve") {
+    return {
+      status: "approved",
+      decidedBy: "policy",
+      decidedByType: "policy",
+      decidedAt: now,
+      decisionReason: policyDecision.matchedRule
+        ? `Auto-approved by policy rule matching: ${JSON.stringify(policyDecision.matchedRule.match)}`
+        : "Auto-approved by policy",
+    };
+  }
+  if (policyDecision.decision === "auto_deny") {
+    return {
+      status: "denied",
+      decidedBy: "policy",
+      decidedByType: "policy",
+      decidedAt: now,
+      decisionReason: policyDecision.matchedRule
+        ? `Auto-denied by policy rule matching: ${JSON.stringify(policyDecision.matchedRule.match)}`
+        : "Auto-denied by policy",
+    };
+  }
+  // route_to_human and route_to_agent stay pending.
+  return { status: "pending", decidedBy: null, decidedByType: "policy", decidedAt: null, decisionReason: null };
+}
