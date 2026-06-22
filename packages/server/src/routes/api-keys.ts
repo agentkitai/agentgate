@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import { getDb } from '../db/index.js';
 import { apiKeys } from '../db/schema.js';
 import { createApiKey, revokeApiKey } from '../lib/api-keys.js';
+import { getAgentIfActive } from '../lib/agents.js';
 import { requirePermission } from '../middleware/auth.js';
 
 const router = new Hono();
@@ -17,19 +18,29 @@ const createKeySchema = z.object({
   name: z.string().min(1).max(100),
   scopes: z.array(z.string()).min(1),
   rateLimit: z.number().int().positive().nullable().optional(),
+  // Virtual key (issue #13): bind this key to an agent. Omit for a legacy
+  // "any agent" key.
+  agentId: z.string().regex(/^agt_/, 'agentId must be an agt_ id').optional(),
 });
 
 router.post('/', zValidator('json', createKeySchema), async (c) => {
-  const { name, scopes, rateLimit } = c.req.valid('json');
-  const { id, key } = await createApiKey(name, scopes, rateLimit ?? null);
-  
+  const { name, scopes, rateLimit, agentId } = c.req.valid('json');
+
+  // Don't bind a key to a typo'd, nonexistent, or revoked agent.
+  if (agentId && !(await getAgentIfActive(agentId))) {
+    return c.json({ error: 'agentId does not match an active agent' }, 400);
+  }
+
+  const { id, key } = await createApiKey(name, scopes, rateLimit ?? null, agentId ?? null);
+
   // Return key ONCE - it won't be shown again
-  return c.json({ 
-    id, 
+  return c.json({
+    id,
     key,  // Only returned on creation!
-    name, 
+    name,
     scopes,
     rateLimit: rateLimit ?? null,
+    agentId: agentId ?? null,
     message: 'Save this key - it will not be shown again'
   }, 201);
 });
@@ -44,6 +55,7 @@ router.get('/', async (c) => {
     lastUsedAt: apiKeys.lastUsedAt,
     revokedAt: apiKeys.revokedAt,
     rateLimit: apiKeys.rateLimit,
+    agentId: apiKeys.agentId,
   }).from(apiKeys);
   
   return c.json({ 

@@ -66,7 +66,8 @@ CREATE TABLE IF NOT EXISTS \`api_keys\` (
 	\`created_at\` integer NOT NULL,
 	\`last_used_at\` integer,
 	\`revoked_at\` integer,
-	\`rate_limit\` integer
+	\`rate_limit\` integer,
+	\`agent_id\` text
 );
 
 CREATE TABLE IF NOT EXISTS \`webhook_deliveries\` (

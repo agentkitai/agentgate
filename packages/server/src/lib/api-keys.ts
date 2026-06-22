@@ -117,12 +117,14 @@ export function generateApiKey(): { key: string; hash: string } {
  * @param name - Human-readable name for the key
  * @param scopes - Array of scopes like ["request:create", "request:read", "admin"]
  * @param rateLimit - Rate limit (requests per minute), null = unlimited
+ * @param agentId - Bind this key to an agent (agt_*); null = any agent (legacy)
  * @returns { id, key } - key is shown once to user
  */
 export async function createApiKey(
   name: string,
   scopes: string[],
-  rateLimit: number | null = null
+  rateLimit: number | null = null,
+  agentId: string | null = null
 ): Promise<{ id: string; key: string }> {
   const id = nanoid();
   const { key, hash } = generateApiKey();
@@ -134,6 +136,7 @@ export async function createApiKey(
     scopes: JSON.stringify(scopes),
     createdAt: Math.floor(Date.now() / 1000),
     rateLimit,
+    agentId,
   });
 
   return { id, key };

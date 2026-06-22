@@ -62,3 +62,40 @@ export async function resolveVerifiedAgentId(
   }
   return (await verifyAgentCredential(creds.agentId, creds.agentSecret))?.id ?? null;
 }
+
+/**
+ * Reconcile a virtual-key agent binding (issue #13) with the separately
+ * verified agent id. A key bound to an agent IS that agent's credential, so the
+ * binding is authoritative and promotes to the verified id. A DIFFERENT
+ * separately-verified agent on the same request is an unresolvable conflict.
+ * Returns { agentId } on success, or { conflict: true } when they disagree.
+ */
+export function reconcileBoundAgent(
+  boundAgentId: string | null,
+  verifiedAgentId: string | null,
+): { agentId: string | null } | { conflict: true } {
+  if (!boundAgentId) return { agentId: verifiedAgentId };
+  if (verifiedAgentId && verifiedAgentId !== boundAgentId) return { conflict: true };
+  return { agentId: boundAgentId };
+}
+
+/**
+ * Resolve the effective verified agent id for a request, accounting for a
+ * virtual-key binding (issue #13). The binding is authoritative, but the bound
+ * agent must still be ACTIVE at use time — mirroring the agent-token path,
+ * because revoking an agent does not cascade to keys bound to it. Returns the
+ * effective id, or a typed rejection the route maps to 403:
+ *   - "conflict":         the request separately verifies as a different agent
+ *   - "revoked_binding":  the key is bound to a revoked/unknown agent
+ */
+export async function resolveEffectiveAgentId(
+  boundAgentId: string | null,
+  verifiedAgentId: string | null,
+): Promise<{ agentId: string | null } | { reject: "conflict" | "revoked_binding" }> {
+  const reconciled = reconcileBoundAgent(boundAgentId, verifiedAgentId);
+  if ("conflict" in reconciled) return { reject: "conflict" };
+  if (boundAgentId && !(await getAgentIfActive(boundAgentId))) {
+    return { reject: "revoked_binding" };
+  }
+  return { agentId: reconciled.agentId };
+}
