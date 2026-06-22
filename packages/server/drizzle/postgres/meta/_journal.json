@@ -43,6 +43,13 @@
       "when": 1782115822907,
       "tag": "0005_furry_wallow",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782140779704,
+      "tag": "0006_nice_bloodscream",
+      "breakpoints": true
     }
   ]
 }

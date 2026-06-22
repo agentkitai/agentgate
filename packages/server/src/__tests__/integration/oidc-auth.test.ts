@@ -35,7 +35,9 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 );
 CREATE TABLE IF NOT EXISTS policies (
   id text PRIMARY KEY NOT NULL, name text NOT NULL, rules text NOT NULL,
-  priority integer NOT NULL, enabled integer NOT NULL, created_at integer NOT NULL
+  priority integer NOT NULL, enabled integer NOT NULL,
+  scope text DEFAULT 'global' NOT NULL, agent_ids text, tool_ids text,
+  created_at integer NOT NULL
 );
 CREATE TABLE IF NOT EXISTS api_keys (
   id text PRIMARY KEY NOT NULL, key_hash text NOT NULL, name text NOT NULL,

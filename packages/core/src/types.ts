@@ -87,6 +87,13 @@ export interface PolicyRule {
 }
 
 /**
+ * Where a policy applies. `global` (default) applies to every request;
+ * `per_agent` only to requests from a verified agent in `agentIds`;
+ * `per_tool` only to requests whose action is in `toolIds`.
+ */
+export type PolicyScope = 'global' | 'per_agent' | 'per_tool';
+
+/**
  * A policy containing multiple rules
  */
 export interface Policy {
@@ -100,6 +107,12 @@ export interface Policy {
   priority: number;
   /** Whether this policy is active */
   enabled: boolean;
+  /** Scope gate evaluated before rules. Defaults to 'global'. */
+  scope?: PolicyScope;
+  /** Verified agent ids this policy applies to (scope='per_agent'). */
+  agentIds?: string[];
+  /** Action/tool names this policy applies to (scope='per_tool'). */
+  toolIds?: string[];
 }
 
 /**

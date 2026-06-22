@@ -218,48 +218,12 @@ requestsRouter.post("/", async (c) => {
     expiresAt,
   };
 
-  // Check overrides BEFORE static policies
-  const agentId = typeof context.agentId === "string" ? context.agentId : undefined;
-  let overrideMatch: Awaited<ReturnType<typeof checkOverrides>> = null;
-  if (agentId) {
-    overrideMatch = await checkOverrides(agentId, action);
-  }
-
-  // Run policy engine
-  const policyDecision = evaluatePolicy(requestForEval, corePolicies);
-
-  // Determine initial status based on override or policy decision
-  let status: "pending" | "approved" | "denied" = "pending";
-  let decidedBy: string | null = null;
-  let decidedAt: Date | null = null;
-  let decisionReason: string | null = null;
-
-  if (overrideMatch) {
-    // Override forces require_approval → stays pending (route to human)
-    status = "pending";
-    decisionReason = `Override active: ${overrideMatch.reason || "dynamic override"}`;
-  } else if (policyDecision.decision === "auto_approve") {
-    status = "approved";
-    decidedBy = "policy";
-    decidedAt = now;
-    decisionReason = policyDecision.matchedRule 
-      ? `Auto-approved by policy rule matching: ${JSON.stringify(policyDecision.matchedRule.match)}`
-      : "Auto-approved by policy";
-  } else if (policyDecision.decision === "auto_deny") {
-    status = "denied";
-    decidedBy = "policy";
-    decidedAt = now;
-    decisionReason = policyDecision.matchedRule
-      ? `Auto-denied by policy rule matching: ${JSON.stringify(policyDecision.matchedRule.match)}`
-      : "Auto-denied by policy";
-  }
-  // route_to_human and route_to_agent stay pending
-
   // Agent-identity spine: resolve the VERIFIED agent id — distinct from the
   // caller-claimed context.agentId, which is unauthenticated. Prefers a
   // short-lived agent Bearer token (X-Agent-Token from POST /api/agents/token)
   // over the legacy X-Agent-Id / X-Agent-Secret headers. Null when neither is
-  // presented or verification fails.
+  // presented or verification fails. Resolved BEFORE overrides/policies so both
+  // can scope on the verified identity (issue #13).
   const verifiedAgentId = await resolveVerifiedAgentId(
     {
       agentToken: c.req.header("x-agent-token"),
@@ -288,6 +252,45 @@ requestsRouter.post("/", async (c) => {
     );
   }
   const effectiveAgentId = resolved.agentId;
+
+  // Check overrides BEFORE static policies, keyed on the VERIFIED agent id.
+  let overrideMatch: Awaited<ReturnType<typeof checkOverrides>> = null;
+  if (effectiveAgentId) {
+    overrideMatch = await checkOverrides(effectiveAgentId, action);
+  }
+
+  // Run policy engine, scoped to the verified agent + the requested tool/action.
+  const policyDecision = evaluatePolicy(requestForEval, corePolicies, {
+    agentId: effectiveAgentId,
+    tool: action,
+  });
+
+  // Determine initial status based on override or policy decision
+  let status: "pending" | "approved" | "denied" = "pending";
+  let decidedBy: string | null = null;
+  let decidedAt: Date | null = null;
+  let decisionReason: string | null = null;
+
+  if (overrideMatch) {
+    // Override forces require_approval → stays pending (route to human)
+    status = "pending";
+    decisionReason = `Override active: ${overrideMatch.reason || "dynamic override"}`;
+  } else if (policyDecision.decision === "auto_approve") {
+    status = "approved";
+    decidedBy = "policy";
+    decidedAt = now;
+    decisionReason = policyDecision.matchedRule 
+      ? `Auto-approved by policy rule matching: ${JSON.stringify(policyDecision.matchedRule.match)}`
+      : "Auto-approved by policy";
+  } else if (policyDecision.decision === "auto_deny") {
+    status = "denied";
+    decidedBy = "policy";
+    decidedAt = now;
+    decisionReason = policyDecision.matchedRule
+      ? `Auto-denied by policy rule matching: ${JSON.stringify(policyDecision.matchedRule.match)}`
+      : "Auto-denied by policy";
+  }
+  // route_to_human and route_to_agent stay pending
 
   // Insert into database
   await getDb().insert(approvalRequests).values({

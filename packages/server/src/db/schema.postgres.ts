@@ -53,6 +53,10 @@ export const policies = pgTable("policies", {
   rules: text("rules").notNull(), // JSON stringified
   priority: integer("priority").notNull(),
   enabled: boolean("enabled").notNull(),
+  // Per-agent policy scoping (issue #13). global = applies to all (legacy default).
+  scope: text("scope", { enum: ["global", "per_agent", "per_tool"] }).notNull().default("global"),
+  agentIds: text("agent_ids"), // JSON string[] of verified agent ids (scope=per_agent)
+  toolIds: text("tool_ids"), // JSON string[] of action names (scope=per_tool)
   createdAt: timestamp("created_at", { mode: "date" }).notNull(),
 });
 

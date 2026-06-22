@@ -5,7 +5,7 @@ import { nanoid } from "nanoid";
 import { eq, sql, and, gte, lte } from "drizzle-orm";
 import isSafeRegex from "safe-regex2";
 import { getDb, policies, approvalRequests } from "../db/index.js";
-import type { PolicyRule, Policy, ApprovalRequest } from "@agentgate/core";
+import type { PolicyRule, Policy, PolicyScope, ApprovalRequest } from "@agentgate/core";
 import { evaluatePolicy } from "@agentgate/core";
 import { invalidatePolicyCache } from "../lib/policy-cache.js";
 import { getTemplates, getTemplateById } from "../lib/policy-templates.js";
@@ -21,6 +21,9 @@ function validatePolicyBody(body: unknown): {
     rules: PolicyRule[];
     priority: number;
     enabled: boolean;
+    scope: PolicyScope;
+    agentIds?: string[];
+    toolIds?: string[];
   };
 } {
   if (!body || typeof body !== "object") {
@@ -70,6 +73,33 @@ function validatePolicyBody(body: unknown): {
   const priority = typeof b.priority === "number" ? b.priority : 100;
   const enabled = typeof b.enabled === "boolean" ? b.enabled : true;
 
+  // Scope (issue #13). Defaults to "global" for backward compatibility.
+  const scope = b.scope === undefined ? "global" : b.scope;
+  if (scope !== "global" && scope !== "per_agent" && scope !== "per_tool") {
+    return { valid: false, error: "scope must be one of: global, per_agent, per_tool" };
+  }
+
+  const isStringArray = (v: unknown): v is string[] =>
+    Array.isArray(v) && v.every((x) => typeof x === "string");
+
+  if (b.agentIds !== undefined && b.agentIds !== null && !isStringArray(b.agentIds)) {
+    return { valid: false, error: "agentIds must be an array of strings" };
+  }
+  if (b.toolIds !== undefined && b.toolIds !== null && !isStringArray(b.toolIds)) {
+    return { valid: false, error: "toolIds must be an array of strings" };
+  }
+  const agentIds = isStringArray(b.agentIds) ? b.agentIds : undefined;
+  const toolIds = isStringArray(b.toolIds) ? b.toolIds : undefined;
+
+  // A scoped policy that names nobody applies to nobody — reject as misconfig
+  // rather than silently widening it back to global.
+  if (scope === "per_agent" && !agentIds?.length) {
+    return { valid: false, error: "scope 'per_agent' requires a non-empty agentIds" };
+  }
+  if (scope === "per_tool" && !toolIds?.length) {
+    return { valid: false, error: "scope 'per_tool' requires a non-empty toolIds" };
+  }
+
   return {
     valid: true,
     data: {
@@ -77,6 +107,9 @@ function validatePolicyBody(body: unknown): {
       rules: b.rules as PolicyRule[],
       priority,
       enabled,
+      scope,
+      agentIds,
+      toolIds,
     },
   };
 }
@@ -125,7 +158,7 @@ policiesRouter.post("/", async (c) => {
     return c.json({ error: validation.error }, 400);
   }
 
-  const { name, rules, priority, enabled } = validation.data!;
+  const { name, rules, priority, enabled, scope, agentIds, toolIds } = validation.data!;
   const id = nanoid();
   const now = new Date();
 
@@ -135,6 +168,9 @@ policiesRouter.post("/", async (c) => {
     rules: JSON.stringify(rules),
     priority,
     enabled,
+    scope,
+    agentIds: agentIds ? JSON.stringify(agentIds) : null,
+    toolIds: toolIds ? JSON.stringify(toolIds) : null,
     createdAt: now,
   });
 
@@ -147,6 +183,9 @@ policiesRouter.post("/", async (c) => {
       rules,
       priority,
       enabled,
+      scope,
+      agentIds: agentIds ?? null,
+      toolIds: toolIds ?? null,
       createdAt: now.toISOString(),
     },
     201
@@ -398,7 +437,7 @@ policiesRouter.put("/:id", async (c) => {
     return c.json({ error: validation.error }, 400);
   }
 
-  const { name, rules, priority, enabled } = validation.data!;
+  const { name, rules, priority, enabled, scope, agentIds, toolIds } = validation.data!;
 
   await getDb()
     .update(policies)
@@ -407,6 +446,9 @@ policiesRouter.put("/:id", async (c) => {
       rules: JSON.stringify(rules),
       priority,
       enabled,
+      scope,
+      agentIds: agentIds ? JSON.stringify(agentIds) : null,
+      toolIds: toolIds ? JSON.stringify(toolIds) : null,
     })
     .where(eq(policies.id, id));
 
@@ -418,6 +460,9 @@ policiesRouter.put("/:id", async (c) => {
     rules,
     priority,
     enabled,
+    scope,
+    agentIds: agentIds ?? null,
+    toolIds: toolIds ?? null,
     createdAt: existing[0]!.createdAt,
   });
 });

@@ -51,6 +51,9 @@ CREATE TABLE IF NOT EXISTS policies (
   rules text NOT NULL,
   priority integer NOT NULL,
   enabled integer NOT NULL,
+  scope text DEFAULT 'global' NOT NULL,
+  agent_ids text,
+  tool_ids text,
   created_at integer NOT NULL
 );
 

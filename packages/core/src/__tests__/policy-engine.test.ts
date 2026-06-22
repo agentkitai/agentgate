@@ -449,4 +449,72 @@ describe('evaluatePolicy', () => {
       expect(result.channels).toEqual(['#approvals', '@manager']);
     });
   });
+
+  describe('scope filtering (per-agent / per-tool)', () => {
+    const denyEmail = { match: { action: 'send_email' }, decision: 'auto_deny' as const };
+
+    it('per_agent: applies only to agents in agentIds (acceptance criterion)', () => {
+      const request = createRequest({ action: 'send_email' });
+      const policy = createPolicy({
+        scope: 'per_agent',
+        agentIds: ['agent1', 'agent2'],
+        rules: [denyEmail],
+      });
+
+      expect(evaluatePolicy(request, [policy], { agentId: 'agent1' }).decision).toBe('auto_deny');
+      expect(evaluatePolicy(request, [policy], { agentId: 'agent2' }).decision).toBe('auto_deny');
+      // agent3 is not in the list → policy ignored → safe default
+      expect(evaluatePolicy(request, [policy], { agentId: 'agent3' }).decision).toBe('route_to_human');
+    });
+
+    it('per_agent: fails closed when no agent is verified', () => {
+      const request = createRequest({ action: 'send_email' });
+      const policy = createPolicy({ scope: 'per_agent', agentIds: ['agent1'], rules: [denyEmail] });
+      // no context, and explicit null → the per_agent deny is skipped, not applied
+      expect(evaluatePolicy(request, [policy]).decision).toBe('route_to_human');
+      expect(evaluatePolicy(request, [policy], { agentId: null }).decision).toBe('route_to_human');
+    });
+
+    it('global (and absent scope) applies regardless of agent', () => {
+      const request = createRequest({ action: 'send_email' });
+      const globalP = createPolicy({ scope: 'global', rules: [denyEmail] });
+      const legacyP = createPolicy({ rules: [denyEmail] }); // scope undefined → global
+      expect(evaluatePolicy(request, [globalP], { agentId: 'anyone' }).decision).toBe('auto_deny');
+      expect(evaluatePolicy(request, [legacyP]).decision).toBe('auto_deny');
+    });
+
+    it('mixed global + per_agent: agent3 sees only global, agent1 sees the higher-priority per_agent rule', () => {
+      const request = createRequest({ action: 'send_email' });
+      const globalApprove = createPolicy({
+        id: 'g', scope: 'global', priority: 10,
+        rules: [{ match: { action: 'send_email' }, decision: 'auto_approve' }],
+      });
+      const agentDeny = createPolicy({
+        id: 'a', scope: 'per_agent', agentIds: ['agent1'], priority: 1,
+        rules: [denyEmail],
+      });
+      expect(evaluatePolicy(request, [globalApprove, agentDeny], { agentId: 'agent3' }).decision).toBe('auto_approve');
+      expect(evaluatePolicy(request, [globalApprove, agentDeny], { agentId: 'agent1' }).decision).toBe('auto_deny');
+    });
+
+    it('per_tool: applies only when the action is in toolIds', () => {
+      const policy = createPolicy({ scope: 'per_tool', toolIds: ['send_email'], rules: [denyEmail] });
+      expect(evaluatePolicy(createRequest({ action: 'send_email' }), [policy], { tool: 'send_email' }).decision).toBe('auto_deny');
+      expect(evaluatePolicy(createRequest({ action: 'delete_db' }), [policy], { tool: 'delete_db' }).decision).toBe('route_to_human');
+    });
+
+    it('per_agent with empty/undefined agentIds never matches', () => {
+      const request = createRequest({ action: 'send_email' });
+      const empty = createPolicy({ scope: 'per_agent', agentIds: [], rules: [denyEmail] });
+      const missing = createPolicy({ scope: 'per_agent', rules: [denyEmail] });
+      expect(evaluatePolicy(request, [empty], { agentId: 'agent1' }).decision).toBe('route_to_human');
+      expect(evaluatePolicy(request, [missing], { agentId: 'agent1' }).decision).toBe('route_to_human');
+    });
+
+    it('unknown scope value is excluded (fail-safe)', () => {
+      const request = createRequest({ action: 'send_email' });
+      const weird = createPolicy({ scope: 'bogus' as unknown as Policy['scope'], rules: [denyEmail] });
+      expect(evaluatePolicy(request, [weird], { agentId: 'agent1' }).decision).toBe('route_to_human');
+    });
+  });
 });
