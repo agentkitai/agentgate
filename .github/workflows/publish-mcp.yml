@@ -1,0 +1,69 @@
+name: Publish @agentgate/mcp + MCP Registry
+
+# An `mcp-v*` tag publishes @agentgate/mcp to npm via OIDC Trusted Publishing
+# (no token) and lists/updates the server in the official MCP Registry via
+# GitHub Actions OIDC (no token). Kept separate from the changesets release.yml
+# so the two never entangle.
+#
+# One-time setup (owner, in a browser — no secrets ever stored):
+#   * npm Trusted Publisher for package `@agentgate/mcp`: repo
+#     agentkitai/agentgate, workflow `publish-mcp.yml`.
+#   * MCP Registry namespace `io.github.agentkitai/*` is proven automatically by
+#     this repo's GitHub OIDC token — nothing to configure.
+
+on:
+  push:
+    tags: ['mcp-v*']
+  workflow_dispatch: {}
+
+jobs:
+  npm-and-registry:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # npm Trusted Publishing + MCP Registry OIDC — no secrets
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4   # reads the pnpm version from package.json packageManager
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+        # Deliberately NO registry-url: setup-node would otherwise write an
+        # .npmrc with a ${NODE_AUTH_TOKEN} placeholder that breaks OIDC.
+
+      - name: Upgrade npm (Trusted Publishing needs >= 11.5.1)
+        run: npm install -g npm@latest
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build the MCP package
+        run: pnpm --filter @agentgate/mcp build
+
+      - name: Publish @agentgate/mcp to npm (OIDC Trusted Publishing)
+        run: |
+          set -euo pipefail
+          V=$(node -p "require('./packages/mcp/package.json').version")
+          if npm view "@agentgate/mcp@$V" version >/dev/null 2>&1; then
+            echo "@agentgate/mcp@$V already on npm — skipping publish (idempotent re-run)"
+          else
+            pnpm --filter @agentgate/mcp publish --access public --no-git-checks
+          fi
+
+      - name: Publish to the MCP Registry (GitHub Actions OIDC)
+        working-directory: packages/mcp
+        run: |
+          set -euo pipefail
+          url=$(curl -fsSL https://api.github.com/repos/modelcontextprotocol/registry/releases/latest \
+            | jq -r '.assets[] | select((.name|test("linux";"i")) and (.name|test("amd64|x86_64";"i"))) | .browser_download_url' \
+            | head -1)
+          echo "Downloading mcp-publisher: $url"
+          curl -fsSL "$url" | tar xz
+          chmod +x mcp-publisher
+          ./mcp-publisher --version
+          # Give npm a moment to index the fresh release before the registry validates it.
+          sleep 30
+          ./mcp-publisher login github-oidc   # authenticates via this workflow's OIDC token
+          ./mcp-publisher publish             # reads packages/mcp/server.json
