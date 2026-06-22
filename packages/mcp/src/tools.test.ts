@@ -5,6 +5,7 @@ import {
   formatResult,
   formatError,
   handleToolCall,
+  authorizeTool,
   toolDefinitions,
   normalizeDecidedBy,
 } from './tools.js';
@@ -505,5 +506,46 @@ describe('handleToolCall', () => {
     );
     expect(result.isError).toBeUndefined();
     expect(JSON.parse(result.content[0]!.text)).toEqual(responseData);
+  });
+});
+
+describe('authorizeTool (MCP guardrail, #14)', () => {
+  const config: ApiConfig = { baseUrl: 'http://localhost:3000', apiKey: 'test-key' };
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('POSTs the tool name to /api/mcp/authorize and returns the verdict', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true, status: 200,
+      json: () => Promise.resolve({ decision: 'allow' }),
+    });
+    const verdict = await authorizeTool(config, 'file.read', { path: '/tmp' });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/api/mcp/authorize',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    const sentBody = JSON.parse((fetchMock.mock.calls[0]![1] as { body: string }).body);
+    expect(sentBody).toEqual({ toolName: 'file.read', params: { path: '/tmp' } });
+    expect(verdict).toEqual({ decision: 'allow' });
+  });
+
+  it('passes through a requires_approval verdict', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true, status: 200,
+      json: () => Promise.resolve({ decision: 'requires_approval', status: 'pending', requestId: 'req-9' }),
+    });
+    const verdict = await authorizeTool(config, 'send_email', {});
+    expect(verdict?.decision).toBe('requires_approval');
+    expect(verdict?.requestId).toBe('req-9');
+  });
+
+  it('fails OPEN (returns null) on a network/auth error', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 500, text: () => Promise.resolve('') });
+    expect(await authorizeTool(config, 'file.read', {})).toBeNull();
   });
 });

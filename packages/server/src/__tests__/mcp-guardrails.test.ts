@@ -41,6 +41,7 @@ vi.mock("../db/index.js", async () => ({
 import { createAgent } from "../lib/agents.js";
 import mcpRouter from "../routes/mcp.js";
 import { parseConfig, setConfig, resetConfig } from "../config.js";
+import { getGlobalEmitter, EventNames } from "@agentgate/core";
 
 const TEST_SECRET = "test-jwt-secret-at-least-32-chars-long!!";
 
@@ -123,6 +124,25 @@ describe("POST /api/mcp/authorize", () => {
 
     expect(((await (await authorize("file.read")).json()) as { decision: string }).decision).toBe("requires_approval");
     expect(((await (await authorize("file.write")).json()) as { decision: string }).decision).toBe("allow");
+  });
+
+  it("emits a request.created event so the gated call notifies approvers", async () => {
+    const { agent } = await createAgent("mcp-bot");
+    boundAgentId = agent.id;
+    addOverride(agent.id, "*");
+
+    const events: Array<{ type: string; payload: { requestId?: string; action?: string } }> = [];
+    const off = getGlobalEmitter().on(EventNames.REQUEST_CREATED, (e) => {
+      events.push(e as (typeof events)[number]);
+    });
+    try {
+      const body = (await (await authorize("send_email", { to: "x@y.io" })).json()) as { requestId: string };
+      const ev = events.find((e) => e.payload.requestId === body.requestId);
+      expect(ev).toBeDefined();
+      expect(ev!.payload.action).toBe("send_email");
+    } finally {
+      off();
+    }
   });
 
   it("tags the audit trail with OWASP LLM06 (acceptance c)", async () => {
