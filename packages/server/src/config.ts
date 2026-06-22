@@ -216,6 +216,13 @@ export const ConfigSchema = z.object({
   /** Refresh token TTL in seconds (default: 604800 = 7 days) */
   jwtRefreshTtl: z.coerce.number().int().min(60).default(604800),
 
+  // ─── Per-agent spend / budgets (#13) ────────────────────────────────
+  /** AgentLens base URL — source of per-agent spend telemetry. Unset = spend
+   *  reads disabled. */
+  agentlensUrl: z.string().optional(),
+  /** Shared service token for AgentLens' POST /api/internal/spend. */
+  agentgateServiceToken: z.string().optional(),
+
   // Metrics
   /** Enable Prometheus metrics endpoint (default true) */
   metricsEnabled: z
@@ -298,6 +305,8 @@ const ENV_MAP: Record<string, keyof z.infer<typeof ConfigSchema>> = {
   AUTH_MODE: "authMode",
   JWT_ACCESS_TTL: "jwtAccessTtl",
   JWT_REFRESH_TTL: "jwtRefreshTtl",
+  AGENTLENS_URL: "agentlensUrl",
+  AGENTGATE_SERVICE_TOKEN: "agentgateServiceToken",
 };
 
 // ============================================================================
@@ -312,6 +321,7 @@ const ENV_MAP: Record<string, keyof z.infer<typeof ConfigSchema>> = {
 const SECRET_KEYS = [
   "ADMIN_API_KEY",
   "JWT_SECRET",
+  "AGENTGATE_SERVICE_TOKEN",
   "DATABASE_URL",
   "REDIS_URL",
   "SLACK_BOT_TOKEN",

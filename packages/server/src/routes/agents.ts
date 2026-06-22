@@ -6,9 +6,11 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 
 import { createAgent, listAgents, revokeAgent } from "../lib/agents.js";
+import { fetchAgentSpend, currentMonthWindow, SpendNotConfiguredError } from "../lib/agent-spend.js";
 import { requirePermission } from "../middleware/auth.js";
 
-const router = new Hono();
+// Variables: the auth middleware sets `auth` (carries the tenant) on the context.
+const router = new Hono<{ Variables: { auth?: { tenantId?: string } } }>();
 
 // Registering/revoking agent credentials is admin-level credential management.
 router.use("*", requirePermission("keys:manage"));
@@ -36,6 +38,28 @@ router.post("/", zValidator("json", createAgentSchema), async (c) => {
 // List agents (without secrets).
 router.get("/", async (c) => {
   return c.json({ agents: await listAgents() });
+});
+
+// Per-agent spend report for the current calendar month (#13). Reads priced
+// spend from AgentLens; informational (enforcement is checkAgentBudget).
+router.get("/:id/spend", async (c) => {
+  const id = c.req.param("id");
+  const tenantId = c.get("auth")?.tenantId ?? "default";
+  const window = currentMonthWindow();
+  try {
+    const spend = await fetchAgentSpend([id], tenantId, window);
+    return c.json({
+      agentId: id,
+      tenantId,
+      periodSpendUsd: spend.get(id) ?? 0,
+      window,
+    });
+  } catch (err) {
+    if (err instanceof SpendNotConfiguredError) {
+      return c.json({ error: err.message }, 503);
+    }
+    return c.json({ error: "Failed to fetch spend from AgentLens" }, 502);
+  }
 });
 
 // Revoke an agent.
