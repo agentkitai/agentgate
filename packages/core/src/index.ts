@@ -45,6 +45,7 @@ export {
   type WebhookTriggeredEvent,
   type WebhookFailedEvent,
   type ApiKeyRateLimitedEvent,
+  type BudgetThresholdEvent,
   type AgentGateEvent,
   createBaseEvent,
   eventMatchesFilter,

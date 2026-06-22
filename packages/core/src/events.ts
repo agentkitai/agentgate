@@ -36,6 +36,9 @@ export const EventNames = {
   API_KEY_REVOKED: "api_key.revoked",
   API_KEY_RATE_LIMITED: "api_key.rate_limited",
 
+  // Budget events
+  BUDGET_THRESHOLD: "budget.threshold",
+
   // System events
   SYSTEM_STARTUP: "system.startup",
   SYSTEM_SHUTDOWN: "system.shutdown",
@@ -224,6 +227,30 @@ export interface ApiKeyRateLimitedEvent
 }
 
 // ============================================================================
+// Budget Events
+// ============================================================================
+
+/**
+ * Emitted when an agent's current-month spend crosses a budget utilization
+ * threshold (e.g. 0.8 = near-limit warning, 1.0 = exceeded). A near-limit
+ * notification hook — does NOT by itself block the request (enforcement is
+ * separate). Fires once per (agent, month, threshold).
+ */
+export interface BudgetThresholdEvent
+  extends BaseEvent<typeof EventNames.BUDGET_THRESHOLD> {
+  payload: {
+    agentId: string;
+    tenantId: string;
+    /** The crossed threshold as a fraction of the cap (e.g. 0.8, 1.0). */
+    threshold: number;
+    /** spentUsd / limitUsd at evaluation time. */
+    utilization: number;
+    spentUsd: number;
+    limitUsd: number;
+  };
+}
+
+// ============================================================================
 // Union Type
 // ============================================================================
 
@@ -239,7 +266,8 @@ export type AgentGateEvent =
   | PolicyMatchedEvent
   | WebhookTriggeredEvent
   | WebhookFailedEvent
-  | ApiKeyRateLimitedEvent;
+  | ApiKeyRateLimitedEvent
+  | BudgetThresholdEvent;
 
 // ============================================================================
 // Helper Functions

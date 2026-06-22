@@ -228,6 +228,12 @@ export const ConfigSchema = z.object({
     .union([z.boolean(), z.string()])
     .transform((val) => (typeof val === "boolean" ? val : ["true", "1", "yes"].includes(val.toLowerCase())))
     .default(false),
+  /** Emit near-limit budget notifications (80%/100% of cap) via the dispatcher.
+   *  Independent of enforcement — warn without denying. Default off. */
+  agentBudgetAlerts: z
+    .union([z.boolean(), z.string()])
+    .transform((val) => (typeof val === "boolean" ? val : ["true", "1", "yes"].includes(val.toLowerCase())))
+    .default(false),
 
   // Metrics
   /** Enable Prometheus metrics endpoint (default true) */
@@ -314,6 +320,7 @@ const ENV_MAP: Record<string, keyof z.infer<typeof ConfigSchema>> = {
   AGENTLENS_URL: "agentlensUrl",
   AGENTGATE_SERVICE_TOKEN: "agentgateServiceToken",
   AGENT_BUDGET_ENFORCEMENT: "agentBudgetEnforcement",
+  AGENT_BUDGET_ALERTS: "agentBudgetAlerts",
 };
 
 // ============================================================================
