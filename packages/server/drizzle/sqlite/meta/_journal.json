@@ -50,6 +50,13 @@
       "when": 1771227695081,
       "tag": "0006_tough_loa",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1782110288803,
+      "tag": "0007_nappy_jack_flag",
+      "breakpoints": true
     }
   ]
 }

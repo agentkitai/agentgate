@@ -21,6 +21,9 @@ export const approvalRequests = pgTable("approval_requests", {
   decidedBy: text("decided_by"),
   decisionReason: text("decision_reason"),
   expiresAt: timestamp("expires_at", { mode: "date" }),
+  // Verified agent identity (agent-identity spine) — the agents.id whose
+  // credential was verified for this request; null when none presented.
+  verifiedAgentId: text("verified_agent_id"),
 }, (table) => ({
   idxRequestsStatus: index("idx_requests_status").on(table.status),
   idxRequestsAction: index("idx_requests_action").on(table.action),
@@ -65,6 +68,20 @@ export const apiKeys = pgTable("api_keys", {
   rateLimit: integer("rate_limit"), // requests per minute, null = unlimited
 }, (table) => ({
   idxApiKeysHash: index("idx_api_keys_hash").on(table.keyHash),
+}));
+
+// Agent registry (agent-identity spine). Mirror of the SQLite `agents` table.
+export const agents = pgTable("agents", {
+  id: text("id").primaryKey(), // agt_<nanoid> — the public client id
+  name: text("name").notNull(),
+  secretHash: text("secret_hash").notNull(), // sha256(secret), hex
+  status: text("status", { enum: ["active", "revoked"] }).notNull(),
+  metadata: text("metadata"), // JSON stringified, nullable
+  createdAt: timestamp("created_at", { mode: "date" }).notNull(),
+  lastSeenAt: timestamp("last_seen_at", { mode: "date" }),
+  revokedAt: timestamp("revoked_at", { mode: "date" }),
+}, (table) => ({
+  idxAgentsStatus: index("idx_agents_status").on(table.status),
 }));
 
 // Webhooks table

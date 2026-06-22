@@ -29,6 +29,13 @@
       "when": 1771227706729,
       "tag": "0003_hard_loki",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782110290202,
+      "tag": "0004_open_sharon_ventura",
+      "breakpoints": true
     }
   ]
 }

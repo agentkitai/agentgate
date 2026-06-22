@@ -24,7 +24,19 @@ CREATE TABLE IF NOT EXISTS \`approval_requests\` (
 	\`decided_at\` integer,
 	\`decided_by\` text,
 	\`decision_reason\` text,
-	\`expires_at\` integer
+	\`expires_at\` integer,
+	\`verified_agent_id\` text
+);
+
+CREATE TABLE IF NOT EXISTS \`agents\` (
+	\`id\` text PRIMARY KEY NOT NULL,
+	\`name\` text NOT NULL,
+	\`secret_hash\` text NOT NULL,
+	\`status\` text NOT NULL,
+	\`metadata\` text,
+	\`created_at\` integer NOT NULL,
+	\`last_seen_at\` integer,
+	\`revoked_at\` integer
 );
 
 CREATE TABLE IF NOT EXISTS \`audit_logs\` (

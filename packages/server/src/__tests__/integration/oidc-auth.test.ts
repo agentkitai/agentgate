@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS approval_requests (
   id text PRIMARY KEY NOT NULL, action text NOT NULL, params text, context text,
   status text NOT NULL, urgency text NOT NULL, created_at integer NOT NULL,
   updated_at integer NOT NULL, decided_at integer, decided_by text,
-  decision_reason text, expires_at integer
+  decision_reason text, expires_at integer, verified_agent_id text
 );
 CREATE TABLE IF NOT EXISTS audit_logs (
   id text PRIMARY KEY NOT NULL, request_id text NOT NULL, event_type text NOT NULL,

@@ -21,6 +21,10 @@ export const approvalRequests = sqliteTable("approval_requests", {
   decidedBy: text("decided_by"),
   decisionReason: text("decision_reason"),
   expiresAt: integer("expires_at", { mode: "timestamp" }),
+  // Verified agent identity (migration: agent-identity spine). Null when the
+  // request carried no agent credential; set to the agents.id whose credential
+  // was verified for this request — distinct from the unverified context.agentId.
+  verifiedAgentId: text("verified_agent_id"),
 }, (table) => ({
   idxRequestsStatus: index("idx_requests_status").on(table.status),
   idxRequestsAction: index("idx_requests_action").on(table.action),
@@ -65,6 +69,23 @@ export const apiKeys = sqliteTable("api_keys", {
   rateLimit: integer("rate_limit"), // requests per minute, null = unlimited
 }, (table) => ({
   idxApiKeysHash: index("idx_api_keys_hash").on(table.keyHash),
+}));
+
+// Agent registry (agent-identity spine). A verifiable, non-human principal:
+// an agent presents `X-Agent-Id` (agt_*) + `X-Agent-Secret`; the secret is
+// stored only as a sha256 hash. Distinct from api_keys (human/service keys) so
+// agent identity and per-agent scoping (virtual keys) stay cleanly separable.
+export const agents = sqliteTable("agents", {
+  id: text("id").primaryKey(), // agt_<nanoid> — the public client id
+  name: text("name").notNull(),
+  secretHash: text("secret_hash").notNull(), // sha256(secret), hex
+  status: text("status", { enum: ["active", "revoked"] }).notNull(),
+  metadata: text("metadata"), // JSON stringified, nullable
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  lastSeenAt: integer("last_seen_at", { mode: "timestamp" }),
+  revokedAt: integer("revoked_at", { mode: "timestamp" }),
+}, (table) => ({
+  idxAgentsStatus: index("idx_agents_status").on(table.status),
 }));
 
 // Webhooks table
