@@ -39,8 +39,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Build the MCP package
-        run: pnpm --filter @agentgate/mcp build
+      - name: Build the MCP package (and its workspace dep @agentgate/core)
+        run: |
+          pnpm --filter @agentgate/core build
+          pnpm --filter @agentgate/mcp build
 
       - name: Publish @agentgate/mcp to npm (OIDC Trusted Publishing)
         run: |
@@ -56,13 +58,9 @@ jobs:
         working-directory: packages/mcp
         run: |
           set -euo pipefail
-          url=$(curl -fsSL https://api.github.com/repos/modelcontextprotocol/registry/releases/latest \
-            | jq -r '.assets[] | select((.name|test("linux";"i")) and (.name|test("amd64|x86_64";"i"))) | .browser_download_url' \
-            | head -1)
-          echo "Downloading mcp-publisher: $url"
-          curl -fsSL "$url" | tar xz
+          # Stable release redirect — avoids the rate-limited (403) api.github.com.
+          curl -fsSL https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz | tar xz
           chmod +x mcp-publisher
-          ./mcp-publisher --version
           # Give npm a moment to index the fresh release before the registry validates it.
           sleep 30
           ./mcp-publisher login github-oidc   # authenticates via this workflow's OIDC token
