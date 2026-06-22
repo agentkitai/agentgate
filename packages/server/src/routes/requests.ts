@@ -18,6 +18,7 @@ import { logAuditEvent } from "../lib/audit.js";
 import { owaspRiskForPolicyDecision } from "../lib/owasp.js";
 import { resolveVerifiedAgentId, resolveEffectiveAgentId } from "../lib/agent-tokens.js";
 import { checkAgentBudget } from "../lib/agent-budget.js";
+import { maybeAlertBudgetThreshold } from "../lib/budget-alerts.js";
 import { decideInitialStatus } from "../lib/request-decision.js";
 import { getConfig } from "../config.js";
 import type { ApiKey } from "../db/schema.js";
@@ -256,15 +257,22 @@ requestsRouter.post("/", async (c) => {
   }
   const effectiveAgentId = resolved.agentId;
 
-  // Per-agent budget (issue #13): if enforcement is on and the verified agent is
-  // over its monthly cap, deny outright — this takes precedence over override /
-  // policy. Fail-open (checkAgentBudget never throws on a telemetry outage).
+  // Per-agent budget (issue #13). One spend read drives two opt-in features:
+  //  - enforcement: deny outright when over cap (precedence over override/policy);
+  //  - alerts: fire an 80%/100% near-limit notification (warn without denying).
+  // Fail-open (checkAgentBudget never throws on a telemetry outage).
+  const cfg = getConfig();
   let budgetReason: string | null = null;
-  if (getConfig().agentBudgetEnforcement && effectiveAgentId) {
+  if (effectiveAgentId && (cfg.agentBudgetEnforcement || cfg.agentBudgetAlerts)) {
     const tenantId = c.get("auth")?.tenantId ?? "default";
     const budget = await checkAgentBudget(effectiveAgentId, tenantId);
-    if (!budget.allowed) {
+    if (cfg.agentBudgetEnforcement && !budget.allowed) {
       budgetReason = `Monthly budget exceeded: $${budget.spentUsd.toFixed(2)} of $${budget.limitUsd?.toFixed(2)} used`;
+    }
+    // Alert independently of the deny decision: crossing 100% should notify
+    // precisely when the agent is also being cut off.
+    if (cfg.agentBudgetAlerts) {
+      maybeAlertBudgetThreshold(effectiveAgentId, budget, tenantId);
     }
   }
 
