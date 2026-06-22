@@ -16,6 +16,7 @@ import {
 } from "@agentgate/core";
 import { logAuditEvent } from "../lib/audit.js";
 import { owaspRiskForPolicyDecision } from "../lib/owasp.js";
+import { verifyAgentCredential } from "../lib/agents.js";
 import { deliverWebhook } from "../lib/webhook.js";
 import { getGlobalDispatcher } from "../lib/notification/index.js";
 import { getCachedPolicies } from "../lib/policy-cache.js";
@@ -251,6 +252,16 @@ requestsRouter.post("/", async (c) => {
   }
   // route_to_human and route_to_agent stay pending
 
+  // Agent-identity spine: verify an optional agent credential (X-Agent-Id +
+  // X-Agent-Secret) and resolve the VERIFIED agent id — distinct from the
+  // caller-claimed context.agentId, which is unauthenticated. Null when none
+  // is presented or it fails to verify.
+  const verifiedAgentId =
+    (await verifyAgentCredential(
+      c.req.header("x-agent-id"),
+      c.req.header("x-agent-secret"),
+    ))?.id ?? null;
+
   // Insert into database
   await getDb().insert(approvalRequests).values({
     id,
@@ -265,6 +276,7 @@ requestsRouter.post("/", async (c) => {
     decidedBy,
     decisionReason,
     expiresAt,
+    verifiedAgentId,
   });
 
   // Log audit event
@@ -278,6 +290,9 @@ requestsRouter.post("/", async (c) => {
     // Compliance evidence: tag the decision with the OWASP LLM risk it
     // mitigates (gating/escalating a tool action = LLM06 Excessive Agency).
     owaspRisk: owaspRiskForPolicyDecision(policyDecision.decision),
+    // Who actually made the request, cryptographically verified (vs the
+    // unverified context.agentId claim).
+    verifiedAgentId,
   });
 
   // Emit request.created event

@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS approval_requests (
   decided_at integer,
   decided_by text,
   decision_reason text,
-  expires_at integer
+  expires_at integer,
+  verified_agent_id text
 );
 
 CREATE TABLE IF NOT EXISTS audit_logs (
