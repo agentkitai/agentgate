@@ -12,11 +12,18 @@
 // the approval path, where an override forces pending and bypasses policy.
 
 import { nanoid } from "nanoid";
+import {
+  EventNames,
+  createBaseEvent,
+  getGlobalEmitter,
+  type RequestCreatedEvent,
+} from "@agentgate/core";
 
 import { getDb, approvalRequests } from "../db/index.js";
 import { checkOverrides } from "../routes/overrides.js";
 import { owaspRiskForPolicyDecision } from "./owasp.js";
 import { logAuditEvent } from "./audit.js";
+import { getGlobalDispatcher } from "./notification/index.js";
 
 export type McpAccessVerdict =
   | { decision: "allow" }
@@ -76,11 +83,29 @@ export async function evaluateMcpToolAccess(opts: {
 
   await logAuditEvent(id, "created", "mcp", {
     toolName,
+    params: params ?? {},
+    context: context ?? {},
     overrideId: match.overrideId,
     decision: "requires_approval",
     owaspRisk,
     verifiedAgentId,
   });
+
+  // Surface the pending request to humans the same way POST /api/requests does:
+  // emit the created event and dispatch a notification. No policy channels here
+  // (override-only gate) → the dispatcher falls back to configured/default routes.
+  const createdEvent: RequestCreatedEvent = {
+    ...createBaseEvent(EventNames.REQUEST_CREATED, "server"),
+    payload: {
+      requestId: id,
+      action: toolName,
+      params: params ?? {},
+      context: { ...(context ?? {}), source: "mcp" },
+      urgency: "normal",
+    },
+  };
+  getGlobalEmitter().emitSync(createdEvent);
+  getGlobalDispatcher().dispatchSync(createdEvent, undefined);
 
   return {
     decision: "requires_approval",
