@@ -1,0 +1,1 @@
+ALTER TABLE `agents` ADD `monthly_budget_usd` real;

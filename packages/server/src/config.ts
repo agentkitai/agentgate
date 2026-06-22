@@ -222,6 +222,12 @@ export const ConfigSchema = z.object({
   agentlensUrl: z.string().optional(),
   /** Shared service token for AgentLens' POST /api/internal/spend. */
   agentgateServiceToken: z.string().optional(),
+  /** Enforce per-agent monthly budgets (deny over-budget requests). Default off
+   *  so the feature ships dark until an operator opts in. */
+  agentBudgetEnforcement: z
+    .union([z.boolean(), z.string()])
+    .transform((val) => (typeof val === "boolean" ? val : ["true", "1", "yes"].includes(val.toLowerCase())))
+    .default(false),
 
   // Metrics
   /** Enable Prometheus metrics endpoint (default true) */
@@ -307,6 +313,7 @@ const ENV_MAP: Record<string, keyof z.infer<typeof ConfigSchema>> = {
   JWT_REFRESH_TTL: "jwtRefreshTtl",
   AGENTLENS_URL: "agentlensUrl",
   AGENTGATE_SERVICE_TOKEN: "agentgateServiceToken",
+  AGENT_BUDGET_ENFORCEMENT: "agentBudgetEnforcement",
 };
 
 // ============================================================================

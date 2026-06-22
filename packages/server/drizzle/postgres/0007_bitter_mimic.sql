@@ -1,0 +1,1 @@
+ALTER TABLE "agents" ADD COLUMN "monthly_budget_usd" double precision;

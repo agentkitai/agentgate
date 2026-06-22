@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 
-import { createAgent, listAgents, revokeAgent } from "../lib/agents.js";
+import { createAgent, listAgents, revokeAgent, setAgentBudget } from "../lib/agents.js";
 import { fetchAgentSpend, currentMonthWindow, SpendNotConfiguredError } from "../lib/agent-spend.js";
 import { requirePermission } from "../middleware/auth.js";
 
@@ -18,12 +18,13 @@ router.use("*", requirePermission("keys:manage"));
 const createAgentSchema = z.object({
   name: z.string().min(1).max(100),
   metadata: z.record(z.string(), z.unknown()).nullable().optional(),
+  monthlyBudgetUsd: z.number().positive().nullable().optional(),
 });
 
 // Register a new agent — returns the secret ONCE.
 router.post("/", zValidator("json", createAgentSchema), async (c) => {
-  const { name, metadata } = c.req.valid("json");
-  const { agent, secret } = await createAgent(name, metadata ?? null);
+  const { name, metadata, monthlyBudgetUsd } = c.req.valid("json");
+  const { agent, secret } = await createAgent(name, metadata ?? null, monthlyBudgetUsd ?? null);
   return c.json(
     {
       ...agent,
@@ -60,6 +61,14 @@ router.get("/:id/spend", async (c) => {
     }
     return c.json({ error: "Failed to fetch spend from AgentLens" }, 502);
   }
+});
+
+// Set or clear an agent's monthly budget (null clears it).
+const budgetSchema = z.object({ monthlyBudgetUsd: z.number().positive().nullable() });
+router.patch("/:id/budget", zValidator("json", budgetSchema), async (c) => {
+  const ok = await setAgentBudget(c.req.param("id"), c.req.valid("json").monthlyBudgetUsd);
+  if (!ok) return c.json({ error: "Agent not found" }, 404);
+  return c.json({ id: c.req.param("id"), monthlyBudgetUsd: c.req.valid("json").monthlyBudgetUsd });
 });
 
 // Revoke an agent.

@@ -114,7 +114,7 @@ export interface RequestDecidedEvent
     action: string;
     status: Extract<ApprovalStatus, "approved" | "denied">;
     decidedBy: string;
-    decidedByType: "human" | "agent" | "policy";
+    decidedByType: "human" | "agent" | "policy" | "budget_limiter";
     reason?: string;
     /** Time from creation to decision in milliseconds */
     decisionTimeMs: number;

@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS agents (
   metadata text,
   created_at integer NOT NULL,
   last_seen_at integer,
-  revoked_at integer
+  revoked_at integer,
+  monthly_budget_usd real
 );
 `);
 

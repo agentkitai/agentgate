@@ -44,6 +44,7 @@ function toPublic(a: Agent): PublicAgent {
 export async function createAgent(
   name: string,
   metadata?: Record<string, unknown> | null,
+  monthlyBudgetUsd?: number | null,
 ): Promise<{ agent: PublicAgent; secret: string }> {
   const { id, secret } = generateAgentCredential();
   const now = new Date();
@@ -56,9 +57,28 @@ export async function createAgent(
     createdAt: now,
     lastSeenAt: null,
     revokedAt: null,
+    monthlyBudgetUsd: monthlyBudgetUsd ?? null,
   };
   await getDb().insert(agents).values(values);
   return { agent: toPublic(values), secret };
+}
+
+/** The agent's monthly USD budget cap, or null if it has none / doesn't exist. */
+export async function getAgentBudget(id: string): Promise<number | null> {
+  const rows = await getDb()
+    .select({ monthlyBudgetUsd: agents.monthlyBudgetUsd })
+    .from(agents)
+    .where(eq(agents.id, id))
+    .limit(1);
+  return rows[0]?.monthlyBudgetUsd ?? null;
+}
+
+/** Set or clear an agent's monthly USD budget. Returns false if missing. */
+export async function setAgentBudget(id: string, monthlyBudgetUsd: number | null): Promise<boolean> {
+  const rows = await getDb().select({ id: agents.id }).from(agents).where(eq(agents.id, id)).limit(1);
+  if (!rows[0]) return false;
+  await getDb().update(agents).set({ monthlyBudgetUsd }).where(eq(agents.id, id));
+  return true;
 }
 
 /**

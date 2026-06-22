@@ -50,6 +50,13 @@
       "when": 1782140779704,
       "tag": "0006_nice_bloodscream",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782153026280,
+      "tag": "0007_bitter_mimic",
+      "breakpoints": true
     }
   ]
 }
