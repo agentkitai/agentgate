@@ -11,6 +11,7 @@ import requestsRouter from "./routes/requests.js";
 import policiesRouter from "./routes/policies.js";
 import apiKeysRouter from "./routes/api-keys.js";
 import agentsRouter from "./routes/agents.js";
+import agentTokenRouter from "./routes/agent-tokens.js";
 import webhooksRouter from "./routes/webhooks.js";
 import auditRouter from "./routes/audit.js";
 import analyticsRouter from "./routes/analytics.js";
@@ -184,6 +185,10 @@ app.route("/api/guardrails", createGuardrailsRouter());
 // Auth routes (mostly public — login, callback, refresh, logout)
 // /auth/me requires auth and is handled inside the router
 app.route("/auth", authRouter);
+
+// Agent OAuth2 token endpoint (public — the agent's own agt_*/ags_* credential
+// is the auth). Must be mounted before the user-auth middleware below.
+app.route("/api/agents/token", agentTokenRouter);
 
 // Apply auth middleware to all /api/* routes
 app.use("/api/*", authMiddleware);
