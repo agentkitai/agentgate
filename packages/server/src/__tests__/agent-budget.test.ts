@@ -51,8 +51,22 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
   resetConfig();
 });
+
+/** Stub fetch to return a per-agent spend from a mutable cell, so a test can
+ *  change the upstream value between reads. */
+function mutableSpend(agentId: string, cell: { usd: number }) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ spend: [{ agentId, totalCostUsd: cell.usd, lastEventAt: null }] }),
+    }) as Response),
+  );
+}
 
 describe("checkAgentBudget", () => {
   it("allows an agent with no budget (limit null)", async () => {
@@ -78,6 +92,52 @@ describe("checkAgentBudget", () => {
     clearSpendCache();
     mockSpend({ [agent.id]: 100 }); // exactly at limit → denied (spent < limit is false)
     expect((await checkAgentBudget(agent.id, "default")).allowed).toBe(false);
+  });
+
+  it("force-refreshes a stale near-cap read before deciding (#23)", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-15T12:00:00.000Z")); // 30s-aligned cache bucket
+    const { agent } = await createAgent("ci", null, 100);
+    const cell = { usd: 85 }; // 85% — in the danger zone, under cap
+    mutableSpend(agent.id, cell);
+    expect((await checkAgentBudget(agent.id, "default")).allowed).toBe(true);
+
+    cell.usd = 120; // jumps over cap; cached 85 is now stale
+    vi.advanceTimersByTime(5000); // 5s: within the 30s cache, past the 2s near-cap budget
+    const v = await checkAgentBudget(agent.id, "default");
+    expect(v.spentUsd).toBe(120); // re-read fresh, not the stale 85
+    expect(v.allowed).toBe(false);
+  });
+
+  it("keeps serving cache when well under the cap (no near-cap refresh) (#23)", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-15T12:00:00.000Z"));
+    const { agent } = await createAgent("ci", null, 100);
+    const cell = { usd: 40 }; // 40% — far from cap
+    mutableSpend(agent.id, cell);
+    expect((await checkAgentBudget(agent.id, "default")).spentUsd).toBe(40);
+
+    cell.usd = 200; // would deny IF we refreshed
+    vi.advanceTimersByTime(5000);
+    const v = await checkAgentBudget(agent.id, "default");
+    expect(v.spentUsd).toBe(40); // stale cache served — far-from-cap agents skip the refresh
+    expect(v.allowed).toBe(true);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1); // only the initial read
+  });
+
+  it("keeps a confirmed-over-cap verdict when the near-cap re-read fails (no fail-open) (#23)", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-15T12:00:00.000Z"));
+    const { agent } = await createAgent("ci", null, 100);
+    mockSpend({ [agent.id]: 105 }); // over cap; warms the cache
+    expect((await checkAgentBudget(agent.id, "default")).allowed).toBe(false);
+
+    // 5s later the cache is stale (>2s near-cap budget); make the re-read error.
+    vi.advanceTimersByTime(5000);
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 500, text: async () => "" }) as Response));
+    const v = await checkAgentBudget(agent.id, "default");
+    expect(v.spentUsd).toBe(105); // fell back to the first read's valid value...
+    expect(v.allowed).toBe(false); // ...and still DENIES — does not fail open
   });
 
   it("fails OPEN when AgentLens is unconfigured", async () => {

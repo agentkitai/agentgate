@@ -67,6 +67,43 @@ describe("fetchAgentSpend", () => {
     await fetchAgentSpend(["agt_a"], "default");
     expect(fn).toHaveBeenCalledTimes(1);
   });
+
+  it("times out the spend read at spendReadTimeoutMs", async () => {
+    setConfig(parseConfig({ ...CONFIGURED, spendReadTimeoutMs: 100 })); // min allowed
+    // Honor the AbortSignal so the request rejects when the timeout fires.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init?: RequestInit) => new Promise((_resolve, reject) => {
+        const sig = init?.signal;
+        if (sig?.aborted) return reject(new Error("aborted"));
+        sig?.addEventListener("abort", () => reject(new Error("aborted")));
+      })),
+    );
+    await expect(fetchAgentSpend(["agt_a"], "default")).rejects.toThrow();
+  });
+
+  it("re-fetches when the cached entry is older than maxAgeMs", async () => {
+    expect(new Date("2026-06-15T12:00:00.000Z").getTime() % 30_000).toBe(0); // guard: bucket-aligned
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-15T12:00:00.000Z")); // 30s-aligned → same cache bucket below
+    const fn = mockFetch({ spend: [{ agentId: "agt_a", totalCostUsd: 1, lastEventAt: null }] });
+    await fetchAgentSpend(["agt_a"], "default"); // fetch #1
+    vi.advanceTimersByTime(3000); // 3s later
+    await fetchAgentSpend(["agt_a"], "default", undefined, 2000); // 3s > 2s maxAge → fetch #2
+    expect(fn).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+
+  it("reuses a cache entry younger than maxAgeMs", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-15T12:00:00.000Z"));
+    const fn = mockFetch({ spend: [{ agentId: "agt_a", totalCostUsd: 1, lastEventAt: null }] });
+    await fetchAgentSpend(["agt_a"], "default"); // fetch #1
+    vi.advanceTimersByTime(1000); // 1s later
+    await fetchAgentSpend(["agt_a"], "default", undefined, 2000); // 1s < 2s maxAge → cached
+    expect(fn).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
 });
 
 describe("GET /api/agents/:id/spend", () => {

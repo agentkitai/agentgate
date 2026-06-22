@@ -48,6 +48,7 @@ router.get("/:id/spend", async (c) => {
   const tenantId = c.get("auth")?.tenantId ?? "default";
   const window = currentMonthWindow();
   try {
+    // Informational read — default cache freshness (no near-cap tightening).
     const spend = await fetchAgentSpend([id], tenantId, window);
     return c.json({
       agentId: id,
