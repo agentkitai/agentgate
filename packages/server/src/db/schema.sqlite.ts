@@ -1,7 +1,7 @@
 /**
  * SQLite schema definition for AgentGate
  */
-import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core";
 
 // Approval requests table
 export const approvalRequests = sqliteTable("approval_requests", {
@@ -89,6 +89,7 @@ export const agents = sqliteTable("agents", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   lastSeenAt: integer("last_seen_at", { mode: "timestamp" }),
   revokedAt: integer("revoked_at", { mode: "timestamp" }),
+  monthlyBudgetUsd: real("monthly_budget_usd"), // per-agent USD cap; null = no budget (#13)
 }, (table) => ({
   idxAgentsStatus: index("idx_agents_status").on(table.status),
 }));

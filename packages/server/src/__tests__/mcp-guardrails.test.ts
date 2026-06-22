@@ -15,7 +15,7 @@ sqlite.exec(`
 CREATE TABLE IF NOT EXISTS agents (
   id text PRIMARY KEY NOT NULL, name text NOT NULL, secret_hash text NOT NULL,
   status text NOT NULL, metadata text, created_at integer NOT NULL,
-  last_seen_at integer, revoked_at integer
+  last_seen_at integer, revoked_at integer, monthly_budget_usd real
 );
 CREATE TABLE IF NOT EXISTS overrides (
   id text PRIMARY KEY NOT NULL, agent_id text NOT NULL, tool_pattern text NOT NULL,

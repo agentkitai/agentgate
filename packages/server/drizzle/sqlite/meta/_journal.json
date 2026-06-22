@@ -71,6 +71,13 @@
       "when": 1782140777171,
       "tag": "0009_tranquil_thaddeus_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1782153025138,
+      "tag": "0010_jazzy_havok",
+      "breakpoints": true
     }
   ]
 }

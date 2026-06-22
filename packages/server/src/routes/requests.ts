@@ -17,6 +17,7 @@ import {
 import { logAuditEvent } from "../lib/audit.js";
 import { owaspRiskForPolicyDecision } from "../lib/owasp.js";
 import { resolveVerifiedAgentId, resolveEffectiveAgentId } from "../lib/agent-tokens.js";
+import { checkAgentBudget } from "../lib/agent-budget.js";
 import { getConfig } from "../config.js";
 import type { ApiKey } from "../db/schema.js";
 import { deliverWebhook } from "../lib/webhook.js";
@@ -24,8 +25,9 @@ import { getGlobalDispatcher } from "../lib/notification/index.js";
 import { getCachedPolicies } from "../lib/policy-cache.js";
 import { checkOverrides } from "./overrides.js";
 
-// Variables: the auth middleware sets the validated apiKey row on api-key auth.
-const requestsRouter = new Hono<{ Variables: { apiKey?: ApiKey } }>();
+// Variables: the auth middleware sets the validated apiKey row + the auth
+// context (carries the tenant) on the request context.
+const requestsRouter = new Hono<{ Variables: { apiKey?: ApiKey; auth?: { tenantId?: string } } }>();
 
 // Validation helper for creating requests
 function validateCreateRequestBody(body: unknown): {
@@ -135,7 +137,7 @@ async function handleAutoDecision(opts: {
   action: string;
   status: "approved" | "denied";
   decidedBy: string;
-  decidedByType: "policy" | "human" | "agent";
+  decidedByType: "policy" | "human" | "agent" | "budget_limiter";
   decisionReason: string | null;
   requestSnapshot: Record<string, unknown>;
   channels?: string[];
@@ -253,6 +255,18 @@ requestsRouter.post("/", async (c) => {
   }
   const effectiveAgentId = resolved.agentId;
 
+  // Per-agent budget (issue #13): if enforcement is on and the verified agent is
+  // over its monthly cap, deny outright — this takes precedence over override /
+  // policy. Fail-open (checkAgentBudget never throws on a telemetry outage).
+  let budgetReason: string | null = null;
+  if (getConfig().agentBudgetEnforcement && effectiveAgentId) {
+    const tenantId = c.get("auth")?.tenantId ?? "default";
+    const budget = await checkAgentBudget(effectiveAgentId, tenantId);
+    if (!budget.allowed) {
+      budgetReason = `Monthly budget exceeded: $${budget.spentUsd.toFixed(2)} of $${budget.limitUsd?.toFixed(2)} used`;
+    }
+  }
+
   // Check overrides BEFORE static policies, keyed on the VERIFIED agent id.
   let overrideMatch: Awaited<ReturnType<typeof checkOverrides>> = null;
   if (effectiveAgentId) {
@@ -265,13 +279,20 @@ requestsRouter.post("/", async (c) => {
     tool: action,
   });
 
-  // Determine initial status based on override or policy decision
+  // Determine initial status — budget deny takes precedence over override/policy.
   let status: "pending" | "approved" | "denied" = "pending";
   let decidedBy: string | null = null;
+  let decidedByType: "policy" | "budget_limiter" = "policy";
   let decidedAt: Date | null = null;
   let decisionReason: string | null = null;
 
-  if (overrideMatch) {
+  if (budgetReason) {
+    status = "denied";
+    decidedBy = "budget";
+    decidedByType = "budget_limiter";
+    decidedAt = now;
+    decisionReason = budgetReason;
+  } else if (overrideMatch) {
     // Override forces require_approval → stays pending (route to human)
     status = "pending";
     decisionReason = `Override active: ${overrideMatch.reason || "dynamic override"}`;
@@ -356,8 +377,8 @@ requestsRouter.post("/", async (c) => {
       requestId: id,
       action,
       status,
-      decidedBy: "policy",
-      decidedByType: "policy",
+      decidedBy: decidedBy ?? "policy",
+      decidedByType,
       decisionReason,
       requestSnapshot: {
         id, action, params, context, status, urgency,

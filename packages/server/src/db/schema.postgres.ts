@@ -1,7 +1,7 @@
 /**
  * PostgreSQL schema definition for AgentGate
  */
-import { pgTable, text, integer, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, boolean, doublePrecision, index } from "drizzle-orm/pg-core";
 
 // Approval requests table
 export const approvalRequests = pgTable("approval_requests", {
@@ -85,6 +85,7 @@ export const agents = pgTable("agents", {
   createdAt: timestamp("created_at", { mode: "date" }).notNull(),
   lastSeenAt: timestamp("last_seen_at", { mode: "date" }),
   revokedAt: timestamp("revoked_at", { mode: "date" }),
+  monthlyBudgetUsd: doublePrecision("monthly_budget_usd"), // per-agent USD cap; null = no budget (#13)
 }, (table) => ({
   idxAgentsStatus: index("idx_agents_status").on(table.status),
 }));
