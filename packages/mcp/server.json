@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.agentkitai/agentgate",
-  "description": "Human-in-the-loop approval gateway for AI agents: agents request, policies decide, humans approve — over MCP.",
+  "description": "Human-in-the-loop approval gateway for AI agents over MCP: request, decide, approve.",
   "title": "AgentGate",
   "websiteUrl": "https://github.com/agentkitai/agentgate",
   "repository": {
