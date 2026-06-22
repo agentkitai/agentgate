@@ -16,7 +16,8 @@ import {
 } from "@agentgate/core";
 import { logAuditEvent } from "../lib/audit.js";
 import { owaspRiskForPolicyDecision } from "../lib/owasp.js";
-import { verifyAgentCredential } from "../lib/agents.js";
+import { resolveVerifiedAgentId } from "../lib/agent-tokens.js";
+import { getConfig } from "../config.js";
 import { deliverWebhook } from "../lib/webhook.js";
 import { getGlobalDispatcher } from "../lib/notification/index.js";
 import { getCachedPolicies } from "../lib/policy-cache.js";
@@ -252,15 +253,19 @@ requestsRouter.post("/", async (c) => {
   }
   // route_to_human and route_to_agent stay pending
 
-  // Agent-identity spine: verify an optional agent credential (X-Agent-Id +
-  // X-Agent-Secret) and resolve the VERIFIED agent id — distinct from the
-  // caller-claimed context.agentId, which is unauthenticated. Null when none
-  // is presented or it fails to verify.
-  const verifiedAgentId =
-    (await verifyAgentCredential(
-      c.req.header("x-agent-id"),
-      c.req.header("x-agent-secret"),
-    ))?.id ?? null;
+  // Agent-identity spine: resolve the VERIFIED agent id — distinct from the
+  // caller-claimed context.agentId, which is unauthenticated. Prefers a
+  // short-lived agent Bearer token (X-Agent-Token from POST /api/agents/token)
+  // over the legacy X-Agent-Id / X-Agent-Secret headers. Null when neither is
+  // presented or verification fails.
+  const verifiedAgentId = await resolveVerifiedAgentId(
+    {
+      agentToken: c.req.header("x-agent-token"),
+      agentId: c.req.header("x-agent-id"),
+      agentSecret: c.req.header("x-agent-secret"),
+    },
+    getConfig().authMode,
+  );
 
   // Insert into database
   await getDb().insert(approvalRequests).values({

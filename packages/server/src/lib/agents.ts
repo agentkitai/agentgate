@@ -98,6 +98,20 @@ export async function listAgents(): Promise<PublicAgent[]> {
   return rows.map(toPublic);
 }
 
+/**
+ * Active-status check by id only (no secret). Used to re-validate an agent
+ * Bearer token at USE time, since a stateless JWT can outlive a revoke.
+ * Returns the id iff the agent still exists and is active; otherwise null.
+ */
+export async function getAgentIfActive(id: string): Promise<string | null> {
+  const rows = await getDb()
+    .select({ id: agents.id, status: agents.status })
+    .from(agents)
+    .where(and(eq(agents.id, id), isNull(agents.revokedAt)))
+    .limit(1);
+  return rows[0]?.status === "active" ? rows[0].id : null;
+}
+
 /** Revoke an agent. Returns false if it doesn't exist or is already revoked. */
 export async function revokeAgent(id: string): Promise<boolean> {
   const rows = await getDb()
