@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS policies (
 CREATE TABLE IF NOT EXISTS api_keys (
   id text PRIMARY KEY NOT NULL, key_hash text NOT NULL, name text NOT NULL,
   scopes text NOT NULL, created_at integer NOT NULL, last_used_at integer,
-  revoked_at integer, rate_limit integer
+  revoked_at integer, rate_limit integer, agent_id text
 );
 CREATE TABLE IF NOT EXISTS webhooks (
   id text PRIMARY KEY NOT NULL, url text NOT NULL, secret text NOT NULL,

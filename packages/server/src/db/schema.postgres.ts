@@ -66,6 +66,7 @@ export const apiKeys = pgTable("api_keys", {
   lastUsedAt: integer("last_used_at"), // unix timestamp, nullable
   revokedAt: integer("revoked_at"), // unix timestamp, nullable
   rateLimit: integer("rate_limit"), // requests per minute, null = unlimited
+  agentId: text("agent_id"), // virtual key: agt_* this key is bound to; null = any agent (legacy)
 }, (table) => ({
   idxApiKeysHash: index("idx_api_keys_hash").on(table.keyHash),
 }));

@@ -16,14 +16,16 @@ import {
 } from "@agentgate/core";
 import { logAuditEvent } from "../lib/audit.js";
 import { owaspRiskForPolicyDecision } from "../lib/owasp.js";
-import { resolveVerifiedAgentId } from "../lib/agent-tokens.js";
+import { resolveVerifiedAgentId, resolveEffectiveAgentId } from "../lib/agent-tokens.js";
 import { getConfig } from "../config.js";
+import type { ApiKey } from "../db/schema.js";
 import { deliverWebhook } from "../lib/webhook.js";
 import { getGlobalDispatcher } from "../lib/notification/index.js";
 import { getCachedPolicies } from "../lib/policy-cache.js";
 import { checkOverrides } from "./overrides.js";
 
-const requestsRouter = new Hono();
+// Variables: the auth middleware sets the validated apiKey row on api-key auth.
+const requestsRouter = new Hono<{ Variables: { apiKey?: ApiKey } }>();
 
 // Validation helper for creating requests
 function validateCreateRequestBody(body: unknown): {
@@ -267,6 +269,26 @@ requestsRouter.post("/", async (c) => {
     getConfig().authMode,
   );
 
+  // Virtual key (issue #13): a key bound to an agent IS that agent's credential,
+  // so the binding is authoritative and promotes to the verified id. A request
+  // that separately verifies as a DIFFERENT agent is a conflict, and a binding
+  // to a now-revoked agent is rejected — agent revocation does not cascade to
+  // keys, so the bound agent's liveness is re-checked here at use time.
+  const boundAgentId = c.get("apiKey")?.agentId ?? null;
+  const resolved = await resolveEffectiveAgentId(boundAgentId, verifiedAgentId);
+  if ("reject" in resolved) {
+    return c.json(
+      {
+        error:
+          resolved.reject === "conflict"
+            ? "API key is bound to a different agent than the request claims"
+            : "API key is bound to a revoked or unknown agent",
+      },
+      403,
+    );
+  }
+  const effectiveAgentId = resolved.agentId;
+
   // Insert into database
   await getDb().insert(approvalRequests).values({
     id,
@@ -281,7 +303,7 @@ requestsRouter.post("/", async (c) => {
     decidedBy,
     decisionReason,
     expiresAt,
-    verifiedAgentId,
+    verifiedAgentId: effectiveAgentId,
   });
 
   // Log audit event
@@ -297,7 +319,7 @@ requestsRouter.post("/", async (c) => {
     owaspRisk: owaspRiskForPolicyDecision(policyDecision.decision),
     // Who actually made the request, cryptographically verified (vs the
     // unverified context.agentId claim).
-    verifiedAgentId,
+    verifiedAgentId: effectiveAgentId,
   });
 
   // Emit request.created event
