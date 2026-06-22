@@ -19,6 +19,7 @@ import tokensRouter from "./routes/tokens.js";
 import decideRouter from "./routes/decide.js";
 import { createGuardrailsRouter } from "./routes/guardrails.js";
 import overridesRouter from "./routes/overrides.js";
+import mcpRouter from "./routes/mcp.js";
 import { startOverrideCleanup, stopOverrideCleanup } from "./routes/overrides.js";
 import channelsRouter from "./routes/channels.js";
 import escalationsRouter from "./routes/escalations.js";
@@ -195,6 +196,7 @@ app.use("/api/*", authMiddleware);
 
 // Mount API routes
 app.route("/api/requests", requestsRouter);
+app.route("/api/mcp", mcpRouter);
 app.route("/api", tokensRouter);
 app.route("/api/policies", policiesRouter);
 app.route("/api/api-keys", apiKeysRouter);

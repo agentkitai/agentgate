@@ -374,6 +374,30 @@ export async function handleGetAuditActors(
 }
 
 /**
+ * Ask the server whether a tool call is allowed for this MCP server's identity
+ * (issue #14). The server keys the guardrail on the verified agent bound to the
+ * api key. Returns the verdict, or null to fail-open (allow) on a network/auth
+ * error — the gate only ever escalates to a human, never hard-denies.
+ * ponytail: fail-open on error; add an AGENTGATE_GUARDRAIL_STRICT flag if a
+ * deployment needs the gate to fail closed.
+ */
+export async function authorizeTool(
+  config: ApiConfig,
+  toolName: string,
+  args: Record<string, unknown>,
+): Promise<{ decision: string; status?: string; requestId?: string; reason?: string | null } | null> {
+  try {
+    return (await apiCall(config, "POST", "/api/mcp/authorize", {
+      toolName,
+      params: args,
+    })) as { decision: string; status?: string; requestId?: string; reason?: string | null };
+  } catch (err) {
+    console.error(`[guardrail] authorize failed for ${toolName}, allowing:`, err);
+    return null;
+  }
+}
+
+/**
  * Route tool call to appropriate handler
  */
 export async function handleToolCall(
