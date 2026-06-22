@@ -132,10 +132,13 @@ policiesRouter.get("/", async (c) => {
     .from(policies);
   const total = Number(countResult[0]?.count) || 0;
 
-  // Parse rules JSON for each policy
+  // Parse JSON columns so the list matches the POST/PUT response shape (arrays,
+  // not raw JSON strings).
   const parsed = allPolicies.map((p) => ({
     ...p,
     rules: JSON.parse(p.rules) as PolicyRule[],
+    agentIds: p.agentIds ? (JSON.parse(p.agentIds) as string[]) : null,
+    toolIds: p.toolIds ? (JSON.parse(p.toolIds) as string[]) : null,
   }));
 
   return c.json({
@@ -250,12 +253,15 @@ policiesRouter.post("/from-template", async (c) => {
 // POST /api/policies/simulate - Simulate a candidate policy against historical requests
 policiesRouter.post("/simulate", async (c) => {
   const body = await c.req.json();
-  const { rules, priority, from, to, limit } = body as {
+  const { rules, priority, from, to, limit, scope, agentIds, toolIds } = body as {
     rules?: PolicyRule[];
     priority?: number;
     from?: string;
     to?: string;
     limit?: number;
+    scope?: PolicyScope;
+    agentIds?: string[];
+    toolIds?: string[];
   };
 
   if (!Array.isArray(rules) || rules.length === 0) {
@@ -295,16 +301,20 @@ policiesRouter.post("/simulate", async (c) => {
     .orderBy(approvalRequests.createdAt)
     .limit(queryLimit);
 
-  // Build candidate policy
+  // Build candidate policy. Carry scope so the preview matches enforcement.
   const candidatePolicy: Policy = {
     id: "__simulation__",
     name: "Simulation Candidate",
     rules,
     priority: typeof priority === "number" ? priority : 0,
     enabled: true,
+    scope: scope ?? "global",
+    agentIds: Array.isArray(agentIds) ? agentIds : undefined,
+    toolIds: Array.isArray(toolIds) ? toolIds : undefined,
   };
 
-  // Load current active policies
+  // Load current active policies (with their scope, so scoped policies are
+  // filtered exactly as the enforcement path would, not treated as global).
   const currentPolicyRows = await getDb()
     .select()
     .from(policies)
@@ -316,6 +326,9 @@ policiesRouter.post("/simulate", async (c) => {
     rules: JSON.parse(p.rules) as PolicyRule[],
     priority: p.priority,
     enabled: p.enabled,
+    scope: p.scope ?? "global",
+    agentIds: p.agentIds ? (JSON.parse(p.agentIds) as string[]) : undefined,
+    toolIds: p.toolIds ? (JSON.parse(p.toolIds) as string[]) : undefined,
   }));
 
   // Evaluate each request
@@ -341,8 +354,10 @@ policiesRouter.post("/simulate", async (c) => {
       updatedAt: row.updatedAt,
     };
 
-    const candidateResult = evaluatePolicy(request, [candidatePolicy]);
-    const currentResult = evaluatePolicy(request, currentPolicies);
+    // Scope on the same verified identity + tool the enforcement path uses.
+    const evalContext = { agentId: row.verifiedAgentId, tool: row.action };
+    const candidateResult = evaluatePolicy(request, [candidatePolicy], evalContext);
+    const currentResult = evaluatePolicy(request, currentPolicies, evalContext);
 
     const isChanged = candidateResult.decision !== currentResult.decision;
     if (isChanged) changed++;

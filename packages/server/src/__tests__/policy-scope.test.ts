@@ -25,6 +25,21 @@ CREATE TABLE IF NOT EXISTS policies (
   tool_ids text,
   created_at integer NOT NULL
 );
+CREATE TABLE IF NOT EXISTS approval_requests (
+  id text PRIMARY KEY NOT NULL,
+  action text NOT NULL,
+  params text,
+  context text,
+  status text NOT NULL,
+  urgency text NOT NULL,
+  created_at integer NOT NULL,
+  updated_at integer NOT NULL,
+  decided_at integer,
+  decided_by text,
+  decision_reason text,
+  expires_at integer,
+  verified_agent_id text
+);
 `);
 
 vi.mock("../db/index.js", async () => ({
@@ -53,6 +68,7 @@ const oneRule = [{ match: { action: "send_email" }, decision: "auto_deny" }];
 
 beforeEach(() => {
   sqlite.exec("DELETE FROM policies");
+  sqlite.exec("DELETE FROM approval_requests");
   invalidatePolicyCache();
 });
 
@@ -108,5 +124,51 @@ describe("policy cache parsing", () => {
     expect(p1?.agentIds).toEqual(["agt_1"]);
     expect(p2?.scope).toBe("global"); // null → global
     expect(p2?.agentIds).toBeUndefined();
+  });
+});
+
+describe("GET /api/policies — response shape", () => {
+  it("returns agentIds/toolIds as parsed arrays, not raw JSON strings", async () => {
+    await postPolicy({ name: "p", rules: oneRule, scope: "per_agent", agentIds: ["agt_1"] });
+    const res = await app().request("/api/policies");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { policies: Array<{ scope: string; agentIds: unknown; toolIds: unknown }> };
+    const p = body.policies[0]!;
+    expect(p.scope).toBe("per_agent");
+    expect(p.agentIds).toEqual(["agt_1"]); // array, not "[\"agt_1\"]"
+    expect(p.toolIds).toBeNull();
+  });
+});
+
+describe("POST /api/policies/simulate — scope fidelity", () => {
+  function insertRequest(id: string, action: string, verifiedAgentId: string | null) {
+    sqlite
+      .prepare(
+        "INSERT INTO approval_requests (id, action, params, context, status, urgency, created_at, updated_at, verified_agent_id) VALUES (?,?,?,?,?,?,?,?,?)",
+      )
+      .run(id, action, "{}", "{}", "pending", "normal", 1, 1, verifiedAgentId);
+  }
+
+  it("filters current scoped policies per-request instead of treating them as global", async () => {
+    // A per_agent auto_deny policy bound to agt_A.
+    await postPolicy({ name: "deny-A", rules: oneRule, scope: "per_agent", agentIds: ["agt_A"] });
+    // Two historical send_email requests: one from agt_A, one from agt_B.
+    insertRequest("r_a", "send_email", "agt_A");
+    insertRequest("r_b", "send_email", "agt_B");
+
+    // Candidate = a global no-op (route_to_human) so we observe currentDecision.
+    const res = await app().request("/api/policies/simulate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ rules: [{ match: { action: "never" }, decision: "auto_approve" }] }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      details: Array<{ requestId: string; currentDecision: string }>;
+    };
+    const byReq = Object.fromEntries(body.details.map((d) => [d.requestId, d.currentDecision]));
+    // agt_A is in scope → denied; agt_B is out of scope → falls through to route_to_human.
+    expect(byReq["r_a"]).toBe("auto_deny");
+    expect(byReq["r_b"]).toBe("route_to_human");
   });
 });
