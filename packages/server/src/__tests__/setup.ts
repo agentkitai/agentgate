@@ -55,6 +55,9 @@ CREATE TABLE IF NOT EXISTS \`policies\` (
 	\`rules\` text NOT NULL,
 	\`priority\` integer NOT NULL,
 	\`enabled\` integer NOT NULL,
+	\`scope\` text DEFAULT 'global' NOT NULL,
+	\`agent_ids\` text,
+	\`tool_ids\` text,
 	\`created_at\` integer NOT NULL
 );
 
@@ -225,10 +228,13 @@ export async function createTestPolicy(
     rules: options.rules || JSON.stringify([]),
     priority: options.priority ?? 100,
     enabled: options.enabled ?? true,
+    scope: "global" as const,
+    agentIds: null,
+    toolIds: null,
     createdAt: new Date(),
   };
-  
+
   await db.insert(schema.policies).values(policy);
-  
+
   return policy;
 }

@@ -4,6 +4,32 @@ import isSafeRegex from 'safe-regex2';
 import type { ApprovalRequest, Policy, PolicyRule, PolicyDecision, MatcherValue } from './types.js';
 
 /**
+ * Context used to scope which policies apply to a request.
+ * `agentId` MUST be a cryptographically verified id (not a client-claimed one),
+ * so a `per_agent` policy can't be dodged by spoofing a request field.
+ */
+export interface PolicyEvalContext {
+  agentId?: string | null;
+  tool?: string;
+}
+
+/**
+ * Whether a policy applies to a request, given its scope. `per_agent`/`per_tool`
+ * fail CLOSED: an empty/missing id list or absent context means the policy is
+ * skipped (so an unidentified caller falls through to the safe default rather
+ * than matching an agent-scoped rule). An unknown scope is excluded.
+ */
+function policyInScope(p: Policy, context?: PolicyEvalContext): boolean {
+  const scope = p.scope ?? 'global';
+  if (scope === 'global') return true;
+  if (scope === 'per_agent')
+    return !!context?.agentId && (p.agentIds?.includes(context.agentId) ?? false);
+  if (scope === 'per_tool')
+    return !!context?.tool && (p.toolIds?.includes(context.tool) ?? false);
+  return false;
+}
+
+/**
  * Get a nested value from an object using dot notation
  * @example getNestedValue({ context: { user: { role: 'admin' } } }, 'context.user.role') => 'admin'
  */
@@ -110,11 +136,13 @@ function matchesRule(request: ApprovalRequest, rule: PolicyRule): boolean {
  */
 export function evaluatePolicy(
   request: ApprovalRequest,
-  policies: Policy[]
+  policies: Policy[],
+  context?: PolicyEvalContext
 ): PolicyDecision {
-  // Filter to only enabled policies and sort by priority (ascending)
+  // Filter to enabled + in-scope policies, then sort by priority (ascending)
   const sortedPolicies = policies
     .filter(p => p.enabled)
+    .filter(p => policyInScope(p, context))
     .sort((a, b) => a.priority - b.priority);
   
   // Evaluate each policy's rules in order

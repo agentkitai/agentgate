@@ -36,6 +36,9 @@ export async function getCachedPolicies(): Promise<CorePolicy[]> {
           rules: JSON.parse(p.rules) as PolicyRule[],
           priority: p.priority,
           enabled: p.enabled,
+          scope: p.scope ?? "global", // null (legacy row) → global
+          agentIds: p.agentIds ? (JSON.parse(p.agentIds) as string[]) : undefined,
+          toolIds: p.toolIds ? (JSON.parse(p.toolIds) as string[]) : undefined,
         });
       } catch (err) {
         console.warn(`Skipping policy ${p.id} — malformed rules JSON:`, err);

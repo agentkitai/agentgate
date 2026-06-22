@@ -13,6 +13,7 @@ export type {
   MatcherValue,
   PolicyRule,
   Policy,
+  PolicyScope,
   PolicyDecision,
   DecisionLinks,
 } from './types.js';
@@ -28,6 +29,7 @@ export {
 
 // Policy engine
 export { evaluatePolicy } from './policy-engine.js';
+export type { PolicyEvalContext } from './policy-engine.js';
 
 // Events
 export {
