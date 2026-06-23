@@ -53,13 +53,16 @@ function toSpendMap(rows: SpendRow[], agentIds: string[]): Map<string, number> {
 /**
  * Fetch per-agent USD spend over a window (default: current month), keyed on the
  * verified agent ids. Returns a map agentId → spend (0 for agents with none).
- * Cached for {@link CACHE_TTL_MS}. Throws SpendNotConfiguredError when AgentLens
- * isn't configured; propagates upstream/network errors to the caller.
+ * Served from cache when an entry is younger than `maxAgeMs` (default
+ * {@link CACHE_TTL_MS}); pass a smaller value to bound staleness near a budget
+ * cap. Throws SpendNotConfiguredError when AgentLens isn't configured;
+ * propagates upstream/network errors to the caller.
  */
 export async function fetchAgentSpend(
   agentIds: string[],
   tenantId: string,
   window?: SpendWindow,
+  maxAgeMs = CACHE_TTL_MS,
 ): Promise<Map<string, number>> {
   const config = getConfig();
   if (!config.agentlensUrl || !config.agentgateServiceToken) {
@@ -75,11 +78,15 @@ export async function fetchAgentSpend(
   const key = `${tenantId}|${w.from}|${toBucket}|${[...agentIds].sort().join(",")}`;
   const now = Date.now();
   const hit = cache.get(key);
-  if (hit && now - hit.at < CACHE_TTL_MS) {
+  if (hit && now - hit.at < maxAgeMs) {
     return toSpendMap(hit.rows, agentIds);
   }
 
-  const client = new AgentGateHttpClient(config.agentlensUrl, config.agentgateServiceToken);
+  const client = new AgentGateHttpClient(
+    config.agentlensUrl,
+    config.agentgateServiceToken,
+    config.spendReadTimeoutMs,
+  );
   const res = await client.request<{ spend: SpendRow[] }>("POST", "/api/internal/spend", {
     agentIds,
     tenantId,

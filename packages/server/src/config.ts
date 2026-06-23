@@ -222,6 +222,10 @@ export const ConfigSchema = z.object({
   agentlensUrl: z.string().optional(),
   /** Shared service token for AgentLens' POST /api/internal/spend. */
   agentgateServiceToken: z.string().optional(),
+  /** Timeout (ms) for ALL AgentLens spend reads (budget path + GET /:id/spend).
+   *  Kept short so a slow AgentLens can't add tail latency to POST /api/requests;
+   *  raise it if your AgentLens is far/slow and informational reads 502. */
+  spendReadTimeoutMs: z.coerce.number().int().min(100).default(5000),
   /** Enforce per-agent monthly budgets (deny over-budget requests). Default off
    *  so the feature ships dark until an operator opts in. */
   agentBudgetEnforcement: z
@@ -319,6 +323,7 @@ const ENV_MAP: Record<string, keyof z.infer<typeof ConfigSchema>> = {
   JWT_REFRESH_TTL: "jwtRefreshTtl",
   AGENTLENS_URL: "agentlensUrl",
   AGENTGATE_SERVICE_TOKEN: "agentgateServiceToken",
+  SPEND_READ_TIMEOUT_MS: "spendReadTimeoutMs",
   AGENT_BUDGET_ENFORCEMENT: "agentBudgetEnforcement",
   AGENT_BUDGET_ALERTS: "agentBudgetAlerts",
 };
