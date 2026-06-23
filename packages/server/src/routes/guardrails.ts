@@ -14,6 +14,7 @@ import { Hono } from "hono";
 import { nanoid } from "nanoid";
 import { eq } from "drizzle-orm";
 import { getDb, overrides } from "../db/index.js";
+import { getAgentIfActive } from "../lib/agents.js";
 
 type Db = ReturnType<typeof getDb>;
 
@@ -166,6 +167,26 @@ export function createGuardrailsRouter(opts?: {
     if (!rule) return c.json({ status: "ignored", reason: "no matching rule" }, 200);
 
     if (body.event === "breach") {
+      // Agent-identity check (#12): body.agentId is supplied by AgentLens and is
+      // NOT cryptographically verified here, so only gate agents that resolve to
+      // a registered, active entry in the agent registry (the agentlens.agentId
+      // == agt_* join convention makes this the same id). This skips creating
+      // overrides for unknown or revoked agents. Recovery needs no such check —
+      // it only removes an override this process tracked.
+      //
+      // Fail OPEN on a registry-lookup error: a guardrail breach should still
+      // gate the agent during a transient DB error rather than 500 — the worst
+      // case is a stray override that is inert (checkOverrides keys on the
+      // VERIFIED agent id) and TTL-expires anyway.
+      let knownActive = true;
+      try {
+        knownActive = (await getAgentIfActive(body.agentId)) !== null;
+      } catch {
+        knownActive = true;
+      }
+      if (!knownActive) {
+        return c.json({ status: "ignored", reason: "unknown or revoked agent" }, 200);
+      }
       const id = await applyBreach(getDb(), rule, body.agentId, tracker);
       return c.json({ status: "override_created", overrideId: id }, 200);
     }
