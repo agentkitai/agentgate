@@ -801,9 +801,7 @@ Please make sure all tests pass and code is formatted (`pnpm format:check && pnp
 | **AgentGate** | Human-in-the-loop approval gateway | ⬅️ you are here |
 | [FormBridge](https://github.com/agentkitai/formbridge) | Agent-human mixed-mode forms | |
 | [AgentEval](https://github.com/agentkitai/agenteval) | Testing & evaluation framework | |
-| [agentkit-mesh](https://github.com/agentkitai/agentkit-mesh) | Agent discovery & delegation | |
 | [agentkit-cli](https://github.com/agentkitai/agentkit-cli) | Unified CLI orchestrator | |
-| [agentkit-guardrails](https://github.com/agentkitai/agentkit-guardrails) | Reactive policy guardrails | |
 
 ## License
 
