@@ -67,12 +67,17 @@ function authorize(toolName: unknown, params: Record<string, unknown> = {}) {
   });
 }
 
-function addOverride(agentId: string, toolPattern: string, expiresAt: number | null = null) {
+function addOverride(
+  agentId: string,
+  toolPattern: string,
+  expiresAt: number | null = null,
+  action: "require_approval" | "deny" = "require_approval",
+) {
   sqlite
     .prepare(
       "INSERT INTO overrides (id, agent_id, tool_pattern, action, reason, created_at, expires_at) VALUES (?,?,?,?,?,?,?)",
     )
-    .run(nanoid(), agentId, toolPattern, "require_approval", "metric breach", 1, expiresAt);
+    .run(nanoid(), agentId, toolPattern, action, "metric breach", 1, expiresAt);
 }
 
 const countRequests = () =>
@@ -159,6 +164,54 @@ describe("POST /api/mcp/authorize", () => {
     expect(details.owaspRisk).toBe("LLM06:2025 Excessive Agency");
     expect(details.decision).toBe("requires_approval");
     expect(details.verifiedAgentId).toBe(agent.id);
+  });
+
+  it("hard-denies a tool when a deny override matches → synchronous denial + audit (#14)", async () => {
+    const { agent } = await createAgent("mcp-bot");
+    boundAgentId = agent.id;
+    addOverride(agent.id, "fs.*", null, "deny");
+
+    const res = await authorize("fs.delete", { path: "/" });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.decision).toBe("deny");
+    expect(body.status).toBe("denied");
+    expect(typeof body.requestId).toBe("string");
+
+    // A terminal `denied` record exists for the audit trail (not a pending one).
+    const row = sqlite.prepare("SELECT * FROM approval_requests WHERE id = ?").get(body.requestId) as Record<string, unknown>;
+    expect(row.status).toBe("denied");
+    expect(row.decided_by).toBe("override");
+    expect(row.verified_agent_id).toBe(agent.id);
+
+    const audit = sqlite.prepare("SELECT * FROM audit_logs WHERE request_id = ?").get(body.requestId) as Record<string, unknown>;
+    expect(audit.event_type).toBe("denied");
+    const details = JSON.parse(audit.details as string) as Record<string, unknown>;
+    expect(details.decision).toBe("deny");
+    expect(details.owaspRisk).toBe("LLM06:2025 Excessive Agency");
+  });
+
+  it("prefers deny over require_approval when both overrides match (#14)", async () => {
+    const { agent } = await createAgent("mcp-bot");
+    boundAgentId = agent.id;
+    addOverride(agent.id, "*", null, "require_approval");
+    addOverride(agent.id, "secret.read", null, "deny");
+    const body = (await (await authorize("secret.read")).json()) as { decision: string };
+    expect(body.decision).toBe("deny");
+  });
+
+  it("does not emit a request.created event for a hard deny (#14)", async () => {
+    const { agent } = await createAgent("mcp-bot");
+    boundAgentId = agent.id;
+    addOverride(agent.id, "*", null, "deny");
+    const events: string[] = [];
+    const off = getGlobalEmitter().on(EventNames.REQUEST_CREATED, () => events.push("created"));
+    try {
+      await authorize("anything");
+      expect(events).toHaveLength(0);
+    } finally {
+      off();
+    }
   });
 
   it("allows (fail-open) when no agent identity is presented, even if an override exists", async () => {

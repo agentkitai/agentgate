@@ -3,9 +3,14 @@
 import { Hono } from "hono";
 import { nanoid } from "nanoid";
 import { eq, and, gt, lt, isNull, or, not } from "drizzle-orm";
+import type { OverrideAction } from "@agentgate/core";
 import { getDb, overrides } from "../db/index.js";
 
 const overridesRouter = new Hono();
+
+/** Override actions, weakest→strongest. `deny` hard-blocks; `require_approval`
+ *  escalates a tool call / request to the human approval flow. */
+const OVERRIDE_ACTIONS: readonly OverrideAction[] = ["require_approval", "deny"];
 
 // Validation helper
 function validateCreateOverrideBody(body: unknown): {
@@ -14,7 +19,7 @@ function validateCreateOverrideBody(body: unknown): {
   data?: {
     agentId: string;
     toolPattern: string;
-    action: "require_approval";
+    action: OverrideAction;
     reason?: string;
     ttlSeconds?: number;
   };
@@ -37,8 +42,8 @@ function validateCreateOverrideBody(body: unknown): {
     return { valid: false, error: "toolPattern must be at most 256 characters" };
   }
 
-  if (b.action !== "require_approval") {
-    return { valid: false, error: 'action must be "require_approval"' };
+  if (!OVERRIDE_ACTIONS.includes(b.action as OverrideAction)) {
+    return { valid: false, error: 'action must be "require_approval" or "deny"' };
   }
 
   const reason = typeof b.reason === "string" ? b.reason : undefined;
@@ -56,7 +61,7 @@ function validateCreateOverrideBody(body: unknown): {
     data: {
       agentId: b.agentId.trim(),
       toolPattern: b.toolPattern.trim(),
-      action: "require_approval",
+      action: b.action as OverrideAction,
       reason,
       ttlSeconds,
     },
@@ -166,13 +171,14 @@ export function matchToolPattern(tool: string, pattern: string): boolean {
 }
 
 /**
- * Check overrides for a given agent and tool.
- * Returns the matching override action if found, null otherwise.
+ * Check overrides for a given agent and tool. Returns the matching override
+ * (null if none). When several overrides match, a `deny` wins over a
+ * `require_approval` — the stronger guardrail takes precedence.
  */
 export async function checkOverrides(
   agentId: string,
   tool: string
-): Promise<{ action: string; reason: string | null; overrideId: string } | null> {
+): Promise<{ action: OverrideAction; reason: string | null; overrideId: string } | null> {
   const now = new Date();
 
   const activeOverrides = await getDb()
@@ -188,17 +194,19 @@ export async function checkOverrides(
       )
     );
 
+  let match: { action: OverrideAction; reason: string | null; overrideId: string } | null = null;
   for (const override of activeOverrides) {
-    if (matchToolPattern(tool, override.toolPattern)) {
-      return {
-        action: override.action,
-        reason: override.reason,
-        overrideId: override.id,
-      };
-    }
+    if (!matchToolPattern(tool, override.toolPattern)) continue;
+    const candidate = {
+      action: override.action,
+      reason: override.reason,
+      overrideId: override.id,
+    };
+    if (candidate.action === "deny") return candidate; // strongest — short-circuit
+    match ??= candidate; // remember the first require_approval, keep scanning for a deny
   }
 
-  return null;
+  return match;
 }
 
 // ─── Background cleanup ─────────────────────────────────────────────

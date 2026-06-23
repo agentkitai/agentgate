@@ -16,6 +16,12 @@ export type ApprovalUrgency = 'low' | 'normal' | 'high' | 'critical';
 export type DecisionType = 'auto_approve' | 'auto_deny' | 'route_to_human' | 'route_to_agent';
 
 /**
+ * Per-agent override actions (#14). `require_approval` escalates a tool call /
+ * request to human review; `deny` hard-blocks it.
+ */
+export type OverrideAction = 'require_approval' | 'deny';
+
+/**
  * Namespace prefix for decidedBy field.
  * Format: `source:identifier` (e.g., "slack:U12345", "dashboard:admin", "mcp:user")
  */

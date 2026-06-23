@@ -130,6 +130,33 @@ agentgate deny req_abc123 --reason "Not authorized for this action"
 |--------|-------------|
 | `--reason, -r` | Reason for denial |
 
+### `agentgate override`
+
+Manage per-agent tool override guardrails (issue #14). An override gates a tool
+for a specific verified agent: `require_approval` escalates the call to the
+human approval flow, while `deny` hard-blocks it (the MCP tool call returns a
+synchronous error and never runs). When several overrides match, `deny` wins.
+
+```bash
+# Hard-deny an agent from any "fs.*" tool for the next hour
+agentgate override create --agent agt_abc --tool 'fs.*' --action deny --ttl 3600 --reason "incident #42"
+
+# Escalate deploys to human approval (default action)
+agentgate override create --agent agt_abc --tool deploy_production
+
+agentgate override list
+agentgate override rm ovr_abc123
+```
+
+**`create` options:**
+| Option | Description |
+|--------|-------------|
+| `--agent, -a` | Verified agent id (required) |
+| `--tool, -t` | Tool name or glob pattern, e.g. `fs.*` (required) |
+| `--action` | `require_approval` (default) or `deny` |
+| `--reason, -r` | Why the override exists |
+| `--ttl` | Expire after N seconds (default: no expiry) |
+
 ### `agentgate config`
 
 Manage CLI configuration.

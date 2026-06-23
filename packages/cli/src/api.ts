@@ -1,6 +1,8 @@
 // @agentgate/cli - API client
 
-import type { ApprovalRequest, ApprovalStatus } from '@agentgate/core';
+import type { ApprovalRequest, ApprovalStatus, OverrideAction } from '@agentgate/core';
+
+export type { OverrideAction };
 import { getResolvedConfig } from './config.js';
 import type { RequestOptions, ListOptions, DecisionOptions, PaginatedResponse } from './types.js';
 
@@ -111,11 +113,65 @@ export class ApiClient {
   }
 
   /**
+   * Create a dynamic per-agent override (require_approval or deny).
+   */
+  async createOverride(input: {
+    agentId: string;
+    toolPattern: string;
+    action: OverrideAction;
+    reason?: string;
+    ttlSeconds?: number;
+  }): Promise<Override> {
+    return this.fetch<Override>('/api/overrides', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  /**
+   * List active (non-expired) overrides.
+   */
+  async listOverrides(): Promise<{ overrides: Override[] }> {
+    return this.fetch<{ overrides: Override[] }>('/api/overrides');
+  }
+
+  /**
+   * Delete an override by id.
+   */
+  async deleteOverride(id: string): Promise<{ success: boolean; id: string }> {
+    return this.fetch<{ success: boolean; id: string }>(`/api/overrides/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
    * Get server status
    */
   async getServerStatus(): Promise<{ status: string; timestamp: string }> {
     return this.fetch<{ status: string; timestamp: string }>('/health');
   }
+}
+
+export interface Override {
+  id: string;
+  agentId: string;
+  toolPattern: string;
+  action: OverrideAction;
+  reason: string | null;
+  createdAt: string;
+  expiresAt: string | null;
+}
+
+/** Format one or more overrides for display (json or a plain tab-separated list). */
+export function formatOverrideList(overrides: Override[], format: 'json' | 'plain'): string {
+  if (format === 'json') return JSON.stringify(overrides, null, 2);
+  if (overrides.length === 0) return 'No active overrides.';
+  return overrides
+    .map((o) => {
+      const ttl = o.expiresAt ? `expires ${o.expiresAt}` : 'no expiry';
+      return `${o.id}\t${o.action}\t${o.agentId}\t${o.toolPattern}\t(${ttl})`;
+    })
+    .join('\n');
 }
 
 /**

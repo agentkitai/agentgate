@@ -213,6 +213,25 @@ Here's how a typical conversation might flow:
 >
 > **Claude:** The request has been approved by @jane. I'll send the email now.
 
+## Tool-call guardrails
+
+Before any tool runs, the MCP server gates the call through AgentGate
+(`POST /api/mcp/authorize`), keyed on the **verified agent** behind the API key
+(its virtual-key binding or agent token — never a client-claimed id). A per-agent
+**override** matching the tool changes the outcome:
+
+| Override action | Result | Tool runs? |
+|-----------------|--------|------------|
+| _(none)_ | `allow` | yes |
+| `require_approval` | escalates to a pending approval request (resolve via dashboard/Slack/CLI) | no, until approved |
+| `deny` | synchronous error result returned to the agent | no |
+
+When several overrides match, `deny` wins over `require_approval`. Both gating
+outcomes are recorded in the audit trail tagged with OWASP **LLM06 (Excessive
+Agency)**, queryable by tool name. The gate **fails open** (allows) on a
+network/auth error or when no agent identity is present. Manage overrides with
+`agentgate override …` (see the CLI docs) or `POST /api/overrides`.
+
 ## Environment Variables
 
 | Variable | Required | Description |

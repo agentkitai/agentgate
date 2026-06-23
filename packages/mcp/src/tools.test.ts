@@ -4,12 +4,34 @@ import {
   buildAuditParams,
   formatResult,
   formatError,
+  guardrailBlockResult,
   handleToolCall,
   authorizeTool,
   toolDefinitions,
   normalizeDecidedBy,
 } from './tools.js';
 import type { ApiConfig } from './types.js';
+
+describe('guardrailBlockResult', () => {
+  it('returns a synchronous isError result for a deny verdict (#14)', () => {
+    const r = guardrailBlockResult({ decision: 'deny', reason: 'tool blocked' });
+    expect(r?.isError).toBe(true);
+    const text = JSON.stringify(r);
+    expect(text).toContain('denied');
+    expect(text).toContain('tool blocked');
+  });
+
+  it('returns a non-error pending result for requires_approval', () => {
+    const r = guardrailBlockResult({ decision: 'requires_approval', requestId: 'req_1', reason: null });
+    expect(r?.isError).toBeUndefined();
+    expect(JSON.stringify(r)).toContain('pending');
+  });
+
+  it('returns null when allowed or no verdict (caller runs the tool)', () => {
+    expect(guardrailBlockResult({ decision: 'allow' })).toBeNull();
+    expect(guardrailBlockResult(null)).toBeNull();
+  });
+});
 
 describe('buildListParams', () => {
   it('returns empty string when no filters provided', () => {

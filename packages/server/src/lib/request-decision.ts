@@ -10,7 +10,7 @@ import type { PolicyDecision } from "@agentgate/core";
 export interface InitialDecision {
   status: "pending" | "approved" | "denied";
   decidedBy: string | null;
-  decidedByType: "policy" | "budget_limiter";
+  decidedByType: "policy" | "budget_limiter" | "override";
   decidedAt: Date | null;
   decisionReason: string | null;
 }
@@ -18,8 +18,9 @@ export interface InitialDecision {
 export function decideInitialStatus(input: {
   /** Non-null when the verified agent is over its budget; the reason string. */
   budgetReason: string | null;
-  /** A matching dynamic override (forces human review), or null. */
-  overrideMatch: { reason?: string | null } | null;
+  /** A matching dynamic override, or null. `action` "deny" hard-denies; anything
+   *  else (require_approval) forces human review. */
+  overrideMatch: { action?: string; reason?: string | null } | null;
   policyDecision: PolicyDecision;
   /** Decision timestamp, stamped on auto-decided (approved/denied) outcomes. */
   now: Date;
@@ -36,7 +37,16 @@ export function decideInitialStatus(input: {
     };
   }
   if (overrideMatch) {
-    // Override forces require_approval → stays pending (route to human).
+    // A `deny` override hard-denies; any other override forces human review.
+    if (overrideMatch.action === "deny") {
+      return {
+        status: "denied",
+        decidedBy: "override",
+        decidedByType: "override",
+        decidedAt: now,
+        decisionReason: `Denied by override: ${overrideMatch.reason || "dynamic override"}`,
+      };
+    }
     return {
       status: "pending",
       decidedBy: null,

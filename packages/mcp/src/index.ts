@@ -9,7 +9,7 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import type { ApiConfig } from './types.js';
-import { toolDefinitions, handleToolCall, authorizeTool, formatResult } from './tools.js';
+import { toolDefinitions, handleToolCall, authorizeTool, guardrailBlockResult } from './tools.js';
 
 const config: ApiConfig = {
   baseUrl: process.env.AGENTGATE_URL ?? 'http://localhost:3000',
@@ -30,15 +30,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
   const verdict = await authorizeTool(config, name, args ?? {});
-  if (verdict?.decision === 'requires_approval') {
-    // Tool does NOT run; it is escalated to the approval flow.
-    return formatResult({
-      status: 'pending',
-      requestId: verdict.requestId,
-      reason: verdict.reason ?? null,
-      message: 'Tool call requires approval and was routed to AgentGate.',
-    });
-  }
+  // deny → synchronous error; requires_approval → pending; else run the tool.
+  const blocked = guardrailBlockResult(verdict);
+  if (blocked) return blocked;
   return handleToolCall(config, name, args ?? {});
 });
 

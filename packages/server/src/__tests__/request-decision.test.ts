@@ -39,6 +39,31 @@ describe("decideInitialStatus precedence", () => {
     expect(d.decisionReason).toContain("Override active");
   });
 
+  it("a deny override hard-denies, beating a route_to_human policy (#14)", () => {
+    const d = decideInitialStatus({
+      budgetReason: null,
+      overrideMatch: { action: "deny", reason: "tool blocked" },
+      policyDecision: human,
+      now: NOW,
+    });
+    expect(d.status).toBe("denied");
+    expect(d.decidedBy).toBe("override");
+    expect(d.decidedByType).toBe("override"); // not "policy" — overrides are their own source
+    expect(d.decidedAt).toBe(NOW);
+    expect(d.decisionReason).toContain("Denied by override");
+  });
+
+  it("budget deny still outranks a deny override (#14)", () => {
+    const d = decideInitialStatus({
+      budgetReason: "over budget",
+      overrideMatch: { action: "deny", reason: "x" },
+      policyDecision: human,
+      now: NOW,
+    });
+    expect(d.status).toBe("denied");
+    expect(d.decidedByType).toBe("budget_limiter"); // budget precedence preserved
+  });
+
   it("policy auto_approve / auto_deny apply when no budget or override", () => {
     expect(decide(null, approve).status).toBe("approved");
     expect(decide(null, approve).decidedBy).toBe("policy");

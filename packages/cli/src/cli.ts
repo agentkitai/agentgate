@@ -9,6 +9,7 @@ import {
   createListCommand,
   createApproveCommand,
   createDenyCommand,
+  createOverrideCommand,
 } from './commands/index.js';
 
 const program = new Command();
@@ -25,6 +26,7 @@ program.addCommand(createStatusCommand());
 program.addCommand(createListCommand());
 program.addCommand(createApproveCommand());
 program.addCommand(createDenyCommand());
+program.addCommand(createOverrideCommand());
 
 // Parse and run
 program.parse();
