@@ -211,6 +211,35 @@ export function formatError(error: unknown): ToolResult {
 }
 
 /**
+ * Map a guardrail verdict to a blocking tool result, or null when the call is
+ * allowed (the caller then runs the tool). A `deny` is a synchronous error
+ * result; `requires_approval` is a (non-error) pending result. Issue #14.
+ */
+export function guardrailBlockResult(
+  verdict: { decision: string; requestId?: string; reason?: string | null } | null,
+): ToolResult | null {
+  if (verdict?.decision === 'deny') {
+    return {
+      ...formatResult({
+        status: 'denied',
+        reason: verdict.reason ?? null,
+        message: 'Tool call denied by AgentGate policy.',
+      }),
+      isError: true,
+    };
+  }
+  if (verdict?.decision === 'requires_approval') {
+    return formatResult({
+      status: 'pending',
+      requestId: verdict.requestId,
+      reason: verdict.reason ?? null,
+      message: 'Tool call requires approval and was routed to AgentGate.',
+    });
+  }
+  return null;
+}
+
+/**
  * Handle agentgate_request tool
  */
 export async function handleRequest(
@@ -376,8 +405,8 @@ export async function handleGetAuditActors(
 /**
  * Ask the server whether a tool call is allowed for this MCP server's identity
  * (issue #14). The server keys the guardrail on the verified agent bound to the
- * api key. Returns the verdict, or null to fail-open (allow) on a network/auth
- * error — the gate only ever escalates to a human, never hard-denies.
+ * api key. Returns the verdict (allow / requires_approval / deny), or null to
+ * fail-open (allow) on a network/auth error.
  * ponytail: fail-open on error; add an AGENTGATE_GUARDRAIL_STRICT flag if a
  * deployment needs the gate to fail closed.
  */

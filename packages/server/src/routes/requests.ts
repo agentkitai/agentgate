@@ -139,7 +139,7 @@ async function handleAutoDecision(opts: {
   action: string;
   status: "approved" | "denied";
   decidedBy: string;
-  decidedByType: "policy" | "human" | "agent" | "budget_limiter";
+  decidedByType: "policy" | "human" | "agent" | "budget_limiter" | "override";
   decisionReason: string | null;
   requestSnapshot: Record<string, unknown>;
   channels?: string[];

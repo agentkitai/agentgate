@@ -33,6 +33,13 @@ export type McpAccessVerdict =
       requestId: string;
       reason: string | null;
       owaspRisk: string;
+    }
+  | {
+      decision: "deny";
+      status: "denied";
+      requestId: string;
+      reason: string | null;
+      owaspRisk: string;
     };
 
 /**
@@ -57,12 +64,45 @@ export async function evaluateMcpToolAccess(opts: {
   const match = await checkOverrides(verifiedAgentId, toolName);
   if (!match) return { decision: "allow" };
 
-  // Override matched → escalate to a pending approval request (Excessive Agency).
   const id = nanoid();
   const now = new Date();
-  // route_to_human is the gating decision; owasp maps it to LLM06.
+  // Both gating outcomes mitigate Excessive Agency (LLM06).
   const owaspRisk = owaspRiskForPolicyDecision("route_to_human")!;
 
+  // A `deny` override hard-blocks the tool synchronously: no approval request to
+  // resolve, just a `denied` record for the audit trail (queryable by tool name
+  // via the approval_requests ⋈ audit_logs join — no separate invocations table).
+  if (match.action === "deny") {
+    await getDb()
+      .insert(approvalRequests)
+      .values({
+        id,
+        action: toolName,
+        params: JSON.stringify(params ?? {}),
+        context: JSON.stringify({ ...(context ?? {}), source: "mcp" }),
+        status: "denied",
+        urgency: "normal",
+        createdAt: now,
+        updatedAt: now,
+        decidedAt: now,
+        decidedBy: "override",
+        decisionReason: `MCP tool denied by override: ${match.reason ?? "dynamic override"}`,
+        expiresAt: null,
+        verifiedAgentId,
+      });
+    await logAuditEvent(id, "denied", "mcp", {
+      toolName,
+      params: params ?? {},
+      context: context ?? {},
+      overrideId: match.overrideId,
+      decision: "deny",
+      owaspRisk,
+      verifiedAgentId,
+    });
+    return { decision: "deny", status: "denied", requestId: id, reason: match.reason, owaspRisk };
+  }
+
+  // Otherwise (require_approval) → escalate to a pending approval request.
   await getDb()
     .insert(approvalRequests)
     .values({

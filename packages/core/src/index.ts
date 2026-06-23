@@ -7,6 +7,7 @@ export type {
   ApprovalStatus,
   ApprovalUrgency,
   DecisionType,
+  OverrideAction,
   DecidedByNamespace,
   DecidedByValue,
   ApprovalRequest,

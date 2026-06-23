@@ -6,3 +6,4 @@ export { createStatusCommand } from './status.js';
 export { createListCommand } from './list.js';
 export { createApproveCommand } from './approve.js';
 export { createDenyCommand } from './deny.js';
+export { createOverrideCommand } from './override.js';

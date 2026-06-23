@@ -143,7 +143,7 @@ export const overrides = pgTable("overrides", {
   agentId: text("agent_id").notNull(),
   toolPattern: text("tool_pattern").notNull(),
   action: text("action", {
-    enum: ["require_approval"],
+    enum: ["require_approval", "deny"],
   }).notNull(),
   reason: text("reason"),
   createdAt: timestamp("created_at", { mode: "date" }).notNull(),
