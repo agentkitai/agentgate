@@ -9,6 +9,7 @@ import {
   RequestListSkeleton,
   AuditLogSkeleton,
   ApiKeysSkeleton,
+  AgentsSkeleton,
   WebhooksSkeleton,
   SkeletonBox,
 } from './components/Skeleton';
@@ -17,6 +18,7 @@ const Home = lazy(() => import('./pages/Home'));
 const RequestList = lazy(() => import('./pages/RequestList'));
 const RequestDetail = lazy(() => import('./pages/RequestDetail'));
 const ApiKeys = lazy(() => import('./pages/ApiKeys'));
+const Agents = lazy(() => import('./pages/Agents'));
 const Webhooks = lazy(() => import('./pages/Webhooks'));
 const AuditLog = lazy(() => import('./pages/AuditLog'));
 const Policies = lazy(() => import('./pages/Policies'));
@@ -149,6 +151,7 @@ function App() {
               <NavLink to="/simulator">Simulator</NavLink>
               <NavLink to="/audit">Audit Log</NavLink>
               <NavLink to="/analytics">Analytics</NavLink>
+              {canManageKeys && <NavLink to="/agents">Agents</NavLink>}
               {canManageKeys && <NavLink to="/settings/api-keys">API Keys</NavLink>}
               {canManageWebhooks && <NavLink to="/settings/webhooks">Webhooks</NavLink>}
               {canManageWebhooks && <NavLink to="/webhooks/observability">Webhook Health</NavLink>}
@@ -209,6 +212,7 @@ function App() {
               <NavLink to="/simulator" onClick={closeMobileMenu}>Simulator</NavLink>
               <NavLink to="/audit" onClick={closeMobileMenu}>Audit Log</NavLink>
               <NavLink to="/analytics" onClick={closeMobileMenu}>Analytics</NavLink>
+              {canManageKeys && <NavLink to="/agents" onClick={closeMobileMenu}>Agents</NavLink>}
               {canManageKeys && <NavLink to="/settings/api-keys" onClick={closeMobileMenu}>API Keys</NavLink>}
               {canManageWebhooks && <NavLink to="/settings/webhooks" onClick={closeMobileMenu}>Webhooks</NavLink>}
               {canManageWebhooks && <NavLink to="/webhooks/observability" onClick={closeMobileMenu}>Webhook Health</NavLink>}
@@ -318,6 +322,18 @@ function App() {
                 <Suspense fallback={<div className="space-y-6"><SkeletonBox className="h-8 w-48" /><div className="grid grid-cols-2 sm:grid-cols-4 gap-4"><SkeletonBox className="h-24" /><SkeletonBox className="h-24" /><SkeletonBox className="h-24" /><SkeletonBox className="h-24" /></div></div>}>
                   <Analytics />
                 </Suspense>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/agents"
+            element={
+              <ProtectedRoute>
+                <PermissionRoute permission="keys:manage">
+                  <Suspense fallback={<AgentsSkeleton />}>
+                    <Agents />
+                  </Suspense>
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />

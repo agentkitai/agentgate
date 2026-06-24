@@ -22,6 +22,20 @@ const STATUS_OPTIONS = [
   { value: 'expired', label: 'Expired' },
 ];
 
+const DECIDED_BY_TYPES = [
+  { value: '', label: 'All Decisions' },
+  { value: 'policy', label: 'Policy' },
+  { value: 'human', label: 'Human' },
+  { value: 'agent', label: 'Agent' },
+  { value: 'budget_limiter', label: 'Budget limiter' },
+  { value: 'override', label: 'Override' },
+];
+
+const detailStr = (e: AuditEntryWithRequest, key: string): string | undefined => {
+  const v = (e.details as Record<string, unknown> | null)?.[key];
+  return typeof v === 'string' ? v : undefined;
+};
+
 const PAGE_SIZE = 25;
 
 const eventTypeColors: Record<string, string> = {
@@ -54,6 +68,8 @@ export default function AuditLog() {
   const actor = searchParams.get('actor') || '';
   const from = searchParams.get('from') || '';
   const to = searchParams.get('to') || '';
+  const verifiedAgentId = searchParams.get('verifiedAgentId') || '';
+  const decidedByType = searchParams.get('decidedByType') || '';
   const page = parseInt(searchParams.get('page') || '1', 10);
   const offset = (page - 1) * PAGE_SIZE;
   const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -85,6 +101,8 @@ export default function AuditLog() {
         actor: actor || undefined,
         from: from || undefined,
         to: to || undefined,
+        verifiedAgentId: verifiedAgentId || undefined,
+        decidedByType: decidedByType || undefined,
         limit: PAGE_SIZE,
         offset,
       });
@@ -95,7 +113,7 @@ export default function AuditLog() {
     } finally {
       setLoading(false);
     }
-  }, [action, status, eventType, actor, from, to, offset]);
+  }, [action, status, eventType, actor, from, to, verifiedAgentId, decidedByType, offset]);
 
   useEffect(() => {
     fetchEntries();
@@ -112,7 +130,14 @@ export default function AuditLog() {
   };
 
   const clearFilters = () => setSearchParams(new URLSearchParams());
-  const hasFilters = action || status || eventType || actor || from || to;
+  const hasFilters = action || status || eventType || actor || from || to || verifiedAgentId || decidedByType;
+
+  // Free-text agent filter: commit on Enter/blur, not per keystroke.
+  const [agentInput, setAgentInput] = useState(verifiedAgentId);
+  useEffect(() => { setAgentInput(verifiedAgentId); }, [verifiedAgentId]);
+  const commitAgent = () => {
+    if (agentInput.trim() !== verifiedAgentId) updateFilter('verifiedAgentId', agentInput.trim());
+  };
 
   const columns: Column<AuditEntryWithRequest>[] = [
     {
@@ -132,18 +157,32 @@ export default function AuditLog() {
       span: 2,
       tabletSpan: 1,
       mobileLabel: 'Event',
-      accessor: (e) => (
-        <span className={`px-2 py-0.5 text-xs font-medium rounded ${eventTypeColors[e.eventType] || 'bg-gray-100 text-gray-800'}`}>
-          {e.eventType.toUpperCase()}
-        </span>
-      ),
+      accessor: (e) => {
+        const dbt = detailStr(e, 'decidedByType');
+        return (
+          <div>
+            <span className={`px-2 py-0.5 text-xs font-medium rounded ${eventTypeColors[e.eventType] || 'bg-gray-100 text-gray-800'}`}>
+              {e.eventType.toUpperCase()}
+            </span>
+            {dbt && <div className="text-xs text-gray-400 mt-0.5">{dbt}</div>}
+          </div>
+        );
+      },
     },
     {
-      header: 'Actor',
+      header: 'Actor / Agent',
       span: 2,
       hideOnTablet: true,
       mobileLabel: 'Actor',
-      accessor: (e) => <span className="text-sm text-gray-900 truncate">{e.actor}</span>,
+      accessor: (e) => {
+        const vai = detailStr(e, 'verifiedAgentId');
+        return (
+          <div className="min-w-0">
+            <div className="text-sm text-gray-900 truncate">{e.actor}</div>
+            {vai && <div className="text-xs text-gray-400 font-mono truncate">{vai}</div>}
+          </div>
+        );
+      },
     },
     {
       header: 'Action',
@@ -242,6 +281,24 @@ export default function AuditLog() {
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">To Date</label>
             <input type="date" value={to} onChange={(e) => updateFilter('to', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Decided By</label>
+            <select value={decidedByType} onChange={(e) => updateFilter('decidedByType', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              {DECIDED_BY_TYPES.map((opt) => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Verified Agent ID</label>
+            <input
+              type="text"
+              value={agentInput}
+              onChange={(e) => setAgentInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') commitAgent(); }}
+              onBlur={commitAgent}
+              placeholder="agt_… (press Enter)"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
           </div>
         </div>
       </div>
