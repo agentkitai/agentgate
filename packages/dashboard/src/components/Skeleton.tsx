@@ -223,6 +223,30 @@ export function ApiKeysSkeleton() {
   );
 }
 
+/** Agents (governance) page skeleton: header + button + table */
+export function AgentsSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <SkeletonBox className="h-7 w-24" />
+        <SkeletonBox className="h-10 w-36 rounded-lg" />
+      </div>
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <SkeletonBox className="h-4 w-full" />
+        </div>
+        <div className="divide-y divide-gray-200">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="px-4 py-4">
+              <SkeletonBox className="h-4 w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Webhooks page skeleton: header + button + table */
 export function WebhooksSkeleton() {
   return (

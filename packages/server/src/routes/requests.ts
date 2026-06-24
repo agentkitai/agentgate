@@ -150,6 +150,7 @@ async function handleAutoDecision(opts: {
   await logAuditEvent(requestId, status, decidedBy, {
     reason: decisionReason,
     automatic: true,
+    decidedByType,
   });
 
   // Step 2: Webhook
@@ -327,6 +328,9 @@ requestsRouter.post("/", async (c) => {
     // Who actually made the request, cryptographically verified (vs the
     // unverified context.agentId claim).
     verifiedAgentId: effectiveAgentId,
+    // What kind of decision was applied (policy | budget_limiter | override);
+    // makes the audit filterable by decidedByType (#22).
+    decidedByType,
   });
 
   // Emit request.created event
@@ -560,7 +564,7 @@ requestsRouter.post("/:id/decide", async (c) => {
     id,
     decision === "approved" ? "approved" : "denied",
     decidedBy,
-    { reason, automatic: false }
+    { reason, automatic: false, decidedByType: "human" }
   );
 
   const updatedRequest = formatRequest(updatedRow);

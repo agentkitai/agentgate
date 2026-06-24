@@ -65,6 +65,8 @@ export interface PolicyTemplate {
   priority: number;
 }
 
+export type PolicyScope = 'global' | 'per_agent' | 'per_tool';
+
 export interface ListPoliciesResponse {
   policies: Array<{
     id: string;
@@ -72,6 +74,9 @@ export interface ListPoliciesResponse {
     rules: Array<{ match: Record<string, unknown>; decision: string }>;
     priority: number;
     enabled: boolean;
+    scope: PolicyScope;
+    agentIds: string[] | null;
+    toolIds: string[] | null;
     createdAt: string;
   }>;
   pagination: {
@@ -276,6 +281,24 @@ export const api = {
     return handleResponse<{ templates: PolicyTemplate[] }>(response);
   },
 
+  // Create a policy (used to clone an existing one across agents, #22)
+  async createPolicy(data: {
+    name: string;
+    rules: Array<{ match: Record<string, unknown>; decision: string }>;
+    priority: number;
+    enabled: boolean;
+    scope?: PolicyScope;
+    agentIds?: string[];
+    toolIds?: string[];
+  }): Promise<ListPoliciesResponse['policies'][number]> {
+    const response = await authFetch(`${baseUrl}/api/policies`, {
+      method: 'POST',
+      headers: getHeaders('application/json'),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
   // Create a policy from a template
   async createPolicyFromTemplate(
     templateId: string,
@@ -372,6 +395,8 @@ export const api = {
     from?: string;
     to?: string;
     requestId?: string;
+    verifiedAgentId?: string;
+    decidedByType?: string;
     limit?: number;
     offset?: number;
   }): Promise<ListAuditResponse> {
@@ -383,6 +408,8 @@ export const api = {
     if (params?.from) searchParams.set('from', params.from);
     if (params?.to) searchParams.set('to', params.to);
     if (params?.requestId) searchParams.set('requestId', params.requestId);
+    if (params?.verifiedAgentId) searchParams.set('verifiedAgentId', params.verifiedAgentId);
+    if (params?.decidedByType) searchParams.set('decidedByType', params.decidedByType);
     if (params?.limit) searchParams.set('limit', params.limit.toString());
     if (params?.offset) searchParams.set('offset', params.offset.toString());
 
@@ -587,10 +614,11 @@ export const adminApi = {
       lastUsedAt: number | null;
       rateLimit: number | null;
       active: boolean;
+      agentId: string | null;
     }> }>(response);
   },
 
-  async createApiKey(data: { name: string; scopes: string[]; rateLimit: number | null }) {
+  async createApiKey(data: { name: string; scopes: string[]; rateLimit: number | null; agentId?: string | null }) {
     const response = await authFetch(`${baseUrl}/api/api-keys`, {
       method: 'POST',
       headers: getHeaders('application/json'),
@@ -716,5 +744,102 @@ export const adminApi = {
       headers: getHeaders(),
     });
     return handleResponse<{ success: boolean; delivery: WebhookDeliveryRecord }>(response);
+  },
+};
+
+// ── Governance (#22): agents, per-agent budgets/spend, tool overrides ──
+
+export interface Agent {
+  id: string;
+  name: string;
+  status: 'active' | 'revoked';
+  metadata: unknown;
+  createdAt: string;
+  lastSeenAt: string | null;
+  revokedAt: string | null;
+  monthlyBudgetUsd: number | null;
+}
+
+export interface AgentSpend {
+  agentId: string;
+  tenantId: string;
+  periodSpendUsd: number;
+  window: { from: string; to: string };
+}
+
+export type OverrideAction = 'require_approval' | 'deny';
+
+export interface Override {
+  id: string;
+  agentId: string;
+  toolPattern: string;
+  action: OverrideAction;
+  reason: string | null;
+  createdAt: string;
+  expiresAt: string | null;
+}
+
+export const governanceApi = {
+  async listAgents(): Promise<{ agents: Agent[] }> {
+    const response = await authFetch(`${baseUrl}/api/agents`, { headers: getHeaders() });
+    return handleResponse<{ agents: Agent[] }>(response);
+  },
+
+  async createAgent(data: { name: string; monthlyBudgetUsd?: number | null }): Promise<Agent & { secret: string }> {
+    const response = await authFetch(`${baseUrl}/api/agents`, {
+      method: 'POST',
+      headers: getHeaders('application/json'),
+      body: JSON.stringify(data),
+    });
+    return handleResponse<Agent & { secret: string }>(response);
+  },
+
+  // Current calendar-month spend; throws (503) when AgentLens spend is not configured.
+  async getSpend(id: string): Promise<AgentSpend> {
+    const response = await authFetch(`${baseUrl}/api/agents/${id}/spend`, { headers: getHeaders() });
+    return handleResponse<AgentSpend>(response);
+  },
+
+  // Set (positive number) or clear (null) the agent's monthly USD budget.
+  async setBudget(id: string, monthlyBudgetUsd: number | null): Promise<{ id: string; monthlyBudgetUsd: number | null }> {
+    const response = await authFetch(`${baseUrl}/api/agents/${id}/budget`, {
+      method: 'PATCH',
+      headers: getHeaders('application/json'),
+      body: JSON.stringify({ monthlyBudgetUsd }),
+    });
+    return handleResponse<{ id: string; monthlyBudgetUsd: number | null }>(response);
+  },
+
+  async revokeAgent(id: string): Promise<void> {
+    const response = await authFetch(`${baseUrl}/api/agents/${id}`, { method: 'DELETE', headers: getHeaders() });
+    if (!response.ok && response.status !== 204) {
+      const e = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(e.error || `HTTP ${response.status}`);
+    }
+  },
+
+  async listOverrides(): Promise<{ overrides: Override[] }> {
+    const response = await authFetch(`${baseUrl}/api/overrides`, { headers: getHeaders() });
+    return handleResponse<{ overrides: Override[] }>(response);
+  },
+
+  async createOverride(data: {
+    agentId: string;
+    toolPattern: string;
+    action: OverrideAction;
+    reason?: string;
+    ttlSeconds?: number;
+  }): Promise<Override> {
+    const response = await authFetch(`${baseUrl}/api/overrides`, {
+      method: 'POST',
+      headers: getHeaders('application/json'),
+      body: JSON.stringify(data),
+    });
+    return handleResponse<Override>(response);
+  },
+
+  async deleteOverride(id: string): Promise<void> {
+    const response = await authFetch(`${baseUrl}/api/overrides/${id}`, { method: 'DELETE', headers: getHeaders() });
+    await handleResponse<{ success: boolean }>(response);
   },
 };

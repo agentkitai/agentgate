@@ -2,7 +2,7 @@
 
 import { Hono } from "hono";
 import { eq, and, gte, lte, desc, sql, type SQL } from "drizzle-orm";
-import { getDb, auditLogs, approvalRequests } from "../db/index.js";
+import { getDb, getDialect, auditLogs, approvalRequests } from "../db/index.js";
 
 const auditRouter = new Hono();
 
@@ -32,6 +32,8 @@ auditRouter.get("/", async (c) => {
   const from = c.req.query("from");
   const to = c.req.query("to");
   const requestId = c.req.query("requestId");
+  const verifiedAgentId = c.req.query("verifiedAgentId");
+  const decidedByType = c.req.query("decidedByType");
   const limit = Math.min(parseInt(c.req.query("limit") || "50", 10), 100);
   const offset = parseInt(c.req.query("offset") || "0", 10);
 
@@ -73,10 +75,25 @@ auditRouter.get("/", async (c) => {
     auditConditions.push(eq(auditLogs.requestId, requestId));
   }
 
-  // For action and status filters, we need to join with approvalRequests
+  // decidedByType (#22): lives in the decision audit event's details JSON
+  // (set by the auto-decision / human-decide path). Match it backend-agnostically.
+  const validDecidedByTypes = ["policy", "human", "agent", "budget_limiter", "override"];
+  if (decidedByType && validDecidedByTypes.includes(decidedByType)) {
+    auditConditions.push(
+      getDialect() === "postgres"
+        ? sql`(${auditLogs.details}::jsonb ->> 'decidedByType') = ${decidedByType}`
+        : sql`json_extract(${auditLogs.details}, '$.decidedByType') = ${decidedByType}`
+    );
+  }
+
+  // For action / status / verifiedAgentId filters, join with approvalRequests
   const requestConditions: SQL[] = [];
   if (action) {
     requestConditions.push(eq(approvalRequests.action, action));
+  }
+  // verifiedAgentId (#22): the cryptographically verified agent that made the request
+  if (verifiedAgentId) {
+    requestConditions.push(eq(approvalRequests.verifiedAgentId, verifiedAgentId));
   }
   const validStatuses = ["pending", "approved", "denied", "expired"];
   if (status && validStatuses.includes(status)) {
