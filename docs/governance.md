@@ -72,6 +72,17 @@ Budget is a **soft guardrail**: spend is read with a short cache (re-read at 2s
 freshness near the cap), so it gates the *next* action — it can't hard-stop a
 request already in flight.
 
+> **Billing-grade attribution (AgentLens #24, A+B+C shipped).** By default, spend
+> attributes by the *self-reported* `agentId`, which is spoofable on the OTLP
+> ingest path. With AgentLens's `BILLING_GRADE_SPEND` flag enabled, spend
+> attributes only by a **cryptographically verified** agent id on **both** ingest
+> paths (the agent JWT presented as `X-Agent-Token`); unverified cost is bucketed
+> as *unattributed* rather than billed, and a signed **reconciliation** report
+> (`POST /api/internal/reconcile`) surfaces stored-vs-recompute pricing drift per
+> agent. With the flag on, per-agent spend is **billing-grade**; with it off (the
+> default), it remains the soft guardrail described above. See
+> AgentLens `docs/billing-grade-spend.md`.
+
 ## 4. Per-agent / per-tool policy scoping
 
 Policies can apply globally or be **scoped** to specific agents or tools:
