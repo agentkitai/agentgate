@@ -57,6 +57,13 @@
       "when": 1782153026280,
       "tag": "0007_bitter_mimic",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782416108133,
+      "tag": "0008_soft_nova",
+      "breakpoints": true
     }
   ]
 }

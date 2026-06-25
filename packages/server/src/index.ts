@@ -12,6 +12,7 @@ import policiesRouter from "./routes/policies.js";
 import apiKeysRouter from "./routes/api-keys.js";
 import agentsRouter from "./routes/agents.js";
 import agentTokenRouter from "./routes/agent-tokens.js";
+import internalRouter from "./routes/internal.js";
 import webhooksRouter from "./routes/webhooks.js";
 import auditRouter from "./routes/audit.js";
 import analyticsRouter from "./routes/analytics.js";
@@ -190,6 +191,12 @@ app.route("/auth", authRouter);
 // Agent OAuth2 token endpoint (public — the agent's own agt_*/ags_* credential
 // is the auth). Must be mounted before the user-auth middleware below.
 app.route("/api/agents/token", agentTokenRouter);
+
+// Internal service-to-service routes (e.g. AgentLens verifying an ingest key).
+// Authenticated by the shared AGENTGATE_SERVICE_TOKEN inside the router, so it
+// must be mounted before the user-auth middleware (a service token is not a
+// user/api-key and would otherwise be rejected as an invalid JWT).
+app.route("/api/internal", internalRouter);
 
 // Apply auth middleware to all /api/* routes
 app.use("/api/*", authMiddleware);
