@@ -12,6 +12,7 @@ import policiesRouter from "./routes/policies.js";
 import apiKeysRouter from "./routes/api-keys.js";
 import agentsRouter from "./routes/agents.js";
 import agentTokenRouter from "./routes/agent-tokens.js";
+import wellKnownRouter from "./routes/well-known.js";
 import internalRouter from "./routes/internal.js";
 import webhooksRouter from "./routes/webhooks.js";
 import auditRouter from "./routes/audit.js";
@@ -127,6 +128,9 @@ if (config.metricsEnabled) {
 
 // Readiness + Startup probes (public, no auth required)
 app.route("/", probesRouter);
+
+// JWKS for asymmetric agent tokens (#40) — public keys only, no auth.
+app.route("/.well-known", wellKnownRouter);
 
 // Health check endpoint (public, no auth required)
 // GET /health        → shallow check (fast, backward compatible)
