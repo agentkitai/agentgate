@@ -24,6 +24,7 @@ import { checkOverrides } from "../routes/overrides.js";
 import { owaspRiskForPolicyDecision } from "./owasp.js";
 import { logAuditEvent } from "./audit.js";
 import { getGlobalDispatcher } from "./notification/index.js";
+import { notifyLensOfBreach, sessionIdFromContext } from "./lens-breach.js";
 
 export type McpAccessVerdict =
   | { decision: "allow" }
@@ -99,6 +100,23 @@ export async function evaluateMcpToolAccess(opts: {
       owaspRisk,
       verifiedAgentId,
     });
+    // Mirror the breach into AgentLens' tamper-evident audit trail when the
+    // caller correlated this MCP call to a session. Fire-and-forget + fail-open:
+    // never block or fail the denial on a lens hiccup.
+    const sessionId = sessionIdFromContext(context);
+    if (sessionId) {
+      // notifyLensOfBreach never rejects, but .catch() makes the fire-and-forget
+      // safety explicit and refactor-proof (no unhandled rejection, ever).
+      void notifyLensOfBreach({
+        sessionId,
+        agentId: verifiedAgentId,
+        tool: toolName,
+        ruleId: match.overrideId,
+        ruleType: "tool_denylist",
+        reason: `MCP tool denied by override: ${match.reason ?? "dynamic override"}`,
+        source: "mcp_guardrail",
+      }).catch(() => {});
+    }
     return { decision: "deny", status: "denied", requestId: id, reason: match.reason, owaspRisk };
   }
 

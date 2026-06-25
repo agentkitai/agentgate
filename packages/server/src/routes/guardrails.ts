@@ -15,6 +15,7 @@ import { nanoid } from "nanoid";
 import { eq } from "drizzle-orm";
 import { getDb, overrides } from "../db/index.js";
 import { getAgentIfActive } from "../lib/agents.js";
+import { notifyLensOfBreach } from "../lib/lens-breach.js";
 
 type Db = ReturnType<typeof getDb>;
 
@@ -33,6 +34,9 @@ interface WebhookPayload {
   event: "breach" | "recovery";
   metric: string;
   agentId: string;
+  /** Optional AgentLens session the breach occurred in; when present, the breach
+   *  is mirrored into that session's tamper-evident audit trail (#55). */
+  sessionId?: string;
 }
 
 /** Parse rules from the GUARDRAILS_RULES env var (a JSON array of GuardrailRule). */
@@ -188,6 +192,19 @@ export function createGuardrailsRouter(opts?: {
         return c.json({ status: "ignored", reason: "unknown or revoked agent" }, 200);
       }
       const id = await applyBreach(getDb(), rule, body.agentId, tracker);
+      // Mirror the breach into AgentLens when the caller correlated it to a
+      // session (#55). Fire-and-forget + fail-open.
+      if (typeof body.sessionId === "string" && body.sessionId.length > 0) {
+        void notifyLensOfBreach({
+          sessionId: body.sessionId,
+          agentId: body.agentId,
+          ruleId: rule.metric,
+          ruleType: "reactive_guardrail",
+          tool: rule.toolPattern,
+          reason: rule.reason ?? `AgentLens metric "${rule.metric}" breached`,
+          source: "reactive_guardrail",
+        }).catch(() => {});
+      }
       return c.json({ status: "override_created", overrideId: id }, 200);
     }
 

@@ -1,7 +1,7 @@
 /**
  * MCP tool-call guardrails (issue #14) — POST /api/mcp/authorize + evaluation.
  */
-import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from "vitest";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
 import { Hono } from "hono";
@@ -240,5 +240,72 @@ describe("POST /api/mcp/authorize", () => {
     boundAgentId = "agt_ghost"; // bound to an agent that isn't in the registry
     const res = await authorize("file.read");
     expect(res.status).toBe(403);
+  });
+});
+
+// ── gate→lens wedge (#55): a hard-deny mirrors into AgentLens when correlated ──
+describe("MCP hard-deny → AgentLens breach mirror (#55)", () => {
+  function authorizeCtx(toolName: string, context?: Record<string, unknown>) {
+    return app().request("/api/mcp/authorize", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ toolName, params: {}, context }),
+    });
+  }
+  function fetchMock() {
+    const fn = vi.fn(async () => ({ ok: true, status: 201, json: async () => ({}), text: async () => "" }) as Response);
+    vi.stubGlobal("fetch", fn);
+    return fn;
+  }
+
+  beforeEach(() => {
+    setConfig(parseConfig({ jwtSecret: TEST_SECRET, agentlensUrl: "https://lens.example", agentgateServiceToken: "svc-token" }));
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetConfig();
+  });
+
+  it("POSTs the breach to AgentLens when the call carries agentlens_session_id", async () => {
+    const { agent } = await createAgent("mcp-bot");
+    boundAgentId = agent.id;
+    addOverride(agent.id, "fs.*", null, "deny");
+    const fn = fetchMock();
+
+    const res = await authorizeCtx("fs.delete", { agentlens_session_id: "sess-1" });
+    expect(((await res.json()) as { decision: string }).decision).toBe("deny");
+
+    // Fire-and-forget → wait for the mirror call.
+    await vi.waitFor(() => expect(fn).toHaveBeenCalled());
+    const [url, init] = fn.mock.calls[0]!;
+    expect(String(url)).toBe("https://lens.example/api/internal/eval/guardrail-breach");
+    expect(JSON.parse((init as { body: string }).body)).toMatchObject({
+      sessionId: "sess-1",
+      agentId: agent.id,
+      breach: { tool: "fs.delete", source: "mcp_guardrail", ruleType: "tool_denylist" },
+    });
+  });
+
+  it("does NOT call AgentLens for a deny without a session correlation", async () => {
+    const { agent } = await createAgent("mcp-bot");
+    boundAgentId = agent.id;
+    addOverride(agent.id, "fs.*", null, "deny");
+    const fn = fetchMock();
+
+    expect(((await (await authorizeCtx("fs.delete")).json()) as { decision: string }).decision).toBe("deny");
+    // Give any stray microtask a tick; the mirror must not fire.
+    await new Promise((r) => setTimeout(r, 20));
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it("does NOT mirror a require_approval (only hard-deny)", async () => {
+    const { agent } = await createAgent("mcp-bot");
+    boundAgentId = agent.id;
+    addOverride(agent.id, "fs.*", null, "require_approval");
+    const fn = fetchMock();
+
+    expect(((await (await authorizeCtx("fs.delete", { agentlens_session_id: "sess-1" })).json()) as { decision: string }).decision).toBe("requires_approval");
+    await new Promise((r) => setTimeout(r, 20));
+    expect(fn).not.toHaveBeenCalled();
   });
 });
