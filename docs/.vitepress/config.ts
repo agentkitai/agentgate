@@ -29,6 +29,7 @@ export default defineConfig({
         items: [
           { text: 'Getting Started', link: '/getting-started' },
           { text: 'Configuration', link: '/configuration' },
+          { text: 'Per-Agent Governance', link: '/governance' },
         ]
       },
       {

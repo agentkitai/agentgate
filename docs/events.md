@@ -538,7 +538,7 @@ console.log(dispatcher.isChannelConfigured("sms" as NotificationChannelType)); /
 
 ## Source Files
 
-- Event types and filtering: [`packages/core/src/events.ts`](../packages/core/src/events.ts)
-- Notification types: [`packages/server/src/lib/notification/types.ts`](../packages/server/src/lib/notification/types.ts)
-- Dispatcher: [`packages/server/src/lib/notification/dispatcher.ts`](../packages/server/src/lib/notification/dispatcher.ts)
-- Adapters: [`packages/server/src/lib/notification/adapters/`](../packages/server/src/lib/notification/adapters/)
+- Event types and filtering: [`packages/core/src/events.ts`](https://github.com/agentkitai/agentgate/blob/main/packages/core/src/events.ts)
+- Notification types: [`packages/server/src/lib/notification/types.ts`](https://github.com/agentkitai/agentgate/blob/main/packages/server/src/lib/notification/types.ts)
+- Dispatcher: [`packages/server/src/lib/notification/dispatcher.ts`](https://github.com/agentkitai/agentgate/blob/main/packages/server/src/lib/notification/dispatcher.ts)
+- Adapters: [`packages/server/src/lib/notification/adapters/`](https://github.com/agentkitai/agentgate/tree/main/packages/server/src/lib/notification/adapters)
