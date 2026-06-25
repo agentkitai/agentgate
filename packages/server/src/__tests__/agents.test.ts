@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS agents (
   created_at integer NOT NULL,
   last_seen_at integer,
   revoked_at integer,
-  monthly_budget_usd real
+  monthly_budget_usd real,
+  ingest_key_hash text
 );
 CREATE INDEX IF NOT EXISTS idx_agents_status ON agents(status);
 `);

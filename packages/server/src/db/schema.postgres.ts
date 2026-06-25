@@ -86,8 +86,14 @@ export const agents = pgTable("agents", {
   lastSeenAt: timestamp("last_seen_at", { mode: "date" }),
   revokedAt: timestamp("revoked_at", { mode: "date" }),
   monthlyBudgetUsd: doublePrecision("monthly_budget_usd"), // per-agent USD cap; null = no budget (#13)
+  // sha256(ingest key), hex — a longer-lived, revocable, ingest-scoped credential
+  // (agl_ingest_*) for OTLP exporters that can't refresh a 15-min token (#24).
+  // Distinct from secretHash so an ingest key can NEVER authorize a gate action.
+  // null = no ingest key issued / revoked.
+  ingestKeyHash: text("ingest_key_hash"),
 }, (table) => ({
   idxAgentsStatus: index("idx_agents_status").on(table.status),
+  idxAgentsIngestKey: index("idx_agents_ingest_key").on(table.ingestKeyHash),
 }));
 
 // Webhooks table

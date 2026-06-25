@@ -5,7 +5,14 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 
-import { createAgent, listAgents, revokeAgent, setAgentBudget } from "../lib/agents.js";
+import {
+  createAgent,
+  listAgents,
+  revokeAgent,
+  setAgentBudget,
+  rotateIngestKey,
+  revokeIngestKey,
+} from "../lib/agents.js";
 import { fetchAgentSpend, currentMonthWindow, SpendNotConfiguredError } from "../lib/agent-spend.js";
 import { requirePermission } from "../middleware/auth.js";
 
@@ -70,6 +77,30 @@ router.patch("/:id/budget", zValidator("json", budgetSchema), async (c) => {
   const ok = await setAgentBudget(c.req.param("id"), c.req.valid("json").monthlyBudgetUsd);
   if (!ok) return c.json({ error: "Agent not found" }, 404);
   return c.json({ id: c.req.param("id"), monthlyBudgetUsd: c.req.valid("json").monthlyBudgetUsd });
+});
+
+// Issue or rotate an agent's ingest key (#24) — returns the key ONCE. Rotating
+// instantly invalidates the previous key. For OTLP exporters set once in
+// OTEL_EXPORTER_OTLP_HEADERS, no refresh needed.
+router.post("/:id/ingest-key", async (c) => {
+  const key = await rotateIngestKey(c.req.param("id"));
+  if (!key) return c.json({ error: "Agent not found or revoked" }, 404);
+  return c.json(
+    {
+      id: c.req.param("id"),
+      ingestKey: key,
+      message:
+        "Save this ingest key — it will not be shown again. Set it as the X-Agent-Ingest-Key header on your OTLP exporter (e.g. OTEL_EXPORTER_OTLP_HEADERS). Rotating or revoking it takes effect immediately.",
+    },
+    201,
+  );
+});
+
+// Revoke an agent's ingest key (clears it; the agent itself stays active).
+router.delete("/:id/ingest-key", async (c) => {
+  const ok = await revokeIngestKey(c.req.param("id"));
+  if (!ok) return c.json({ error: "Agent not found" }, 404);
+  return c.body(null, 204);
 });
 
 // Revoke an agent.
