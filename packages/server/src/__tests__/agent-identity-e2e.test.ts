@@ -12,7 +12,7 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { signAccessToken, type AuthConfig } from "agentkit-auth";
+import { signAccessToken, type AuthConfig } from "@agentkitai/auth";
 import { createTestDb } from "./setup.js";
 
 const WRONG_SECRET = "a-totally-different-secret-32-chars-xx";

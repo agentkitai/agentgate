@@ -4,7 +4,7 @@
 // for now; consolidating those is a separate cleanup.)
 
 import { getConfig, resolveJwtSecret } from "../config.js";
-import type { AuthConfig } from "agentkit-auth";
+import type { AuthConfig } from "@agentkitai/auth";
 
 export function getAuthConfig(): AuthConfig {
   const config = getConfig();

@@ -13,7 +13,7 @@ import {
   verifyAccessToken,
   type AuthConfig,
   type Role,
-} from "agentkit-auth";
+} from "@agentkitai/auth";
 import {
   type AgentGatePermission,
   mapScopesToPermissions,
