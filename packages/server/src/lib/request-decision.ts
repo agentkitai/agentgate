@@ -1,16 +1,17 @@
 // @agentgate/server — Initial decision for a new approval request.
 //
 // Precedence (highest first): a per-agent budget overage (#13) denies outright,
-// then a dynamic override forces human review (pending), then static policy
-// auto-approve/deny. Anything else stays pending. Extracted as a pure function
-// so the precedence is unit-testable without driving the whole request route.
+// then the per-agent eval gate (#7) denies outright, then a dynamic override
+// forces human review (pending), then static policy auto-approve/deny. Anything
+// else stays pending. Extracted as a pure function so the precedence is
+// unit-testable without driving the whole request route.
 
 import type { PolicyDecision } from "@agentgate/core";
 
 export interface InitialDecision {
   status: "pending" | "approved" | "denied";
   decidedBy: string | null;
-  decidedByType: "policy" | "budget_limiter" | "override";
+  decidedByType: "policy" | "budget_limiter" | "eval_gate" | "override";
   decidedAt: Date | null;
   decisionReason: string | null;
 }
@@ -18,6 +19,8 @@ export interface InitialDecision {
 export function decideInitialStatus(input: {
   /** Non-null when the verified agent is over its budget; the reason string. */
   budgetReason: string | null;
+  /** Non-null when the verified agent fails the eval gate (#7); the reason string. */
+  evalReason?: string | null;
   /** A matching dynamic override, or null. `action` "deny" hard-denies; anything
    *  else (require_approval) forces human review. */
   overrideMatch: { action?: string; reason?: string | null } | null;
@@ -25,7 +28,7 @@ export function decideInitialStatus(input: {
   /** Decision timestamp, stamped on auto-decided (approved/denied) outcomes. */
   now: Date;
 }): InitialDecision {
-  const { budgetReason, overrideMatch, policyDecision, now } = input;
+  const { budgetReason, evalReason, overrideMatch, policyDecision, now } = input;
 
   if (budgetReason) {
     return {
@@ -34,6 +37,15 @@ export function decideInitialStatus(input: {
       decidedByType: "budget_limiter",
       decidedAt: now,
       decisionReason: budgetReason,
+    };
+  }
+  if (evalReason) {
+    return {
+      status: "denied",
+      decidedBy: "eval_gate",
+      decidedByType: "eval_gate",
+      decidedAt: now,
+      decisionReason: evalReason,
     };
   }
   if (overrideMatch) {

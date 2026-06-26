@@ -77,4 +77,34 @@ describe("decideInitialStatus precedence", () => {
     expect(d.decidedBy).toBeNull();
     expect(d.decidedAt).toBeNull();
   });
+
+  // ── Eval gate (#7) ──────────────────────────────────────
+  it("eval gate denies, beating override + policy", () => {
+    const d = decideInitialStatus({
+      budgetReason: null,
+      evalReason: "Eval gate: pass-rate 0.50 below required 0.80",
+      overrideMatch: override,
+      policyDecision: approve,
+      now: NOW,
+    });
+    expect(d.status).toBe("denied");
+    expect(d.decidedBy).toBe("eval_gate");
+    expect(d.decidedByType).toBe("eval_gate");
+    expect(d.decisionReason).toContain("Eval gate");
+  });
+
+  it("budget deny outranks the eval gate (budget precedence preserved)", () => {
+    const d = decideInitialStatus({
+      budgetReason: "over budget",
+      evalReason: "Eval gate: below threshold",
+      overrideMatch: null,
+      policyDecision: approve,
+      now: NOW,
+    });
+    expect(d.decidedByType).toBe("budget_limiter");
+  });
+
+  it("no evalReason → unchanged behavior (gate off / agent passes)", () => {
+    expect(decide(null, approve).status).toBe("approved"); // evalReason omitted entirely
+  });
 });

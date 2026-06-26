@@ -18,6 +18,7 @@ import { logAuditEvent } from "../lib/audit.js";
 import { owaspRiskForPolicyDecision } from "../lib/owasp.js";
 import { resolveVerifiedAgentId, resolveEffectiveAgentId } from "../lib/agent-tokens.js";
 import { checkAgentBudget } from "../lib/agent-budget.js";
+import { checkAgentEval } from "../lib/agent-eval.js";
 import { maybeAlertBudgetThreshold } from "../lib/budget-alerts.js";
 import { decideInitialStatus } from "../lib/request-decision.js";
 import { getConfig } from "../config.js";
@@ -139,7 +140,7 @@ async function handleAutoDecision(opts: {
   action: string;
   status: "approved" | "denied";
   decidedBy: string;
-  decidedByType: "policy" | "human" | "agent" | "budget_limiter" | "override";
+  decidedByType: "policy" | "human" | "agent" | "budget_limiter" | "eval_gate" | "override";
   decisionReason: string | null;
   requestSnapshot: Record<string, unknown>;
   channels?: string[];
@@ -277,6 +278,19 @@ requestsRouter.post("/", async (c) => {
     }
   }
 
+  // Per-agent eval gate (#7): deny when the verified agent's latest eval pass-rate
+  // (read from AgentLens) is below the configured minimum. Opt-in (AGENT_EVAL_GATE);
+  // checkAgentEval fails open, so a telemetry outage / un-evaluated agent allows.
+  let evalReason: string | null = null;
+  // Skip the AgentLens round-trip when budget already denies (budget outranks eval).
+  if (effectiveAgentId && cfg.agentEvalGate && !budgetReason) {
+    const tenantId = c.get("auth")?.tenantId ?? "default";
+    const verdict = await checkAgentEval(effectiveAgentId, tenantId);
+    if (!verdict.allowed) {
+      evalReason = `Eval gate: pass-rate ${(verdict.passRate ?? 0).toFixed(2)} below required ${verdict.minPassRate.toFixed(2)}`;
+    }
+  }
+
   // Check overrides BEFORE static policies, keyed on the VERIFIED agent id.
   let overrideMatch: Awaited<ReturnType<typeof checkOverrides>> = null;
   if (effectiveAgentId) {
@@ -292,6 +306,7 @@ requestsRouter.post("/", async (c) => {
   // Determine initial status — budget deny > override > policy (see helper).
   const { status, decidedBy, decidedByType, decidedAt, decisionReason } = decideInitialStatus({
     budgetReason,
+    evalReason,
     overrideMatch,
     policyDecision,
     now,
@@ -328,7 +343,7 @@ requestsRouter.post("/", async (c) => {
     // Who actually made the request, cryptographically verified (vs the
     // unverified context.agentId claim).
     verifiedAgentId: effectiveAgentId,
-    // What kind of decision was applied (policy | budget_limiter | override);
+    // What kind of decision was applied (policy | budget_limiter | eval_gate | override);
     // makes the audit filterable by decidedByType (#22).
     decidedByType,
   });

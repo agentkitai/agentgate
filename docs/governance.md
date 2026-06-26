@@ -125,9 +125,14 @@ When a request arrives, the initial decision follows a fixed **precedence**
 (highest first):
 
 1. **Budget** — an over-budget agent is **denied** (`decidedByType: budget_limiter`).
-2. **Override** — a matching dynamic override forces the outcome: `deny` →
+2. **Eval gate** — an agent whose latest eval pass-rate (read from AgentLens) is
+   below `AGENT_EVAL_MIN_PASS_RATE` is **denied** (`decidedByType: eval_gate`).
+   Opt-in via `AGENT_EVAL_GATE`; **fails open** (an un-evaluated agent or a
+   telemetry outage is allowed). Requires `AGENTLENS_URL` + `AGENTGATE_SERVICE_TOKEN`
+   and eval evidence federated from agenteval (agentlens#85).
+3. **Override** — a matching dynamic override forces the outcome: `deny` →
    denied, otherwise → pending human review (`override`).
-3. **Policy** — static policy rules decide allow / deny / route-to-human (`policy`).
+4. **Policy** — static policy rules decide allow / deny / route-to-human (`policy`).
 
 The chosen layer is recorded as `decidedByType` on the audit row, alongside the
 verified agent id and (for human decisions) the deciding user — so every
