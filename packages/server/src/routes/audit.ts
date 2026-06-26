@@ -77,7 +77,7 @@ auditRouter.get("/", async (c) => {
 
   // decidedByType (#22): lives in the decision audit event's details JSON
   // (set by the auto-decision / human-decide path). Match it backend-agnostically.
-  const validDecidedByTypes = ["policy", "human", "agent", "budget_limiter", "eval_gate", "override"];
+  const validDecidedByTypes = ["policy", "human", "agent", "budget_limiter", "eval_gate", "override", "escalation_fallback"];
   if (decidedByType && validDecidedByTypes.includes(decidedByType)) {
     auditConditions.push(
       getDialect() === "postgres"
