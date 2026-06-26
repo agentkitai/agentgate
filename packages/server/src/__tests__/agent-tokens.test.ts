@@ -6,6 +6,7 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
 import { Hono } from "hono";
 import { signAccessToken, type AuthConfig } from "agentkit-auth";
+import { generateKeyPair, exportJWK, SignJWT, type JWK } from "jose";
 import * as schema from "../db/schema.js";
 
 const sqlite = new Database(":memory:");
@@ -34,6 +35,7 @@ import {
   verifyAgentToken,
   resolveVerifiedAgentId,
 } from "../lib/agent-tokens.js";
+import { __resetSpiffeCache } from "../lib/spiffe.js";
 import agentTokenRouter from "../routes/agent-tokens.js";
 import { parseConfig, setConfig, resetConfig } from "../config.js";
 
@@ -246,5 +248,52 @@ describe("resolveVerifiedAgentId", () => {
 
   it("returns null when nothing is presented", async () => {
     expect(await resolveVerifiedAgentId({}, "dual")).toBeNull();
+  });
+});
+
+describe("resolveVerifiedAgentId — external SPIFFE SVID (#41)", () => {
+  const TD = "example.org";
+  const AUD = "spiffe://example.org/agentgate";
+
+  async function setupSpiffe() {
+    const { publicKey, privateKey } = await generateKeyPair("ES256", { extractable: true });
+    const jwk = (await exportJWK(publicKey)) as JWK;
+    jwk.kid = "td1";
+    jwk.alg = "ES256";
+    jwk.use = "sig";
+    setConfig(
+      parseConfig({
+        jwtSecret: TEST_SECRET,
+        spiffeAudience: AUD,
+        spiffeTrustDomain: TD,
+        spiffeTrustBundle: JSON.stringify({ keys: [jwk] }),
+      }),
+    );
+    __resetSpiffeCache();
+    return privateKey;
+  }
+  const mkSvid = (priv: CryptoKey, sub: string) =>
+    new SignJWT({})
+      .setProtectedHeader({ alg: "ES256", kid: "td1" })
+      .setSubject(sub)
+      .setAudience(AUD)
+      .setIssuedAt()
+      .setExpirationTime("5m")
+      .sign(priv);
+
+  afterAll(() => __resetSpiffeCache());
+
+  it("resolves a valid SPIFFE SVID to its SPIFFE ID (no agents-table lookup)", async () => {
+    const priv = await setupSpiffe();
+    const token = await mkSvid(priv, "spiffe://example.org/agent/checkout");
+    expect(await resolveVerifiedAgentId({ agentToken: token }, "dual")).toBe(
+      "spiffe://example.org/agent/checkout",
+    );
+  });
+
+  it("ignores a SPIFFE SVID in api-key-only mode (token path gated off)", async () => {
+    const priv = await setupSpiffe();
+    const token = await mkSvid(priv, "spiffe://example.org/agent/checkout");
+    expect(await resolveVerifiedAgentId({ agentToken: token }, "api-key-only")).toBeNull();
   });
 });

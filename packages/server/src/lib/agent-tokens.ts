@@ -18,6 +18,7 @@ import {
   getJwksVerifier,
   getAgentTokenAudience,
 } from "./agent-token-keys.js";
+import { verifySpiffeSvid } from "./spiffe.js";
 
 export const AGENT_TOKEN_TYP = "agent";
 
@@ -113,6 +114,12 @@ export async function resolveVerifiedAgentId(
       const live = await getAgentIfActive(tokenAgentId);
       if (live) return live;
     }
+    // External SPIFFE/WIMSE workload identity (#41): the same X-Agent-Token slot
+    // may carry a SPIFFE JWT-SVID. It is verified against the trust bundle (a
+    // DIFFERENT key set than our own tokens) and the SPIFFE ID IS the verified
+    // principal — externally attested, so no agents-table liveness lookup.
+    const spiffeId = await verifySpiffeSvid(creds.agentToken);
+    if (spiffeId) return spiffeId;
   }
   return (await verifyAgentCredential(creds.agentId, creds.agentSecret))?.id ?? null;
 }
