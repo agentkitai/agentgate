@@ -9,16 +9,38 @@
 // the claim, so this check is load-bearing and must not be dropped.
 
 import { signAccessToken, verifyAccessToken, type AuthConfig } from "agentkit-auth";
+import { SignJWT, jwtVerify, decodeProtectedHeader } from "jose";
 
 import { getAgentIfActive, verifyAgentCredential } from "./agents.js";
 import { getAuthConfig } from "./auth-config.js";
+import {
+  getActiveSigningKey,
+  getJwksVerifier,
+  getAgentTokenAudience,
+} from "./agent-token-keys.js";
 
 export const AGENT_TOKEN_TYP = "agent";
 
-/** Mint a short-lived agent access token. sub = agt_* id; exp from config TTL. */
+/**
+ * Mint a short-lived agent access token. sub = agt_* id; exp from config TTL.
+ * When an RS256 signing key is configured (#40) the token is signed
+ * asymmetrically with that key's kid (and aud, if set); otherwise it is signed
+ * with the shared HS256 JWT_SECRET — the default local fast path, unchanged.
+ */
 export async function signAgentToken(agentId: string, config: AuthConfig): Promise<string> {
   // tid/role/email satisfy AccessTokenClaims' required fields but are inert:
   // agent tokens never flow through the user RBAC path (see middleware/auth.ts).
+  const signer = await getActiveSigningKey();
+  if (signer) {
+    const builder = new SignJWT({ tid: "default", role: "viewer", email: "", typ: AGENT_TOKEN_TYP })
+      .setProtectedHeader({ alg: "RS256", kid: signer.kid, typ: "JWT" })
+      .setSubject(agentId)
+      .setIssuedAt()
+      .setExpirationTime(`${config.jwt.accessTokenTtlSeconds}s`);
+    if (signer.audience) builder.setAudience(signer.audience);
+    if (signer.issuer) builder.setIssuer(signer.issuer);
+    return builder.sign(signer.key);
+  }
   return signAccessToken(
     { sub: agentId, tid: "default", role: "viewer", email: "", typ: AGENT_TOKEN_TYP },
     config,
@@ -29,12 +51,44 @@ export async function signAgentToken(agentId: string, config: AuthConfig): Promi
  * Verify a Bearer token AS an agent token. Returns the agent id (sub) iff the
  * signature is valid AND typ === "agent"; otherwise null — including for valid
  * USER tokens, which must never cross over into the agent path.
+ *
+ * The token's header `alg` selects the path: RS256-family tokens verify against
+ * the local JWKS (#40, pinned to RS256 so an HS256/none token can't down-bid),
+ * everything else uses the shared-secret HS256 verifier. Both paths re-check
+ * `typ === "agent"`; the RS256 path also enforces the configured audience.
  */
 export async function verifyAgentToken(
   token: string | undefined,
   config: AuthConfig,
 ): Promise<string | null> {
   if (!token) return null;
+
+  let alg: unknown;
+  try {
+    alg = decodeProtectedHeader(token).alg;
+  } catch {
+    return null; // not a well-formed JWS
+  }
+
+  if (typeof alg === "string" && alg.startsWith("RS")) {
+    // Whole branch is fail-safe: any resolver/verify error rejects the token
+    // (returns null) rather than throwing a 500 — an attacker can send alg=RS256
+    // at will, so this must never surface as a server error.
+    try {
+      const verifier = await getJwksVerifier();
+      if (!verifier) return null; // asymmetric token but no keys configured → reject
+      const audience = getAgentTokenAudience();
+      const { payload } = await jwtVerify(token, verifier, {
+        algorithms: ["RS256"],
+        ...(audience ? { audience } : {}),
+      });
+      if ((payload as Record<string, unknown>).typ !== AGENT_TOKEN_TYP) return null;
+      return typeof payload.sub === "string" ? payload.sub : null;
+    } catch {
+      return null;
+    }
+  }
+
   const claims = await verifyAccessToken(token, config);
   if (!claims) return null;
   if ((claims as Record<string, unknown>).typ !== AGENT_TOKEN_TYP) return null;

@@ -216,6 +216,27 @@ export const ConfigSchema = z.object({
   /** Refresh token TTL in seconds (default: 604800 = 7 days) */
   jwtRefreshTtl: z.coerce.number().int().min(60).default(604800),
 
+  // ─── Asymmetric agent tokens (#40) ──────────────────────────────────
+  /** PKCS#8 PEM RSA private key for RS256-signing agent tokens. Unset = sign
+   *  with the shared HS256 JWT_SECRET (the local fast path, unchanged). When
+   *  set, the matching public key is published at GET /.well-known/jwks.json so
+   *  downstream verifiers (AgentLens, Lore) verify WITHOUT holding the shared
+   *  secret — one leaked secret can no longer mint tokens anywhere. */
+  agentTokenSigningKey: z.string().optional(),
+  /** Key id (kid) for the active RS256 signer. Defaults to the JWK thumbprint. */
+  agentTokenSigningKid: z.string().optional(),
+  /** JSON array of public JWKs (each with a kid) to ALSO publish + accept on
+   *  verify — retired signers kept live during a key rotation until their last
+   *  issued token expires. */
+  agentTokenVerifyKeys: z.string().optional(),
+  /** Optional audience (aud) claim minted into RS256 agent tokens and required
+   *  on verify when set (scopes a token to e.g. "agentlens"). HS256 tokens are
+   *  NOT audience-scoped — this requires AGENT_TOKEN_SIGNING_KEY. */
+  agentTokenAudience: z.string().optional(),
+  /** Optional issuer (iss) claim minted into RS256 agent tokens so standard
+   *  JWKS verifiers (AgentLens, Lore) can pin the issuer. */
+  agentTokenIssuer: z.string().optional(),
+
   // ─── Per-agent spend / budgets (#13) ────────────────────────────────
   /** AgentLens base URL — source of per-agent spend telemetry. Unset = spend
    *  reads disabled. */
@@ -326,6 +347,11 @@ const ENV_MAP: Record<string, keyof z.infer<typeof ConfigSchema>> = {
   SPEND_READ_TIMEOUT_MS: "spendReadTimeoutMs",
   AGENT_BUDGET_ENFORCEMENT: "agentBudgetEnforcement",
   AGENT_BUDGET_ALERTS: "agentBudgetAlerts",
+  AGENT_TOKEN_SIGNING_KEY: "agentTokenSigningKey",
+  AGENT_TOKEN_SIGNING_KID: "agentTokenSigningKid",
+  AGENT_TOKEN_VERIFY_KEYS: "agentTokenVerifyKeys",
+  AGENT_TOKEN_AUDIENCE: "agentTokenAudience",
+  AGENT_TOKEN_ISSUER: "agentTokenIssuer",
 };
 
 // ============================================================================
@@ -349,6 +375,7 @@ const SECRET_KEYS = [
   "SMTP_PASS",
   "WEBHOOK_ENCRYPTION_KEY",
   "OIDC_CLIENT_SECRET",
+  "AGENT_TOKEN_SIGNING_KEY",
 ] as const;
 
 /**
@@ -463,6 +490,22 @@ export function validateProductionConfig(config: Config): string[] {
         warnings.push("OIDC_REDIRECT_URI is required when AUTH_MODE is not api-key-only");
       }
     }
+  }
+
+  // Audience scoping only applies to the RS256 path (#40); the HS256 fast path
+  // cannot set or check `aud`. Warn so an operator isn't lulled into thinking
+  // their tokens are audience-bound when they are accepted everywhere.
+  if (config.agentTokenAudience && !config.agentTokenSigningKey) {
+    warnings.push(
+      "AGENT_TOKEN_AUDIENCE has no effect without AGENT_TOKEN_SIGNING_KEY " +
+        "(audience scoping requires the RS256/JWKS path)",
+    );
+  }
+  if (config.agentTokenIssuer && !config.agentTokenSigningKey) {
+    warnings.push(
+      "AGENT_TOKEN_ISSUER has no effect without AGENT_TOKEN_SIGNING_KEY " +
+        "(the iss claim is only minted on the RS256 path)",
+    );
   }
 
   return warnings;

@@ -115,9 +115,11 @@ within its TTL**. There is no separate token-revocation list; revoke the agent.
 
 ## Trust model & limits
 
-- **Symmetric signing.** Agent tokens are HS256 over the shared `JWT_SECRET`.
-  Any service that holds that secret can both mint and verify agent tokens.
-  There is no `kid`, no `aud`, and no asymmetric/JWKS option today.
+- **Symmetric signing by default.** Agent tokens are HS256 over the shared
+  `JWT_SECRET`; any service that holds that secret can both mint and verify
+  them. Set `AGENT_TOKEN_SIGNING_KEY` to switch to **RS256 + JWKS** so
+  downstream services verify with the *public* key only — see
+  [Asymmetric signing & JWKS](#asymmetric-signing--jwks-40).
 - **Liveness is local.** Cryptographic verification proves the id; it does
   **not** prove the agent is still active. Only AgentGate (which owns the
   `agents` table) can answer liveness. A stateless verifier gets identity, not
@@ -127,6 +129,47 @@ within its TTL**. There is no separate token-revocation list; revoke the agent.
 - **Rate limiting.** The token endpoint is not yet rate-limited per client;
   treat a leaked `ags_…` secret as you would any credential and rotate by
   re-creating the agent.
+
+## Asymmetric signing & JWKS (#40)
+
+By default the same `JWT_SECRET` mints **and** verifies agent tokens, so every
+downstream verifier (AgentLens, Lore) must hold it — one leak mints tokens
+everywhere. Setting an RS256 signing key flips this to public-key verification:
+AgentGate signs with a private key it alone holds and publishes only the public
+half at a JWKS endpoint. This is **opt-in**; unset, the HS256 fast path is used
+unchanged.
+
+- **Enable:** set `AGENT_TOKEN_SIGNING_KEY` to a PKCS#8 PEM RSA private key
+  (`AGENT_TOKEN_SIGNING_KEY_FILE` works for Docker secrets). Tokens are then
+  signed `RS256` with a `kid` header (defaults to the JWK thumbprint, or set
+  `AGENT_TOKEN_SIGNING_KID`). A malformed key fails **closed** to HS256 with a
+  logged warning — it never crashes minting.
+- **JWKS:** `GET /.well-known/jwks.json` (public, unauthenticated, public keys
+  only) serves the active signer plus any rotation keys, `Cache-Control:
+  public, max-age=300`. Downstream verifiers fetch it and verify with no shared
+  secret. Returns an empty key set when asymmetric signing is off.
+- **Verification path:** `verifyAgentToken` selects by the token's header `alg`
+  — RS-family tokens verify against the local JWKS **pinned to `RS256`** (an
+  `alg=none`/HS-swap can't down-bid), everything else uses the HS256 verifier.
+  Both paths re-check `typ:"agent"`. Enabling RS256 does **not** stop AgentGate
+  from also accepting HS256 tokens, so a rollout can be gradual.
+- **Rotation:** set the new key as `AGENT_TOKEN_SIGNING_KEY`/`_KID` and keep the
+  *previous public JWK* in `AGENT_TOKEN_VERIFY_KEYS` (a JSON array of public RSA
+  JWKs, each with a `kid`) until its last issued token expires — both verify,
+  only the new key signs. **Only public RSA members are ever published:** each
+  rotation entry is reconstructed from a `{kty,n,e,kid}` whitelist, so pasting a
+  full private JWK (or an `oct` key) by mistake cannot leak `d/p/q/...`/`k` on
+  the public endpoint. A rotation entry whose `kid` collides with the active
+  signer is dropped (the active key wins).
+- **Audience & issuer:** `AGENT_TOKEN_AUDIENCE` mints an `aud` claim and is
+  required on verify; `AGENT_TOKEN_ISSUER` mints an `iss` claim so standard
+  JWKS verifiers can pin the issuer. **Both apply only to the RS256 path** — the
+  HS256 fast path cannot scope `aud`/`iss`, and config validation warns if you
+  set them without a signing key.
+- **Known limitation:** `api-key-only` mode still rejects agent tokens even when
+  RS256 is configured (the token path is gated off wholesale in that mode). An
+  RS256 token is *not* forgeable there, so lifting this is a reasonable future
+  change — tracked, not done in this slice.
 
 ## Downstream propagation (the consumer contract)
 
@@ -140,9 +183,10 @@ SDK**. To make the tamper-evident audit trail *attributable*, AgentLens
 verifies an AgentGate agent token at ingest and stamps the verified id.
 
 - **Verification:** AgentLens already depends on `agentkit-auth`; it verifies
-  the token with the **shared `JWT_SECRET`** and the `typ:"agent"` guard. (A
-  JWKS/asymmetric option would remove the shared-secret coupling — see
-  [Future work](#future-work).)
+  the token with the **shared `JWT_SECRET`** and the `typ:"agent"` guard. When
+  AgentGate is configured for [RS256/JWKS](#asymmetric-signing--jwks-40),
+  AgentLens can instead verify against `GET /.well-known/jwks.json` and drop the
+  shared-secret coupling (the consuming change is tracked separately).
 - **Where it lands:** the verified id is written to event **metadata**
   (e.g. `metadata.verifiedAgentId`, `verificationMethod`, `verifiedAt`), **not**
   added to the hashed event fields. AgentLens events are SHA-256 hash-chained;
@@ -170,7 +214,12 @@ formalization, not a new subsystem.
 | `JWT_SECRET` | — (required when JWT/OIDC auth is enabled) | Shared HS256 secret used to sign **and** verify agent tokens. Must be ≥32 chars and not the dev placeholder. |
 | `JWT_SECRET_FILE` | — | File-based alternative to `JWT_SECRET`. |
 | `AUTH_MODE` | `dual` | `api-key-only` disables the agent-token path (legacy headers only). |
-| `jwtAccessTtl` | `900` (s) | Agent access-token lifetime. |
+| `JWT_ACCESS_TTL` | `900` (s) | Agent access-token lifetime. |
+| `AGENT_TOKEN_SIGNING_KEY` | — | PKCS#8 PEM RSA private key → sign agent tokens with **RS256** and publish the public key at `/.well-known/jwks.json`. Unset = HS256 fast path. `_FILE` supported. |
+| `AGENT_TOKEN_SIGNING_KID` | JWK thumbprint | `kid` for the active RS256 signer. |
+| `AGENT_TOKEN_VERIFY_KEYS` | — | JSON array of public RSA JWKs (each with `kid`) to also publish + accept on verify — retired signers during a rotation. |
+| `AGENT_TOKEN_AUDIENCE` | — | `aud` claim minted into RS256 tokens and required on verify (RS256 path only). |
+| `AGENT_TOKEN_ISSUER` | — | `iss` claim minted into RS256 tokens for issuer pinning (RS256 path only). |
 | `GUARDRAILS_WEBHOOK_SECRET` | — | Shared secret authenticating the reactive-guardrails webhook. |
 
 ## Security considerations
@@ -179,8 +228,8 @@ formalization, not a new subsystem.
   credentials.
 - **Sharing `JWT_SECRET` across services** (for downstream verification) widens
   the blast radius of a leak: a leaked secret lets an attacker mint agent
-  tokens accepted everywhere. Prefer a dedicated rotation process; the JWKS
-  path (future) removes this coupling.
+  tokens accepted everywhere. The [RS256/JWKS path](#asymmetric-signing--jwks-40)
+  removes this coupling — downstream verifies with the public key only.
 - **The unverified `context.agentId` is never trusted** for decisions; only the
   resolved verified id is.
 - **Forgery is gated by the `typ:"agent"` check** plus signature; the e2e suite
@@ -189,9 +238,11 @@ formalization, not a new subsystem.
 
 ## Future work
 
-- **Asymmetric signing / JWKS** (`RS256` + a published key set) so downstream
-  services verify without sharing `JWT_SECRET`, with `kid`-based rotation.
-- **`aud` scoping** so a token is only valid for its intended consumer.
+- ✅ **Asymmetric signing / JWKS** (`RS256` + a published key set, `kid`
+  rotation, `aud`/`iss` scoping) — shipped in #40, see
+  [above](#asymmetric-signing--jwks-40).
+- **RS256 tokens in `api-key-only` mode** — currently rejected wholesale even
+  though they are not forgeable; allow them when a signing key is configured.
 - **SPIFFE SVID / WIMSE** workload identity for mesh deployments
   (X.509 / Workload API), resolving to the same verified principal.
 - **RFC-8693 token exchange** for delegated/on-behalf-of agent chains.
