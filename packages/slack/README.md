@@ -1,4 +1,4 @@
-# @agentgate/slack
+# @agentkitai/agentgate-slack
 
 Slack bot integration for AgentGate human approvals.
 
@@ -12,7 +12,7 @@ Slack bot integration for AgentGate human approvals.
 ## Installation
 
 ```bash
-pnpm add @agentgate/slack
+pnpm add @agentkitai/agentgate-slack
 ```
 
 ## Slack App Setup
@@ -58,7 +58,7 @@ After installation, you'll need:
 ### As a Library
 
 ```typescript
-import { createSlackBot } from '@agentgate/slack';
+import { createSlackBot } from '@agentkitai/agentgate-slack';
 
 const bot = createSlackBot({
   token: process.env.SLACK_BOT_TOKEN!,

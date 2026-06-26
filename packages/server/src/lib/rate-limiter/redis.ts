@@ -1,4 +1,4 @@
-// @agentgate/server - Redis-backed sliding window rate limiter
+// @agentkitai/agentgate-server - Redis-backed sliding window rate limiter
 
 import Redis from "ioredis";
 import type { RateLimiter, RateLimitResult } from "./types.js";

@@ -1,4 +1,4 @@
-// @agentgate/server - Rate limiter module
+// @agentkitai/agentgate-server - Rate limiter module
 
 export type { RateLimiter, RateLimitResult, RateLimiterBackend } from "./types.js";
 export { InMemoryRateLimiter } from "./memory.js";

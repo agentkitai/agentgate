@@ -1,6 +1,6 @@
-// @agentgate/sdk - AgentGate Client
+// @agentkitai/agentgate-sdk - AgentGate Client
 
-import type { ApprovalRequest, ApprovalUrgency, Policy, PolicyRule } from '@agentgate/core';
+import type { ApprovalRequest, ApprovalUrgency, Policy, PolicyRule } from '@agentkitai/agentgate-core';
 import { AgentGateError, TimeoutError } from './errors.js';
 
 /**

@@ -6,13 +6,13 @@
  * and includes one-click action links in the email.
  */
 
-import type { AgentGateEvent, RequestCreatedEvent, DecisionLinks } from "@agentgate/core";
-import { getUrgencyEmoji, formatJson, escapeHtml } from "@agentgate/core";
+import type { AgentGateEvent, RequestCreatedEvent, DecisionLinks } from "@agentkitai/agentgate-core";
+import { getUrgencyEmoji, formatJson, escapeHtml } from "@agentkitai/agentgate-core";
 import type { NotificationChannelAdapter, NotificationResult } from "../types.js";
 import { getConfig } from "../../../config.js";
 import { generateDecisionTokens } from "../../decision-tokens.js";
 
-export type { DecisionLinks } from "@agentgate/core";
+export type { DecisionLinks } from "@agentkitai/agentgate-core";
 
 // ============================================================================
 // Decision Link Generation

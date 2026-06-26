@@ -1,4 +1,4 @@
-// @agentgate/core - Shared utility functions
+// @agentkitai/agentgate-core - Shared utility functions
 
 /**
  * Truncate a string to a max length, adding ellipsis if truncated

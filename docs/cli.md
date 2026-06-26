@@ -1,18 +1,18 @@
 # Command-Line Interface
 
-The `@agentgate/cli` package provides a command-line interface for managing approval requests.
+The `@agentkitai/agentgate-cli` package provides a command-line interface for managing approval requests.
 
 ## Installation
 
 ```bash
 # Global install
-npm install -g @agentgate/cli
+npm install -g @agentkitai/agentgate-cli
 
 # Or run with npx
-npx @agentgate/cli --help
+npx @agentkitai/agentgate-cli --help
 
 # Or from the monorepo
-pnpm --filter @agentgate/cli build
+pnpm --filter @agentkitai/agentgate-cli build
 ```
 
 ## Configuration

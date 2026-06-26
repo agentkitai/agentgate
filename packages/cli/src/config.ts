@@ -1,4 +1,4 @@
-// @agentgate/cli - Configuration management
+// @agentkitai/agentgate-cli - Configuration management
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';

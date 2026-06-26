@@ -1,4 +1,4 @@
-// @agentgate/server - Public decision endpoint for one-click approve/deny
+// @agentkitai/agentgate-server - Public decision endpoint for one-click approve/deny
 
 import { Hono } from "hono";
 import { html } from "hono/html";

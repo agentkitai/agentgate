@@ -41,10 +41,10 @@ cd agentgate
 pnpm install
 
 # Run database migrations
-pnpm --filter @agentgate/server db:migrate
+pnpm --filter @agentkitai/agentgate-server db:migrate
 
 # Bootstrap (create admin API key)
-pnpm --filter @agentgate/server bootstrap
+pnpm --filter @agentkitai/agentgate-server bootstrap
 ```
 
 ::: tip Save Your API Key
@@ -74,7 +74,7 @@ Access the services:
 
 ```bash
 # Install and configure CLI
-pnpm --filter @agentgate/cli build
+pnpm --filter @agentkitai/agentgate-cli build
 export AGENTGATE_URL=http://localhost:3000
 export AGENTGATE_API_KEY=agk_...
 
@@ -90,7 +90,7 @@ agentgate list --status pending
 ### Using the SDK
 
 ```typescript
-import { AgentGateClient } from '@agentgate/sdk'
+import { AgentGateClient } from '@agentkitai/agentgate-sdk'
 
 const client = new AgentGateClient({
   baseUrl: 'http://localhost:3000',
@@ -131,7 +131,7 @@ The demo creates sample approval requests that you can approve or deny in the da
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         AI Agents                                │
-│  (use @agentgate/sdk or MCP to request approvals)               │
+│  (use @agentkitai/agentgate-sdk or MCP to request approvals)               │
 └───────────────────────────┬─────────────────────────────────────┘
                             │ HTTP API (authenticated)
                             ▼

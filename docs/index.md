@@ -40,7 +40,7 @@ features:
 ## Quick Example
 
 ```typescript
-import { AgentGateClient } from '@agentgate/sdk'
+import { AgentGateClient } from '@agentkitai/agentgate-sdk'
 
 const client = new AgentGateClient({
   baseUrl: 'http://localhost:3000',

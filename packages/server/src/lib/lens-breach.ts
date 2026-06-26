@@ -1,4 +1,4 @@
-// @agentgate/server — Mirror guardrail breaches into AgentLens (#55, gate→lens wedge).
+// @agentkitai/agentgate-server — Mirror guardrail breaches into AgentLens (#55, gate→lens wedge).
 //
 // When the gate denies an action, we record it in AgentLens as a hash-chained
 // compliance eval_result, so the breach becomes tamper-evident audit evidence.
@@ -7,7 +7,7 @@
 // holds no AgentLens session of its own, so the caller supplies the sessionId it
 // observed the breach in (omit → no-op, since there's no chain to extend).
 
-import { AgentGateHttpClient } from "@agentgate/core";
+import { AgentGateHttpClient } from "@agentkitai/agentgate-core";
 import { getConfig } from "../config.js";
 import { getLogger } from "./logger.js";
 

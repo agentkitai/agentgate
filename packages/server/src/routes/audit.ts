@@ -1,4 +1,4 @@
-// @agentgate/server - Audit log API routes
+// @agentkitai/agentgate-server - Audit log API routes
 
 import { Hono } from "hono";
 import { eq, and, gte, lte, desc, sql, type SQL } from "drizzle-orm";

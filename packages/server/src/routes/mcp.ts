@@ -1,4 +1,4 @@
-// @agentgate/server — MCP guardrail endpoint (issue #14).
+// @agentkitai/agentgate-server — MCP guardrail endpoint (issue #14).
 // POST /api/mcp/authorize — the MCP server calls this before executing a tool.
 // Mounted behind the normal /api/* auth middleware, so the caller's api key
 // (and any virtual-key agent binding, #13) is available on the context.

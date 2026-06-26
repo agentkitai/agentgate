@@ -6,7 +6,7 @@
  */
 
 import { getDb, policies } from "../db/index.js";
-import type { Policy as CorePolicy, PolicyRule } from "@agentgate/core";
+import type { Policy as CorePolicy, PolicyRule } from "@agentkitai/agentgate-core";
 
 let cachedPolicies: CorePolicy[] | null = null;
 let inflight: Promise<CorePolicy[]> | null = null;

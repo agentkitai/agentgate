@@ -1,4 +1,4 @@
-// @agentgate/cli - Request command tests
+// @agentkitai/agentgate-cli - Request command tests
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createRequestCommand } from './request.js';

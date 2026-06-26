@@ -1,11 +1,11 @@
-// @agentgate/slack - Pure helper functions
+// @agentkitai/agentgate-slack - Pure helper functions
 
 import type { KnownBlock } from '@slack/types';
-import type { ApprovalRequest, DecisionLinks } from '@agentgate/core';
-import { truncate, formatJson, getUrgencyEmoji } from '@agentgate/core';
+import type { ApprovalRequest, DecisionLinks } from '@agentkitai/agentgate-core';
+import { truncate, formatJson, getUrgencyEmoji } from '@agentkitai/agentgate-core';
 
-export type { DecisionLinks } from '@agentgate/core';
-export { truncate, formatJson, getUrgencyEmoji } from '@agentgate/core';
+export type { DecisionLinks } from '@agentkitai/agentgate-core';
+export { truncate, formatJson, getUrgencyEmoji } from '@agentkitai/agentgate-core';
 
 /**
  * Options for building approval blocks

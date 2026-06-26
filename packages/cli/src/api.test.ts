@@ -1,8 +1,8 @@
-// @agentgate/cli - API client tests
+// @agentkitai/agentgate-cli - API client tests
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ApiClient, formatRequest, formatRequestList } from './api.js';
-import type { ApprovalRequest } from '@agentgate/core';
+import type { ApprovalRequest } from '@agentkitai/agentgate-core';
 
 // Mock fetch
 const mockFetch = vi.fn();

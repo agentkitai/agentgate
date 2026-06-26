@@ -1,4 +1,4 @@
-// @agentgate/server - Analytics & Governance KPI routes
+// @agentkitai/agentgate-server - Analytics & Governance KPI routes
 
 import { Hono } from "hono";
 import { and, gte, lte, sql, eq, type SQL } from "drizzle-orm";

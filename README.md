@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/search?q=%40agentgate"><img src="https://img.shields.io/npm/v/@agentgate/sdk?label=sdk&color=blue" alt="npm version"></a>
+  <a href="https://www.npmjs.com/search?q=%40agentgate"><img src="https://img.shields.io/npm/v/@agentkitai/agentgate-sdk?label=sdk&color=blue" alt="npm version"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License"></a>
   <a href="https://github.com/agentkitai/agentgate/actions"><img src="https://img.shields.io/github/actions/workflow/status/agentkitai/agentgate/ci.yml?branch=main" alt="CI"></a>
   <a href="#"><img src="https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript&logoColor=white" alt="TypeScript"></a>
@@ -51,7 +51,7 @@ pnpm install && pnpm migrate && pnpm bootstrap && pnpm dev
 Drop AgentGate into an MCP client (Claude Desktop / Cursor / VS Code) — point it at the gateway:
 
 ```jsonc
-{ "mcpServers": { "agentgate": { "command": "npx", "args": ["@agentgate/mcp"] } } }
+{ "mcpServers": { "agentgate": { "command": "npx", "args": ["@agentkitai/agentgate-mcp"] } } }
 ```
 
 #### Dashboard
@@ -123,13 +123,13 @@ pnpm install
 ### 2. Run database migrations
 
 ```bash
-pnpm --filter @agentgate/server db:migrate
+pnpm --filter @agentkitai/agentgate-server db:migrate
 ```
 
 ### 3. Bootstrap (create admin API key)
 
 ```bash
-pnpm --filter @agentgate/server bootstrap
+pnpm --filter @agentkitai/agentgate-server bootstrap
 ```
 
 **Save the API key** - it's shown once only! Set it in your environment:
@@ -163,7 +163,7 @@ Visit **http://localhost:5173** to view and manage approval requests.
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         AI Agents                                │
-│  (use @agentgate/sdk or MCP to request approvals)               │
+│  (use @agentkitai/agentgate-sdk or MCP to request approvals)               │
 └───────────────────────────┬─────────────────────────────────────┘
                             │ HTTP API (authenticated)
                             ▼
@@ -194,19 +194,19 @@ Visit **http://localhost:5173** to view and manage approval requests.
 
 | Package | Description | Docs |
 |---------|-------------|------|
-| [`@agentgate/core`](./packages/core) | Types, schemas, policy engine | - |
-| [`@agentgate/server`](./packages/server) | Hono API server | - |
-| [`@agentgate/sdk`](./packages/sdk) | TypeScript SDK for agents | [README](./packages/sdk/README.md) |
-| [`@agentgate/cli`](./packages/cli) | Command-line interface | - |
-| [`@agentgate/mcp`](./packages/mcp) | MCP server for Claude Desktop | - |
-| [`@agentgate/slack`](./packages/slack) | Slack bot integration | [README](./packages/slack/README.md) |
-| [`@agentgate/discord`](./packages/discord) | Discord bot integration | [README](./packages/discord/README.md) |
-| [`@agentgate/dashboard`](./packages/dashboard) | React web dashboard | - |
+| [`@agentkitai/agentgate-core`](./packages/core) | Types, schemas, policy engine | - |
+| [`@agentkitai/agentgate-server`](./packages/server) | Hono API server | - |
+| [`@agentkitai/agentgate-sdk`](./packages/sdk) | TypeScript SDK for agents | [README](./packages/sdk/README.md) |
+| [`@agentkitai/agentgate-cli`](./packages/cli) | Command-line interface | - |
+| [`@agentkitai/agentgate-mcp`](./packages/mcp) | MCP server for Claude Desktop | - |
+| [`@agentkitai/agentgate-slack`](./packages/slack) | Slack bot integration | [README](./packages/slack/README.md) |
+| [`@agentkitai/agentgate-discord`](./packages/discord) | Discord bot integration | [README](./packages/discord/README.md) |
+| [`@agentkitai/agentgate-dashboard`](./packages/dashboard) | React web dashboard | - |
 
 ## SDK Usage
 
 ```typescript
-import { AgentGateClient } from '@agentgate/sdk';
+import { AgentGateClient } from '@agentkitai/agentgate-sdk';
 
 // Create client with API key
 const client = new AgentGateClient({
@@ -245,10 +245,10 @@ AgentGate includes a command-line interface for managing approval requests.
 
 ```bash
 # From the monorepo
-pnpm --filter @agentgate/cli build
+pnpm --filter @agentkitai/agentgate-cli build
 
 # Or install globally (when published)
-npm install -g @agentgate/cli
+npm install -g @agentkitai/agentgate-cli
 ```
 
 ### Configuration
@@ -319,7 +319,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "agentgate": {
       "command": "npx",
-      "args": ["@agentgate/mcp"],
+      "args": ["@agentkitai/agentgate-mcp"],
       "env": {
         "AGENTGATE_URL": "http://localhost:3000",
         "AGENTGATE_API_KEY": "agk_..."
@@ -708,10 +708,10 @@ docker-compose down -v
 pnpm install
 
 # Run migrations
-pnpm --filter @agentgate/server db:migrate
+pnpm --filter @agentkitai/agentgate-server db:migrate
 
 # Bootstrap (create admin key)
-pnpm --filter @agentgate/server bootstrap
+pnpm --filter @agentkitai/agentgate-server bootstrap
 
 # Start development (server + dashboard)
 pnpm dev
@@ -729,10 +729,10 @@ pnpm test
 pnpm test:coverage
 
 # Run tests in watch mode (single package)
-pnpm --filter @agentgate/server test:watch
+pnpm --filter @agentkitai/agentgate-server test:watch
 
 # Run a specific test file
-pnpm --filter @agentgate/server test -- src/__tests__/integration.test.ts
+pnpm --filter @agentkitai/agentgate-server test -- src/__tests__/integration.test.ts
 ```
 
 Coverage reports are generated per-package and include line, branch, and function coverage.

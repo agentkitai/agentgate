@@ -1,4 +1,4 @@
-# @agentgate/discord
+# @agentkitai/agentgate-discord
 
 Discord bot integration for AgentGate - receive approval requests and make decisions directly from Discord.
 
@@ -13,9 +13,9 @@ Discord bot integration for AgentGate - receive approval requests and make decis
 ## Installation
 
 ```bash
-pnpm add @agentgate/discord
+pnpm add @agentkitai/agentgate-discord
 # or
-npm install @agentgate/discord
+npm install @agentkitai/agentgate-discord
 ```
 
 ## Configuration
@@ -46,7 +46,7 @@ pnpm start
 ### Programmatic Usage
 
 ```typescript
-import { createDiscordBot } from '@agentgate/discord';
+import { createDiscordBot } from '@agentkitai/agentgate-discord';
 
 const bot = createDiscordBot({
   token: process.env.DISCORD_BOT_TOKEN!,
@@ -143,7 +143,7 @@ import {
   getUrgencyEmoji,
   getUrgencyColor,
   EMBED_COLORS,
-} from '@agentgate/discord';
+} from '@agentkitai/agentgate-discord';
 ```
 
 ## License

@@ -1,7 +1,7 @@
-// @agentgate/slack - Slack bot for human approvals
+// @agentkitai/agentgate-slack - Slack bot for human approvals
 
 import { App, type BlockAction } from '@slack/bolt';
-import type { ApprovalRequest } from '@agentgate/core';
+import type { ApprovalRequest } from '@agentkitai/agentgate-core';
 import { buildApprovalBlocks, buildDecidedBlocks } from './helpers.js';
 
 export interface SlackBotOptions {

@@ -1,4 +1,4 @@
-// @agentgate/cli - List command tests
+// @agentkitai/agentgate-cli - List command tests
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createListCommand } from './list.js';

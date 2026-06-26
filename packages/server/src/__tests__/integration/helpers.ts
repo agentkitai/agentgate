@@ -13,8 +13,8 @@ import { eq, desc, and, sql, isNull } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
 import isSafeRegex from "safe-regex2";
 import * as schema from "../../db/schema.js";
-import type { PolicyRule, ApprovalRequest as CoreApprovalRequest, Policy as CorePolicy } from "@agentgate/core";
-import { evaluatePolicy } from "@agentgate/core";
+import type { PolicyRule, ApprovalRequest as CoreApprovalRequest, Policy as CorePolicy } from "@agentkitai/agentgate-core";
+import { evaluatePolicy } from "@agentkitai/agentgate-core";
 
 const { approvalRequests, auditLogs, policies, apiKeys, webhooks, webhookDeliveries } = schema;
 

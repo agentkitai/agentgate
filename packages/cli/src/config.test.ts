@@ -1,4 +1,4 @@
-// @agentgate/cli - Config tests
+// @agentkitai/agentgate-cli - Config tests
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs';

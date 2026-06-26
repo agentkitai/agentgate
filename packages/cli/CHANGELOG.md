@@ -1,4 +1,4 @@
-# @agentgate/cli
+# @agentkitai/agentgate-cli
 
 ## 0.1.0
 
@@ -18,7 +18,7 @@
 ### Patch Changes
 
 - Updated dependencies [e74f7b7]
-  - @agentgate/core@0.1.0
+  - @agentkitai/agentgate-core@0.1.0
 
 ## 0.0.2
 
@@ -34,4 +34,4 @@
   - AgentGateEmitter API documented in events.md
 
 - Updated dependencies [618e2da]
-  - @agentgate/core@0.0.2
+  - @agentkitai/agentgate-core@0.0.2

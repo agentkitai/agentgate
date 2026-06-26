@@ -1,4 +1,4 @@
-// @agentgate/server — Agent identity registry (agent-identity spine).
+// @agentkitai/agentgate-server — Agent identity registry (agent-identity spine).
 //
 // A verifiable, non-human principal. An agent is issued a public client id
 // (`agt_*`) and a secret (`ags_*`, shown once); only sha256(secret) is stored.

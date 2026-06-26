@@ -1,4 +1,4 @@
-// @agentgate/cli - CLI tests
+// @agentkitai/agentgate-cli - CLI tests
 
 import { describe, it, expect } from 'vitest';
 import { VERSION } from './version.js';

@@ -1,4 +1,4 @@
-// @agentgate/cli - Status command tests
+// @agentkitai/agentgate-cli - Status command tests
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createStatusCommand } from './status.js';

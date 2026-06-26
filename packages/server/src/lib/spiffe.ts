@@ -1,4 +1,4 @@
-// @agentgate/server — Accept an external SPIFFE JWT-SVID as a verified principal (#41).
+// @agentkitai/agentgate-server — Accept an external SPIFFE JWT-SVID as a verified principal (#41).
 //
 // Enterprises that already run a SPIFFE/SPIRE (or WIMSE) workload-identity plane
 // can present a JWT-SVID instead of minting an AgentGate agent token. AgentGate

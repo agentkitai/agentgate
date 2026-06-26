@@ -1,4 +1,4 @@
-// @agentgate/discord - Discord bot integration
+// @agentkitai/agentgate-discord - Discord bot integration
 
 import "dotenv/config";
 import { createDiscordBot, type DiscordBot, type DiscordBotOptions } from "./bot.js";

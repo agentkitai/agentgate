@@ -1,4 +1,4 @@
-import type { ApprovalStatus } from '@agentgate/core';
+import type { ApprovalStatus } from '@agentkitai/agentgate-core';
 
 interface StatusBadgeProps {
   status: ApprovalStatus;

@@ -1,5 +1,5 @@
 {
-  "name": "@agentgate/core",
+  "name": "@agentkitai/agentgate-core",
   "version": "0.1.0",
   "description": "Core types and utilities for AgentGate",
   "type": "module",

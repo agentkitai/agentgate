@@ -1,4 +1,4 @@
-// @agentgate/core - Policy evaluation engine
+// @agentkitai/agentgate-core - Policy evaluation engine
 
 import isSafeRegex from 'safe-regex2';
 import type { ApprovalRequest, Policy, PolicyRule, PolicyDecision, MatcherValue } from './types.js';

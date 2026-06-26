@@ -1,11 +1,11 @@
-// @agentgate/discord - Pure helper functions
+// @agentkitai/agentgate-discord - Pure helper functions
 
-import type { ApprovalRequest, ApprovalUrgency, DecisionLinks } from "@agentgate/core";
-import { truncate, formatJson, getUrgencyEmoji } from "@agentgate/core";
+import type { ApprovalRequest, ApprovalUrgency, DecisionLinks } from "@agentkitai/agentgate-core";
+import { truncate, formatJson, getUrgencyEmoji } from "@agentkitai/agentgate-core";
 import type { APIEmbed, APIEmbedField, APIActionRowComponent, APIButtonComponent } from "discord.js";
 
-export type { DecisionLinks } from "@agentgate/core";
-export { truncate, formatJson, getUrgencyEmoji } from "@agentgate/core";
+export type { DecisionLinks } from "@agentkitai/agentgate-core";
+export { truncate, formatJson, getUrgencyEmoji } from "@agentkitai/agentgate-core";
 
 /**
  * Embed colors by urgency/status

@@ -1,4 +1,4 @@
-// @agentgate/server - API key management helpers
+// @agentkitai/agentgate-server - API key management helpers
 
 import { createHash, randomBytes } from "node:crypto";
 import { nanoid } from "nanoid";

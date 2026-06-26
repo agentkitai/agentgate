@@ -1,4 +1,4 @@
-// @agentgate/server — Internal service-to-service routes (#24).
+// @agentkitai/agentgate-server — Internal service-to-service routes (#24).
 //
 // POST /api/internal/verify-ingest-key — AgentLens calls this to resolve the
 // verified agent id for an OTLP ingest key it received. Authenticated by the

@@ -1,11 +1,11 @@
-# @agentgate/cli
+# @agentkitai/agentgate-cli
 
 Command-line interface for AgentGate approval management.
 
 ## Installation
 
 ```bash
-pnpm add -g @agentgate/cli
+pnpm add -g @agentkitai/agentgate-cli
 ```
 
 ## Usage
@@ -101,7 +101,7 @@ Configuration is stored in `~/.agentgate/config.json`:
 The CLI can also be used programmatically:
 
 ```typescript
-import { ApiClient, loadConfig } from '@agentgate/cli';
+import { ApiClient, loadConfig } from '@agentkitai/agentgate-cli';
 
 const client = new ApiClient();
 const requests = await client.listRequests({ status: 'pending' });

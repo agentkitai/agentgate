@@ -1,4 +1,4 @@
-// @agentgate/cli - Config command tests
+// @agentkitai/agentgate-cli - Config command tests
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createConfigCommand } from './config.js';

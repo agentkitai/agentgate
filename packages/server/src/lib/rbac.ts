@@ -1,4 +1,4 @@
-// @agentgate/server — RBAC permission model for AgentGate
+// @agentkitai/agentgate-server — RBAC permission model for AgentGate
 //
 // Extends agentkit-auth's generic RBAC with AgentGate-specific permissions.
 

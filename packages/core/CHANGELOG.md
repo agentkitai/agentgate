@@ -1,4 +1,4 @@
-# @agentgate/core
+# @agentkitai/agentgate-core
 
 ## 0.1.0
 

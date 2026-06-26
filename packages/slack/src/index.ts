@@ -1,4 +1,4 @@
-// @agentgate/slack - Slack bot integration
+// @agentkitai/agentgate-slack - Slack bot integration
 
 import 'dotenv/config';
 import { createSlackBot, type SlackBot, type SlackBotOptions } from './bot.js';

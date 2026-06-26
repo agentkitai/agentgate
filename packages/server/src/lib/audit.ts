@@ -1,4 +1,4 @@
-// @agentgate/server - Audit logging helper
+// @agentkitai/agentgate-server - Audit logging helper
 
 import { nanoid } from "nanoid";
 import { getDb, auditLogs } from "../db/index.js";

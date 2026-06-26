@@ -1,6 +1,6 @@
 # Slack Integration
 
-The `@agentgate/slack` package provides a Slack bot for sending approval requests and receiving decisions directly in Slack.
+The `@agentkitai/agentgate-slack` package provides a Slack bot for sending approval requests and receiving decisions directly in Slack.
 
 ## Features
 
@@ -76,19 +76,19 @@ docker-compose --profile bots up -d
 
 ```bash
 # Install
-npm install @agentgate/slack
+npm install @agentkitai/agentgate-slack
 
 # Run
 SLACK_BOT_TOKEN=xoxb-... \
 SLACK_SIGNING_SECRET=... \
 AGENTGATE_URL=http://localhost:3000 \
-npx @agentgate/slack
+npx @agentkitai/agentgate-slack
 ```
 
 ### As a Library
 
 ```typescript
-import { createSlackBot } from '@agentgate/slack'
+import { createSlackBot } from '@agentkitai/agentgate-slack'
 
 const bot = createSlackBot({
   token: process.env.SLACK_BOT_TOKEN!,

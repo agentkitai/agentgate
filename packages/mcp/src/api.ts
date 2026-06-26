@@ -1,9 +1,9 @@
 /**
  * API client for AgentGate server
  *
- * Thin wrapper around the shared AgentGateHttpClient from @agentgate/core.
+ * Thin wrapper around the shared AgentGateHttpClient from @agentkitai/agentgate-core.
  */
-import { AgentGateHttpClient } from '@agentgate/core';
+import { AgentGateHttpClient } from '@agentkitai/agentgate-core';
 import type { ApiConfig } from './types.js';
 
 /**

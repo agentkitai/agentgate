@@ -1,4 +1,4 @@
-// @agentgate/cli - Command exports
+// @agentkitai/agentgate-cli - Command exports
 
 export { createConfigCommand } from './config.js';
 export { createRequestCommand } from './request.js';

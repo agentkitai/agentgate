@@ -3,7 +3,7 @@
  * This is the real decision logic the requests route runs.
  */
 import { describe, it, expect } from "vitest";
-import type { PolicyDecision } from "@agentgate/core";
+import type { PolicyDecision } from "@agentkitai/agentgate-core";
 import { decideInitialStatus } from "../lib/request-decision.js";
 
 const NOW = new Date("2026-06-22T00:00:00Z");

@@ -1,4 +1,4 @@
-// @agentgate/sdk - TypeScript SDK for agents
+// @agentkitai/agentgate-sdk - TypeScript SDK for agents
 
 export const VERSION = '0.0.1';
 
@@ -38,4 +38,4 @@ export type {
   PolicyRule,
   Policy,
   PolicyDecision,
-} from '@agentgate/core';
+} from '@agentkitai/agentgate-core';

@@ -1,4 +1,4 @@
-// @agentgate/server - Rate limiter types and interface
+// @agentkitai/agentgate-server - Rate limiter types and interface
 
 /**
  * Result of a rate limit check

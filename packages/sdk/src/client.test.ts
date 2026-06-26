@@ -1,4 +1,4 @@
-// @agentgate/sdk - Tests for AgentGateClient
+// @agentkitai/agentgate-sdk - Tests for AgentGateClient
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AgentGateClient } from './client.js';

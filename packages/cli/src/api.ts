@@ -1,6 +1,6 @@
-// @agentgate/cli - API client
+// @agentkitai/agentgate-cli - API client
 
-import type { ApprovalRequest, ApprovalStatus, OverrideAction } from '@agentgate/core';
+import type { ApprovalRequest, ApprovalStatus, OverrideAction } from '@agentkitai/agentgate-core';
 
 export type { OverrideAction };
 import { getResolvedConfig } from './config.js';

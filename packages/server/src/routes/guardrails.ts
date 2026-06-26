@@ -1,4 +1,4 @@
-// @agentgate/server — Reactive guardrails
+// @agentkitai/agentgate-server — Reactive guardrails
 //
 // Folds in the former standalone `agentkit-guardrails` service. AgentLens monitors
 // agent metrics (error rate, latency, token usage, …) and POSTs a breach/recovery

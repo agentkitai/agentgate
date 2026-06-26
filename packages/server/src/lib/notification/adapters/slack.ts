@@ -5,14 +5,14 @@
  * Uses Block Kit for rich message formatting.
  */
 
-import type { AgentGateEvent, DecisionLinks } from "@agentgate/core";
-import { getUrgencyEmoji, formatJson } from "@agentgate/core";
+import type { AgentGateEvent, DecisionLinks } from "@agentkitai/agentgate-core";
+import { getUrgencyEmoji, formatJson } from "@agentkitai/agentgate-core";
 import type { NotificationChannelAdapter, NotificationResult } from "../types.js";
 import { getConfig } from "../../../config.js";
 import { generateDecisionTokens } from "../../decision-tokens.js";
 
-export type { DecisionLinks } from "@agentgate/core";
-export { getUrgencyEmoji, formatJson } from "@agentgate/core";
+export type { DecisionLinks } from "@agentkitai/agentgate-core";
+export { getUrgencyEmoji, formatJson } from "@agentkitai/agentgate-core";
 
 /**
  * Options for building Slack blocks

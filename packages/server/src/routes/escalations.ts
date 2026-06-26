@@ -1,4 +1,4 @@
-// @agentgate/server - Escalation rules and history routes
+// @agentkitai/agentgate-server - Escalation rules and history routes
 
 import { Hono } from "hono";
 import { nanoid } from "nanoid";

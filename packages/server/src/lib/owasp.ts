@@ -1,4 +1,4 @@
-// @agentgate/server — OWASP LLM Top-10 (2025) risk tagging for the audit trail.
+// @agentkitai/agentgate-server — OWASP LLM Top-10 (2025) risk tagging for the audit trail.
 //
 // Tagging each policy decision with the OWASP LLM risk it addresses turns the
 // approval audit log into compliance evidence (filterable/exportable per risk).

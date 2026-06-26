@@ -1,4 +1,4 @@
-// @agentgate/server - Security headers middleware
+// @agentkitai/agentgate-server - Security headers middleware
 
 import type { Context, Next } from "hono";
 import { getConfig } from "../config.js";
