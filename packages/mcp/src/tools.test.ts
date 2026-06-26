@@ -7,6 +7,8 @@ import {
   guardrailBlockResult,
   handleToolCall,
   authorizeTool,
+  waitForApproval,
+  executeGatedToolCall,
   toolDefinitions,
   normalizeDecidedBy,
 } from './tools.js';
@@ -569,5 +571,73 @@ describe('authorizeTool (MCP guardrail, #14)', () => {
   it('fails OPEN (returns null) on a network/auth error', async () => {
     fetchMock.mockResolvedValue({ ok: false, status: 500, text: () => Promise.resolve('') });
     expect(await authorizeTool(config, 'file.read', {})).toBeNull();
+  });
+});
+
+describe('inline approval — waitForApproval + executeGatedToolCall (#42)', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  const config: ApiConfig = { baseUrl: 'http://localhost:3000', apiKey: 'k', approvalWaitMs: 100, approvalPollMs: 5 };
+
+  beforeEach(() => { fetchMock = vi.fn(); vi.stubGlobal('fetch', fetchMock); });
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  const jsonRes = (data: unknown) => ({ ok: true, status: 200, json: () => Promise.resolve(data) });
+
+  /** Route fetch: authorize → verdict; poll → next status; anything else → tool run. */
+  function routes(opts: { verdict?: string; pollStatuses?: string[] }) {
+    const verdict = opts.verdict ?? 'requires_approval';
+    const statuses = opts.pollStatuses ?? ['pending'];
+    let i = 0;
+    fetchMock.mockImplementation(async (url: string) => {
+      const u = String(url);
+      if (u.endsWith('/api/mcp/authorize')) return jsonRes({ decision: verdict, requestId: 'req_1' });
+      if (u.includes('/api/requests/req_1')) return jsonRes({ id: 'req_1', status: statuses[Math.min(i++, statuses.length - 1)] });
+      return jsonRes({ id: 'ran', ok: true });
+    });
+  }
+
+  it('waitForApproval returns the terminal status once decided', async () => {
+    routes({ pollStatuses: ['pending', 'approved'] });
+    expect(await waitForApproval(config, 'req_1', { waitMs: 100, pollMs: 5 })).toBe('approved');
+  });
+
+  it('waitForApproval returns pending on timeout', async () => {
+    routes({ pollStatuses: ['pending'] });
+    expect(await waitForApproval(config, 'req_1', { waitMs: 20, pollMs: 5 })).toBe('pending');
+  });
+
+  it('approved → runs the tool', async () => {
+    routes({ pollStatuses: ['approved'] });
+    const r = await executeGatedToolCall(config, 'agentgate_request', { action: 'send', params: {} });
+    expect(r.isError).toBeUndefined();
+    expect(JSON.stringify(r)).toContain('ran');
+  });
+
+  it('denied → isError', async () => {
+    routes({ pollStatuses: ['denied'] });
+    const r = await executeGatedToolCall(config, 'agentgate_request', { action: 'send', params: {} });
+    expect(r.isError).toBe(true);
+    expect(JSON.stringify(r)).toContain('denied');
+  });
+
+  it('timeout → pending handle (non-error)', async () => {
+    routes({ pollStatuses: ['pending'] });
+    const r = await executeGatedToolCall({ ...config, approvalWaitMs: 20 }, 'agentgate_request', { action: 'send', params: {} });
+    expect(r.isError).toBeUndefined();
+    expect(JSON.stringify(r)).toContain('pending');
+  });
+
+  it('waitMs=0 (legacy) → pending handle immediately, never polls', async () => {
+    routes({ pollStatuses: ['approved'] });
+    const r = await executeGatedToolCall({ ...config, approvalWaitMs: 0 }, 'agentgate_request', { action: 'send', params: {} });
+    expect(JSON.stringify(r)).toContain('pending');
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/api/requests/req_1'))).toBe(false);
+  });
+
+  it('a deny verdict → isError without polling', async () => {
+    routes({ verdict: 'deny' });
+    const r = await executeGatedToolCall(config, 'agentgate_request', { action: 'send', params: {} });
+    expect(r.isError).toBe(true);
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/api/requests/req_1'))).toBe(false);
   });
 });

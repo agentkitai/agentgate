@@ -240,6 +240,66 @@ export function guardrailBlockResult(
 }
 
 /**
+ * Long-poll an approval request until it leaves `pending` or the budget runs out
+ * (#42). Returns the terminal status (`approved`/`denied`/`expired`) or `pending`
+ * on timeout. Transient read errors don't abort — they're retried until the
+ * deadline (the caller treats a final `pending` as "still waiting").
+ */
+export async function waitForApproval(
+  config: ApiConfig,
+  requestId: string,
+  opts: { waitMs: number; pollMs: number },
+): Promise<string> {
+  const deadline = Date.now() + opts.waitMs;
+  for (;;) {
+    let status: string | undefined;
+    try {
+      const res = (await apiCall(config, 'GET', `/api/requests/${requestId}`)) as { status?: string };
+      status = res?.status;
+    } catch {
+      // transient — keep polling until the deadline
+    }
+    if (status && status !== 'pending') return status;
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) return 'pending';
+    await new Promise((resolve) => setTimeout(resolve, Math.min(opts.pollMs, remaining)));
+  }
+}
+
+/**
+ * Authorize a tool call, optionally waiting inline for an approval decision
+ * (#42), then run or block it. With `approvalWaitMs` unset/0 this is the legacy
+ * flow (a `requires_approval` returns a pending handle immediately). With it >0,
+ * a `requires_approval` long-polls: approved → run the tool; denied/expired →
+ * error; still pending at timeout → the pending handle (unchanged shape).
+ */
+export async function executeGatedToolCall(
+  config: ApiConfig,
+  name: string,
+  args: Record<string, unknown>,
+): Promise<ToolResult> {
+  const verdict = await authorizeTool(config, name, args);
+  const waitMs = config.approvalWaitMs ?? 0;
+  if (verdict?.decision === 'requires_approval' && verdict.requestId && waitMs > 0) {
+    const status = await waitForApproval(config, verdict.requestId, {
+      waitMs,
+      pollMs: config.approvalPollMs ?? 2000,
+    });
+    if (status === 'approved') return handleToolCall(config, name, args);
+    if (status === 'denied' || status === 'expired') {
+      return {
+        ...formatResult({ status, requestId: verdict.requestId, message: `Tool call ${status} by AgentGate.` }),
+        isError: true,
+      };
+    }
+    // still pending after the budget — fall through to the pending handle below.
+  }
+  const blocked = guardrailBlockResult(verdict);
+  if (blocked) return blocked;
+  return handleToolCall(config, name, args);
+}
+
+/**
  * Handle agentgate_request tool
  */
 export async function handleRequest(
