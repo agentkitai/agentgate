@@ -71,6 +71,11 @@ export interface GetAuditActorsArgs {
 export interface ApiConfig {
   baseUrl: string;
   apiKey: string;
+  /** Inline-approval long-poll budget (ms). 0 (default) returns a pending handle
+   *  immediately (legacy). >0 waits inline for the decision (#42). */
+  approvalWaitMs?: number;
+  /** Poll interval (ms) while waiting for an approval decision. */
+  approvalPollMs?: number;
 }
 
 export interface ApiErrorResponse {

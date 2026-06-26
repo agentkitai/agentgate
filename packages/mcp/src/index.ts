@@ -9,11 +9,13 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import type { ApiConfig } from './types.js';
-import { toolDefinitions, handleToolCall, authorizeTool, guardrailBlockResult } from './tools.js';
+import { toolDefinitions, executeGatedToolCall } from './tools.js';
 
 const config: ApiConfig = {
   baseUrl: process.env.AGENTGATE_URL ?? 'http://localhost:3000',
   apiKey: process.env.AGENTGATE_API_KEY ?? '',
+  approvalWaitMs: Number(process.env.AGENTGATE_APPROVAL_WAIT_MS ?? 0) || 0,
+  approvalPollMs: Number(process.env.AGENTGATE_APPROVAL_POLL_MS ?? 2000) || 2000,
 };
 
 const server = new Server(
@@ -26,14 +28,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [...toolDefinitions],
 }));
 
-// Handle tool calls — gate on per-agent guardrails (issue #14) before executing.
+// Handle tool calls — gate on per-agent guardrails (#14), optionally waiting
+// inline for an approval decision when AGENTGATE_APPROVAL_WAIT_MS > 0 (#42).
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  const verdict = await authorizeTool(config, name, args ?? {});
-  // deny → synchronous error; requires_approval → pending; else run the tool.
-  const blocked = guardrailBlockResult(verdict);
-  if (blocked) return blocked;
-  return handleToolCall(config, name, args ?? {});
+  return executeGatedToolCall(config, name, args ?? {});
 });
 
 // Start server

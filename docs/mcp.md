@@ -232,12 +232,23 @@ Agency)**, queryable by tool name. The gate **fails open** (allows) on a
 network/auth error or when no agent identity is present. Manage overrides with
 `agentgate override …` (see the CLI docs) or `POST /api/overrides`.
 
+### Inline approval (long-poll)
+
+By default a `require_approval` gate returns a **pending handle** immediately and
+the agent polls `agentgate_get` for the decision. Set `AGENTGATE_APPROVAL_WAIT_MS`
+> 0 to instead **wait inline**: the tool call long-polls the decision and resolves
+in one round-trip — **approved** → the tool runs; **denied/expired** → an error
+result; still pending at the timeout → the usual pending handle (so a slow
+approver never blocks indefinitely). Off (`0`) by default — behavior unchanged.
+
 ## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `AGENTGATE_URL` | Yes | AgentGate server URL |
 | `AGENTGATE_API_KEY` | Yes | API key for authentication |
+| `AGENTGATE_APPROVAL_WAIT_MS` | No | Inline-approval long-poll budget (ms). `0` (default) = return a pending handle immediately. |
+| `AGENTGATE_APPROVAL_POLL_MS` | No | Poll interval (ms) while waiting (default `2000`). |
 
 ## Running Standalone
 
