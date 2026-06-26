@@ -8,7 +8,7 @@
 // session (and vice versa) — verifyAccessToken only checks the signature, not
 // the claim, so this check is load-bearing and must not be dropped.
 
-import { signAccessToken, verifyAccessToken, type AuthConfig } from "agentkit-auth";
+import { signAccessToken, verifyAccessToken, type AuthConfig } from "@agentkitai/auth";
 import { SignJWT, jwtVerify, decodeProtectedHeader } from "jose";
 
 import { getAgentIfActive, verifyAgentCredential } from "./agents.js";

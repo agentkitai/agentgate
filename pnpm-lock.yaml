@@ -211,15 +211,15 @@ importers:
       '@agentkitai/agentgate-core':
         specifier: workspace:*
         version: link:../core
+      '@agentkitai/auth':
+        specifier: ^0.1.0
+        version: 0.1.0(hono@4.12.26)
       '@hono/node-server':
         specifier: ^1.19.10
         version: 1.19.14(hono@4.12.26)
       '@hono/zod-validator':
         specifier: ^0.7.6
         version: 0.7.6(hono@4.12.26)(zod@4.3.6)
-      agentkit-auth:
-        specifier: ^0.1.0
-        version: 0.1.0(hono@4.12.26)
       better-sqlite3:
         specifier: ^11.6.0
         version: 11.10.0
@@ -323,6 +323,11 @@ packages:
 
   '@actions/io@1.1.3':
     resolution: {integrity: sha512-wi9JjgKLYS7U/z8PPbco+PvTb/nRWjeoFlJ1Qer83k/3C5PHQi28hiVdeE2kHXmIL99mQFawx8qt/JPjZilJ8Q==}
+
+  '@agentkitai/auth@0.1.0':
+    resolution: {integrity: sha512-tzAHfUJFEDMrPO78ICiKe/ll6II3Keb/MgMWYtBbIdkDB/U87XYbuEYC9l64YTFsYL4RjGIqMg24+o7749tVPw==}
+    peerDependencies:
+      hono: ^4.0.0
 
   '@algolia/abtesting@1.13.0':
     resolution: {integrity: sha512-Zrqam12iorp3FjiKMXSTpedGYznZ3hTEOAr2oCxI8tbF8bS1kQHClyDYNq/eV0ewMNLyFkgZVWjaS+8spsOYiQ==}
@@ -1929,11 +1934,6 @@ packages:
   agent-base@6.0.2:
     resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
     engines: {node: '>= 6.0.0'}
-
-  agentkit-auth@0.1.0:
-    resolution: {integrity: sha512-gW25jh0tMC8XKjxeJl4Ny3C1z9aaDDofrHuHshpUryI8Gip6OG0sWhjLAaybi57uHurGuqQ5WN3uSYY7iE6gmQ==}
-    peerDependencies:
-      hono: ^4.0.0
 
   ajv-formats@3.0.1:
     resolution: {integrity: sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==}
@@ -4231,6 +4231,12 @@ snapshots:
 
   '@actions/io@1.1.3': {}
 
+  '@agentkitai/auth@0.1.0(hono@4.12.26)':
+    dependencies:
+      hono: 4.12.26
+      jose: 6.1.3
+      openid-client: 6.8.2
+
   '@algolia/abtesting@1.13.0':
     dependencies:
       '@algolia/client-common': 5.47.0
@@ -5838,12 +5844,6 @@ snapshots:
       debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
-
-  agentkit-auth@0.1.0(hono@4.12.26):
-    dependencies:
-      hono: 4.12.26
-      jose: 6.1.3
-      openid-client: 6.8.2
 
   ajv-formats@3.0.1(ajv@8.17.1):
     optionalDependencies:

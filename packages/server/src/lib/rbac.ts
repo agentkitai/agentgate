@@ -2,7 +2,7 @@
 //
 // Extends agentkit-auth's generic RBAC with AgentGate-specific permissions.
 
-import type { Role } from 'agentkit-auth';
+import type { Role } from '@agentkitai/auth';
 
 /**
  * AgentGate-specific permissions

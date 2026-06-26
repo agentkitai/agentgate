@@ -20,7 +20,7 @@ import {
   type JWK,
   type CryptoKey as JoseCryptoKey,
 } from "jose";
-import { type AuthConfig } from "agentkit-auth";
+import { type AuthConfig } from "@agentkitai/auth";
 import * as schema from "../db/schema.js";
 
 // agent-tokens.ts → agents.js → db/index.js at import time; stub the DB (these

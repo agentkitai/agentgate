@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
 import { Hono } from "hono";
-import { signAccessToken, type AuthConfig } from "agentkit-auth";
+import { signAccessToken, type AuthConfig } from "@agentkitai/auth";
 import { generateKeyPair, exportJWK, SignJWT, type JWK } from "jose";
 import * as schema from "../db/schema.js";
 

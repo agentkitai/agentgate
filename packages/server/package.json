@@ -35,7 +35,7 @@
     "@agentkitai/agentgate-core": "workspace:*",
     "@hono/node-server": "^1.19.10",
     "@hono/zod-validator": "^0.7.6",
-    "agentkit-auth": "^0.1.0",
+    "@agentkitai/auth": "^0.1.0",
     "better-sqlite3": "^11.6.0",
     "dotenv": "^16.4.0",
     "drizzle-orm": "^0.45.2",

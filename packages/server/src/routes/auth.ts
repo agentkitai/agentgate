@@ -18,7 +18,7 @@ import {
   hashToken,
   type AuthConfig,
   type Role,
-} from "agentkit-auth";
+} from "@agentkitai/auth";
 import { getLogger } from "../lib/logger.js";
 import type { AgentGateAuthContext } from "../middleware/auth.js";
 import { randomBytes } from "node:crypto";
