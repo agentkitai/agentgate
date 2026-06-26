@@ -1,4 +1,4 @@
-// @agentgate/server - Decision token routes
+// @agentkitai/agentgate-server - Decision token routes
 
 import { Hono } from "hono";
 import { nanoid } from "nanoid";

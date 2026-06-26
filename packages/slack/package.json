@@ -1,5 +1,5 @@
 {
-  "name": "@agentgate/slack",
+  "name": "@agentkitai/agentgate-slack",
   "version": "0.0.1",
   "type": "module",
   "main": "./dist/index.js",
@@ -22,7 +22,7 @@
     "dist"
   ],
   "dependencies": {
-    "@agentgate/core": "workspace:*",
+    "@agentkitai/agentgate-core": "workspace:*",
     "@slack/bolt": "^4.1.0",
     "@slack/types": "^2.19.0",
     "dotenv": "^16.4.5"

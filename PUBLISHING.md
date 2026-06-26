@@ -6,9 +6,9 @@ This monorepo uses [Changesets](https://github.com/changesets/changesets) for ve
 
 The following packages are published to npm:
 
-- `@agentgate/core` - Core types and utilities
-- `@agentgate/sdk` - SDK for integrating AgentGate
-- `@agentgate/cli` - CLI for approval management
+- `@agentkitai/agentgate-core` - Core types and utilities
+- `@agentkitai/agentgate-sdk` - SDK for integrating AgentGate
+- `@agentkitai/agentgate-cli` - CLI for approval management
 
 ## Adding a Changeset
 

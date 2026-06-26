@@ -13,7 +13,7 @@
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
-      "identifier": "@agentgate/mcp",
+      "identifier": "@agentkitai/agentgate-mcp",
       "version": "0.0.2",
       "runtimeHint": "npx",
       "transport": {

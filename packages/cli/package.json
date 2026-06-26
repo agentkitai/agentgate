@@ -1,5 +1,5 @@
 {
-  "name": "@agentgate/cli",
+  "name": "@agentkitai/agentgate-cli",
   "version": "0.1.0",
   "description": "CLI for AgentGate approval management",
   "type": "module",
@@ -38,7 +38,7 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@agentgate/core": "workspace:*",
+    "@agentkitai/agentgate-core": "workspace:*",
     "commander": "^12.1.0"
   },
   "devDependencies": {

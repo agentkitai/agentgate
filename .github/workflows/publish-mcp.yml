@@ -1,12 +1,12 @@
-name: Publish @agentgate/mcp + MCP Registry
+name: Publish @agentkitai/agentgate-mcp + MCP Registry
 
-# An `mcp-v*` tag publishes @agentgate/mcp to npm via OIDC Trusted Publishing
+# An `mcp-v*` tag publishes @agentkitai/agentgate-mcp to npm via OIDC Trusted Publishing
 # (no token) and lists/updates the server in the official MCP Registry via
 # GitHub Actions OIDC (no token). Kept separate from the changesets release.yml
 # so the two never entangle.
 #
 # One-time setup (owner, in a browser — no secrets ever stored):
-#   * npm Trusted Publisher for package `@agentgate/mcp`: repo
+#   * npm Trusted Publisher for package `@agentkitai/agentgate-mcp`: repo
 #     agentkitai/agentgate, workflow `publish-mcp.yml`.
 #   * MCP Registry namespace `io.github.agentkitai/*` is proven automatically by
 #     this repo's GitHub OIDC token — nothing to configure.
@@ -39,19 +39,19 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Build the MCP package (and its workspace dep @agentgate/core)
+      - name: Build the MCP package (and its workspace dep @agentkitai/agentgate-core)
         run: |
-          pnpm --filter @agentgate/core build
-          pnpm --filter @agentgate/mcp build
+          pnpm --filter @agentkitai/agentgate-core build
+          pnpm --filter @agentkitai/agentgate-mcp build
 
-      - name: Publish @agentgate/mcp to npm (OIDC Trusted Publishing)
+      - name: Publish @agentkitai/agentgate-mcp to npm (OIDC Trusted Publishing)
         run: |
           set -euo pipefail
           V=$(node -p "require('./packages/mcp/package.json').version")
-          if npm view "@agentgate/mcp@$V" version >/dev/null 2>&1; then
-            echo "@agentgate/mcp@$V already on npm — skipping publish (idempotent re-run)"
+          if npm view "@agentkitai/agentgate-mcp@$V" version >/dev/null 2>&1; then
+            echo "@agentkitai/agentgate-mcp@$V already on npm — skipping publish (idempotent re-run)"
           else
-            pnpm --filter @agentgate/mcp publish --access public --no-git-checks
+            pnpm --filter @agentkitai/agentgate-mcp publish --access public --no-git-checks
           fi
 
       - name: Publish to the MCP Registry (GitHub Actions OIDC)

@@ -17,7 +17,7 @@ import {
   getGlobalEmitter,
   type RequestEscalatedEvent,
   type RequestDecidedEvent,
-} from "@agentgate/core";
+} from "@agentkitai/agentgate-core";
 
 /** Parse an escalateTo of the form `decision:approve` / `decision:deny`. */
 function parseFallbackDecision(escalateTo: string): "approved" | "denied" | null {

@@ -1,5 +1,5 @@
 {
-  "name": "@agentgate/discord",
+  "name": "@agentkitai/agentgate-discord",
   "version": "0.0.3",
   "type": "module",
   "main": "./dist/index.js",
@@ -22,7 +22,7 @@
     "dist"
   ],
   "dependencies": {
-    "@agentgate/core": "workspace:*",
+    "@agentkitai/agentgate-core": "workspace:*",
     "discord.js": "^14.14.1",
     "dotenv": "^16.4.5"
   },

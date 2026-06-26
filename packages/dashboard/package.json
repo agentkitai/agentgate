@@ -1,5 +1,5 @@
 {
-  "name": "@agentgate/dashboard",
+  "name": "@agentkitai/agentgate-dashboard",
   "version": "0.0.1",
   "type": "module",
   "scripts": {
@@ -10,7 +10,7 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
-    "@agentgate/core": "workspace:*",
+    "@agentkitai/agentgate-core": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.22.0"

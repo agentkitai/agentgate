@@ -1,4 +1,4 @@
-// @agentgate/server — Per-agent spend reads from AgentLens (#13).
+// @agentkitai/agentgate-server — Per-agent spend reads from AgentLens (#13).
 //
 // AgentGate doesn't observe LLM tokens itself; it reads priced per-agent spend
 // from AgentLens' POST /api/internal/spend (authenticated by the shared
@@ -6,7 +6,7 @@
 // checks doesn't hammer AgentLens. This is the read side; budget enforcement
 // (checkAgentBudget) builds on it.
 
-import { AgentGateHttpClient } from "@agentgate/core";
+import { AgentGateHttpClient } from "@agentkitai/agentgate-core";
 import { getConfig } from "../config.js";
 import { getLogger } from "./logger.js";
 

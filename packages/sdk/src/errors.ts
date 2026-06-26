@@ -1,4 +1,4 @@
-// @agentgate/sdk - Error types
+// @agentkitai/agentgate-sdk - Error types
 
 /**
  * Error thrown by AgentGate SDK operations

@@ -1,9 +1,9 @@
-// @agentgate/server - Override routes for dynamic policy overrides
+// @agentkitai/agentgate-server - Override routes for dynamic policy overrides
 
 import { Hono } from "hono";
 import { nanoid } from "nanoid";
 import { eq, and, gt, lt, isNull, or, not } from "drizzle-orm";
-import type { OverrideAction } from "@agentgate/core";
+import type { OverrideAction } from "@agentkitai/agentgate-core";
 import { getDb, overrides } from "../db/index.js";
 
 const overridesRouter = new Hono();

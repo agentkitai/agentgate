@@ -10,7 +10,7 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { getGlobalDispatcher } from "../lib/notification/dispatcher.js";
 import { getHealthTracker } from "../lib/notification/health.js";
-import type { AgentGateEvent } from "@agentgate/core";
+import type { AgentGateEvent } from "@agentkitai/agentgate-core";
 import { randomUUID } from "node:crypto";
 
 const router = new Hono();

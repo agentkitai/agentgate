@@ -1,4 +1,4 @@
-// @agentgate/cli - Override command tests (#14)
+// @agentkitai/agentgate-cli - Override command tests (#14)
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createOverrideCommand } from './override.js';

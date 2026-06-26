@@ -2,7 +2,7 @@
  * Notification system types
  */
 
-import type { AgentGateEvent, ApprovalUrgency } from "@agentgate/core";
+import type { AgentGateEvent, ApprovalUrgency } from "@agentkitai/agentgate-core";
 
 /**
  * Supported notification channel types

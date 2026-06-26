@@ -3,7 +3,7 @@
  * maybeAlertBudgetThreshold dedup + band selection.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { EventNames } from "@agentgate/core";
+import { EventNames } from "@agentkitai/agentgate-core";
 import type { BudgetVerdict } from "../lib/agent-budget.js";
 import { maybeAlertBudgetThreshold, resetBudgetAlerts } from "../lib/budget-alerts.js";
 import { getGlobalDispatcher } from "../lib/notification/index.js";

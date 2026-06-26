@@ -1,6 +1,6 @@
 // API client for AgentGate server
 
-import type { ApprovalStatus, ApprovalUrgency } from '@agentgate/core';
+import type { ApprovalStatus, ApprovalUrgency } from '@agentkitai/agentgate-core';
 
 export type { ApprovalStatus, ApprovalUrgency };
 

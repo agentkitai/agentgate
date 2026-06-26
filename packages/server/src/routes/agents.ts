@@ -1,4 +1,4 @@
-// @agentgate/server — Agent registry routes (agent-identity spine).
+// @agentkitai/agentgate-server — Agent registry routes (agent-identity spine).
 // CRUD for non-human agent principals. Admin-only (credential management).
 
 import { Hono } from "hono";

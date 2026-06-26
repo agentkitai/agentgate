@@ -17,7 +17,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "agentgate": {
       "command": "npx",
-      "args": ["@agentgate/mcp"],
+      "args": ["@agentkitai/agentgate-mcp"],
       "env": {
         "AGENTGATE_URL": "http://localhost:3000",
         "AGENTGATE_API_KEY": "agk_your_api_key"
@@ -33,7 +33,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "agentgate": {
       "command": "npx",
-      "args": ["@agentgate/mcp"],
+      "args": ["@agentkitai/agentgate-mcp"],
       "env": {
         "AGENTGATE_URL": "http://localhost:3000",
         "AGENTGATE_API_KEY": "agk_your_api_key"
@@ -256,7 +256,7 @@ For testing or development:
 
 ```bash
 # Install globally
-npm install -g @agentgate/mcp
+npm install -g @agentkitai/agentgate-mcp
 
 # Run directly
 AGENTGATE_URL=http://localhost:3000 \
@@ -268,7 +268,7 @@ agentgate-mcp
 
 ```bash
 # From the monorepo
-pnpm --filter @agentgate/mcp build
+pnpm --filter @agentkitai/agentgate-mcp build
 
 # Test locally
 node packages/mcp/dist/index.js
@@ -276,4 +276,4 @@ node packages/mcp/dist/index.js
 
 ## Other MCP Clients
 
-The MCP server works with any MCP-compatible client, not just Claude Desktop. Configure it as a stdio-based MCP server pointing to `@agentgate/mcp`.
+The MCP server works with any MCP-compatible client, not just Claude Desktop. Configure it as a stdio-based MCP server pointing to `@agentkitai/agentgate-mcp`.

@@ -230,7 +230,7 @@ This guide covers common issues when running AgentGate, organized by **Symptom â
 **Solution:**
 1. **SQLite (default):** Run migrations manually:
    ```bash
-   pnpm --filter @agentgate/server db:migrate
+   pnpm --filter @agentkitai/agentgate-server db:migrate
    ```
 2. **PostgreSQL:** Ensure the database exists and is reachable:
    ```bash
@@ -313,7 +313,7 @@ curl http://localhost:3000/health
 ### View structured logs
 Set `LOG_LEVEL=debug` and `LOG_FORMAT=json` for detailed, parseable logs:
 ```bash
-LOG_LEVEL=debug LOG_FORMAT=json pnpm --filter @agentgate/server dev
+LOG_LEVEL=debug LOG_FORMAT=json pnpm --filter @agentkitai/agentgate-server dev
 ```
 
 ### Validate configuration

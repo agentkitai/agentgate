@@ -1,4 +1,4 @@
-// @agentgate/core - Core types and policy engine
+// @agentkitai/agentgate-core - Core types and policy engine
 
 export const VERSION = '0.0.1';
 

@@ -1,4 +1,4 @@
-// @agentgate/server - Authentication & authorization middleware
+// @agentkitai/agentgate-server - Authentication & authorization middleware
 //
 // Dual-mode auth: API key (agk_*) and OIDC JWT.
 // Uses agentkit-auth middleware factory for JWT handling.

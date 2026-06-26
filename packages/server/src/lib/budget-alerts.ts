@@ -1,4 +1,4 @@
-// @agentgate/server — Per-agent budget threshold alerts (#13 near-limit hook).
+// @agentkitai/agentgate-server — Per-agent budget threshold alerts (#13 near-limit hook).
 //
 // Fires a notification when an agent's current-month spend crosses a utilization
 // threshold (80% = near-limit warning, 100% = exceeded). Decoupled from hard
@@ -8,7 +8,7 @@
 // request. Reads spend from the same BudgetVerdict the enforcement path computes,
 // so it fails closed-to-quiet on a telemetry outage (verdict reports 0 spend).
 
-import { EventNames, createBaseEvent, type BudgetThresholdEvent } from "@agentgate/core";
+import { EventNames, createBaseEvent, type BudgetThresholdEvent } from "@agentkitai/agentgate-core";
 import type { BudgetVerdict } from "./agent-budget.js";
 import { getGlobalDispatcher } from "./notification/index.js";
 

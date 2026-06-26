@@ -1,4 +1,4 @@
-// @agentgate/server — Initial decision for a new approval request.
+// @agentkitai/agentgate-server — Initial decision for a new approval request.
 //
 // Precedence (highest first): a per-agent budget overage (#13) denies outright,
 // then the per-agent eval gate (#7) denies outright, then a dynamic override
@@ -6,7 +6,7 @@
 // else stays pending. Extracted as a pure function so the precedence is
 // unit-testable without driving the whole request route.
 
-import type { PolicyDecision } from "@agentgate/core";
+import type { PolicyDecision } from "@agentkitai/agentgate-core";
 
 export interface InitialDecision {
   status: "pending" | "approved" | "denied";

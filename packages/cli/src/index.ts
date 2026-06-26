@@ -1,4 +1,4 @@
-// @agentgate/cli - Public API
+// @agentkitai/agentgate-cli - Public API
 
 export { VERSION } from './version.js';
 

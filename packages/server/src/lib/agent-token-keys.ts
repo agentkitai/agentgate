@@ -1,4 +1,4 @@
-// @agentgate/server — Asymmetric (RS256) agent-token keys + JWKS (#40).
+// @agentkitai/agentgate-server — Asymmetric (RS256) agent-token keys + JWKS (#40).
 //
 // Optional, opt-in upgrade to the agent-identity spine. By default agent tokens
 // are signed with the shared HS256 JWT_SECRET, which every downstream verifier

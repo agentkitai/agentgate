@@ -24,7 +24,7 @@ vi.mock('nodemailer', () => ({
 }));
 
 import { EmailAdapter } from '../lib/notification/adapters/email.js';
-import type { AgentGateEvent } from '@agentgate/core';
+import type { AgentGateEvent } from '@agentkitai/agentgate-core';
 
 const testEvent: AgentGateEvent = {
   eventId: 'evt-1',

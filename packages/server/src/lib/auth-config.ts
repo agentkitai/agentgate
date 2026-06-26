@@ -1,4 +1,4 @@
-// @agentgate/server — Assemble the agentkit-auth AuthConfig from server config.
+// @agentkitai/agentgate-server — Assemble the agentkit-auth AuthConfig from server config.
 // Shared by the agent token endpoint and agent Bearer verification on the
 // requests route. (routes/auth.ts + middleware/auth.ts keep their own copies
 // for now; consolidating those is a separate cleanup.)

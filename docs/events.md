@@ -4,10 +4,10 @@ AgentGate includes a built-in event system for observing system activity and a n
 
 ## AgentGateEmitter and Event Types
 
-All significant actions in AgentGate emit typed events. Event names are defined as constants in `@agentgate/core`:
+All significant actions in AgentGate emit typed events. Event names are defined as constants in `@agentkitai/agentgate-core`:
 
 ```typescript
-import { EventNames } from "@agentgate/core";
+import { EventNames } from "@agentkitai/agentgate-core";
 ```
 
 ### Event Name Constants
@@ -59,7 +59,7 @@ interface BaseEvent<T extends EventName> {
 Use the `createBaseEvent` helper to generate events with pre-filled common fields:
 
 ```typescript
-import { createBaseEvent } from "@agentgate/core";
+import { createBaseEvent } from "@agentkitai/agentgate-core";
 
 const base = createBaseEvent("request.created", "my-plugin");
 // → { type: "request.created", timestamp: …, eventId: "evt_…", source: "my-plugin" }
@@ -72,7 +72,7 @@ const base = createBaseEvent("request.created", "my-plugin");
 Use the `AgentGateEmitter` class to subscribe to events. The global singleton is available via `getGlobalEmitter()`, or create an isolated instance with `createEmitter()`.
 
 ```typescript
-import { getGlobalEmitter, createEmitter } from "@agentgate/core";
+import { getGlobalEmitter, createEmitter } from "@agentkitai/agentgate-core";
 
 const emitter = getGlobalEmitter();
 ```
@@ -119,7 +119,7 @@ Explicitly unsubscribe a listener (alternative to calling the function returned 
 Emit an event. `emit` is async and awaits all listeners; `emitSync` is fire-and-forget.
 
 ```typescript
-import { createBaseEvent, EventNames } from "@agentgate/core";
+import { createBaseEvent, EventNames } from "@agentkitai/agentgate-core";
 
 const event = {
   ...createBaseEvent(EventNames.SYSTEM_ERROR, "my-plugin"),
@@ -247,7 +247,7 @@ Each event type carries a typed `payload`. All fields are listed below.
 The `eventMatchesFilter` function checks whether an event matches a filter:
 
 ```typescript
-import { eventMatchesFilter } from "@agentgate/core";
+import { eventMatchesFilter } from "@agentkitai/agentgate-core";
 
 const match = eventMatchesFilter(event, {
   types: ["request.created", "request.decided"],  // Match these event types
@@ -284,7 +284,7 @@ Results are deduplicated by `channel:target` to avoid duplicate notifications.
 ### Usage
 
 ```typescript
-import { createDispatcher, getGlobalDispatcher } from "@agentgate/server";
+import { createDispatcher, getGlobalDispatcher } from "@agentkitai/agentgate-server";
 
 // Use the singleton
 const dispatcher = getGlobalDispatcher();
@@ -376,12 +376,12 @@ Here's a complete example of building an SMS adapter using Twilio:
 
 ```typescript
 // adapters/sms.ts
-import type { AgentGateEvent } from "@agentgate/core";
+import type { AgentGateEvent } from "@agentkitai/agentgate-core";
 import type {
   NotificationChannelAdapter,
   NotificationChannelType,
   NotificationResult,
-} from "@agentgate/server/lib/notification/types";
+} from "@agentkitai/agentgate-server/lib/notification/types";
 
 export class SmsAdapter implements NotificationChannelAdapter {
   // The type must be a valid NotificationChannelType.
@@ -503,7 +503,7 @@ export class SmsAdapter implements NotificationChannelAdapter {
 Register your adapter with the dispatcher:
 
 ```typescript
-import { getGlobalDispatcher, createDispatcher } from "@agentgate/server";
+import { getGlobalDispatcher, createDispatcher } from "@agentkitai/agentgate-server";
 import { SmsAdapter } from "./adapters/sms";
 
 // Option 1: Register on the global singleton

@@ -1,4 +1,4 @@
-// @agentgate/core - Core types
+// @agentkitai/agentgate-core - Core types
 
 /**
  * Status of an approval request

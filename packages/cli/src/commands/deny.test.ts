@@ -1,4 +1,4 @@
-// @agentgate/cli - Deny command tests
+// @agentkitai/agentgate-cli - Deny command tests
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createDenyCommand } from './deny.js';

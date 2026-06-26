@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { ApprovalRequest } from '@agentgate/core';
+import type { ApprovalRequest } from '@agentkitai/agentgate-core';
 
 // Mock @slack/bolt before importing bot
 const mockStart = vi.fn();

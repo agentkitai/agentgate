@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @agentgate/cli - CLI entry point
+// @agentkitai/agentgate-cli - CLI entry point
 
 import { Command } from 'commander';
 import {

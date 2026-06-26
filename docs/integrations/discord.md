@@ -71,7 +71,7 @@ docker-compose --profile bots up -d
 DISCORD_BOT_TOKEN=... \
 DISCORD_DEFAULT_CHANNEL=... \
 AGENTGATE_URL=http://localhost:3000 \
-npx @agentgate/discord
+npx @agentkitai/agentgate-discord
 ```
 
 ## Message Format

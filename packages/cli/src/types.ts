@@ -1,4 +1,4 @@
-// @agentgate/cli - Types
+// @agentkitai/agentgate-cli - Types
 
 /**
  * CLI configuration stored in ~/.agentgate/config.json

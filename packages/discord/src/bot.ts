@@ -1,4 +1,4 @@
-// @agentgate/discord - Discord bot for human approvals
+// @agentkitai/agentgate-discord - Discord bot for human approvals
 
 import {
   Client,
@@ -8,7 +8,7 @@ import {
   type TextChannel,
   type Message,
 } from "discord.js";
-import type { ApprovalRequest } from "@agentgate/core";
+import type { ApprovalRequest } from "@agentkitai/agentgate-core";
 import {
   buildApprovalEmbed,
   buildDecidedEmbed,

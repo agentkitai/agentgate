@@ -1,4 +1,4 @@
-// @agentgate/cli - Override command (per-agent dynamic guardrails, #14)
+// @agentkitai/agentgate-cli - Override command (per-agent dynamic guardrails, #14)
 
 import { Command } from 'commander';
 import { ApiClient, formatOverrideList, type OverrideAction } from '../api.js';

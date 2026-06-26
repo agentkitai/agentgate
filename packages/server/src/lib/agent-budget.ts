@@ -1,4 +1,4 @@
-// @agentgate/server — Per-agent budget enforcement (#13).
+// @agentkitai/agentgate-server — Per-agent budget enforcement (#13).
 //
 // Compares an agent's current-month spend (read from AgentLens via
 // lib/agent-spend) against its configured monthly USD cap. This is a SOFT

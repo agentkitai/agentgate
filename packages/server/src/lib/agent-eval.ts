@@ -1,4 +1,4 @@
-// @agentgate/server — Per-agent eval gate (#7).
+// @agentkitai/agentgate-server — Per-agent eval gate (#7).
 //
 // Reads an agent's latest eval pass-rate from AgentLens
 // (GET /api/internal/agent-eval-status; populated by the agenteval→lens
@@ -8,7 +8,7 @@
 // or the agent has no eval evidence yet, the request is allowed — never blocked
 // on a telemetry outage or an un-evaluated agent. Default-off via AGENT_EVAL_GATE.
 
-import { AgentGateHttpClient } from "@agentgate/core";
+import { AgentGateHttpClient } from "@agentkitai/agentgate-core";
 
 import { getConfig } from "../config.js";
 import { getLogger } from "./logger.js";

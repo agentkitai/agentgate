@@ -1,11 +1,11 @@
-# @agentgate/mcp
+# @agentkitai/agentgate-mcp
 
 MCP (Model Context Protocol) server for AgentGate. Enables Claude and other MCP-compatible AI assistants to request approvals.
 
 ## Installation
 
 ```bash
-npm install -g @agentgate/mcp
+npm install -g @agentkitai/agentgate-mcp
 ```
 
 ## Claude Desktop Configuration
@@ -17,7 +17,7 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
   "mcpServers": {
     "agentgate": {
       "command": "npx",
-      "args": ["@agentgate/mcp"],
+      "args": ["@agentkitai/agentgate-mcp"],
       "env": {
         "AGENTGATE_URL": "http://localhost:3000",
         "AGENTGATE_API_KEY": "your-api-key"

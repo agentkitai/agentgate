@@ -1,4 +1,4 @@
-// @agentgate/server - In-memory sliding window rate limiter
+// @agentkitai/agentgate-server - In-memory sliding window rate limiter
 
 import type { RateLimiter, RateLimitResult } from "./types.js";
 

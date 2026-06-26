@@ -1,4 +1,4 @@
-// @agentgate/cli - Approve command tests
+// @agentkitai/agentgate-cli - Approve command tests
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createApproveCommand } from './approve.js';

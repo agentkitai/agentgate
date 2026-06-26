@@ -8,11 +8,11 @@
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": [
-    "@agentgate/server",
-    "@agentgate/dashboard",
-    "@agentgate/demo",
-    "@agentgate/mcp",
-    "@agentgate/slack",
-    "@agentgate/github-action"
+    "@agentkitai/agentgate-server",
+    "@agentkitai/agentgate-dashboard",
+    "@agentkitai/agentgate-demo",
+    "@agentkitai/agentgate-mcp",
+    "@agentkitai/agentgate-slack",
+    "@agentkitai/agentgate-github-action"
   ]
 }

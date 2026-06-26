@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { ApprovalRequest } from "@agentgate/core";
+import type { ApprovalRequest } from "@agentkitai/agentgate-core";
 import {
   truncate,
   formatJson,

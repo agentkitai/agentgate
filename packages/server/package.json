@@ -1,5 +1,5 @@
 {
-  "name": "@agentgate/server",
+  "name": "@agentkitai/agentgate-server",
   "version": "0.0.1",
   "type": "module",
   "main": "./dist/index.js",
@@ -32,7 +32,7 @@
     "dist"
   ],
   "dependencies": {
-    "@agentgate/core": "workspace:*",
+    "@agentkitai/agentgate-core": "workspace:*",
     "@hono/node-server": "^1.19.10",
     "@hono/zod-validator": "^0.7.6",
     "agentkit-auth": "^0.1.0",

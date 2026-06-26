@@ -1,4 +1,4 @@
-// @agentgate/cli - Request command
+// @agentkitai/agentgate-cli - Request command
 
 import { Command } from 'commander';
 import { ApiClient, formatRequest } from '../api.js';

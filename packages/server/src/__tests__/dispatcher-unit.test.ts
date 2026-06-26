@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import type { AgentGateEvent } from "@agentgate/core";
+import type { AgentGateEvent } from "@agentkitai/agentgate-core";
 import {
   NotificationDispatcher,
   getGlobalDispatcher,

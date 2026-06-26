@@ -1,4 +1,4 @@
-// @agentgate/server — Public JWKS for asymmetric agent tokens (#40).
+// @agentkitai/agentgate-server — Public JWKS for asymmetric agent tokens (#40).
 //
 // GET /.well-known/jwks.json — the PUBLIC half of the RS256 agent-token signing
 // key(s). Downstream verifiers (AgentLens, Lore) fetch this to verify agent

@@ -1,4 +1,4 @@
-// @agentgate/server — MCP tool-call guardrails (issue #14).
+// @agentkitai/agentgate-server — MCP tool-call guardrails (issue #14).
 //
 // Enforce per-agent tool allow-listing at the MCP protocol boundary, right
 // before a tool executes. Reuses the agent-identity spine (#12): the gate is
@@ -17,7 +17,7 @@ import {
   createBaseEvent,
   getGlobalEmitter,
   type RequestCreatedEvent,
-} from "@agentgate/core";
+} from "@agentkitai/agentgate-core";
 
 import { getDb, approvalRequests } from "../db/index.js";
 import { checkOverrides } from "../routes/overrides.js";

@@ -1,12 +1,12 @@
-// @agentgate/server - Policy routes
+// @agentkitai/agentgate-server - Policy routes
 
 import { Hono } from "hono";
 import { nanoid } from "nanoid";
 import { eq, sql, and, gte, lte } from "drizzle-orm";
 import isSafeRegex from "safe-regex2";
 import { getDb, policies, approvalRequests } from "../db/index.js";
-import type { PolicyRule, Policy, PolicyScope, ApprovalRequest } from "@agentgate/core";
-import { evaluatePolicy } from "@agentgate/core";
+import type { PolicyRule, Policy, PolicyScope, ApprovalRequest } from "@agentkitai/agentgate-core";
+import { evaluatePolicy } from "@agentkitai/agentgate-core";
 import { invalidatePolicyCache } from "../lib/policy-cache.js";
 import { getTemplates, getTemplateById } from "../lib/policy-templates.js";
 

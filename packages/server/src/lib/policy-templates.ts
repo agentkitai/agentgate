@@ -1,6 +1,6 @@
-// @agentgate/server - Risk-Aware Policy Templates
+// @agentkitai/agentgate-server - Risk-Aware Policy Templates
 
-import type { PolicyRule } from "@agentgate/core";
+import type { PolicyRule } from "@agentkitai/agentgate-core";
 
 export interface PolicyTemplate {
   id: string;

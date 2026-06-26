@@ -1,5 +1,5 @@
 {
-  "name": "@agentgate/demo",
+  "name": "@agentkitai/agentgate-demo",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@agentgate/sdk": "workspace:*"
+    "@agentkitai/agentgate-sdk": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.19.2"

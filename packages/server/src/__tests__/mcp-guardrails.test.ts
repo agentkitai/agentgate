@@ -41,7 +41,7 @@ vi.mock("../db/index.js", async () => ({
 import { createAgent } from "../lib/agents.js";
 import mcpRouter from "../routes/mcp.js";
 import { parseConfig, setConfig, resetConfig } from "../config.js";
-import { getGlobalEmitter, EventNames } from "@agentgate/core";
+import { getGlobalEmitter, EventNames } from "@agentkitai/agentgate-core";
 
 const TEST_SECRET = "test-jwt-secret-at-least-32-chars-long!!";
 

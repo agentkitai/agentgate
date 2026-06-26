@@ -10,7 +10,7 @@ import {
   EventNames,
   type RequestCreatedEvent,
   type RequestDecidedEvent,
-} from "@agentgate/core";
+} from "@agentkitai/agentgate-core";
 import { setConfig, resetConfig, type Config } from "../config.js";
 
 // Mock the URL validator module for webhook SSRF protection

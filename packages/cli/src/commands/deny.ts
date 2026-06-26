@@ -1,4 +1,4 @@
-// @agentgate/cli - Deny command
+// @agentkitai/agentgate-cli - Deny command
 
 import { Command } from 'commander';
 import { ApiClient, formatRequest } from '../api.js';

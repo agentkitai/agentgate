@@ -17,7 +17,7 @@
  *   - pnpm dev (from root) starts server + dashboard
  */
 
-import { AgentGateClient, TimeoutError } from "@agentgate/sdk";
+import { AgentGateClient, TimeoutError } from "@agentkitai/agentgate-sdk";
 
 // Configuration
 const SERVER_URL = process.env.AGENTGATE_URL || "http://localhost:3000";

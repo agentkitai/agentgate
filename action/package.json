@@ -1,5 +1,5 @@
 {
-  "name": "@agentgate/github-action",
+  "name": "@agentkitai/agentgate-github-action",
   "version": "0.0.1",
   "private": true,
   "description": "GitHub Action for AgentGate approval requests",

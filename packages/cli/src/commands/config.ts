@@ -1,4 +1,4 @@
-// @agentgate/cli - Config command
+// @agentkitai/agentgate-cli - Config command
 
 import { Command } from 'commander';
 import { loadConfig, saveConfig, getConfigPath, setConfigValue } from '../config.js';

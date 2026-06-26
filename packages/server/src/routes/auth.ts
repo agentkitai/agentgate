@@ -1,4 +1,4 @@
-// @agentgate/server — OIDC auth routes
+// @agentkitai/agentgate-server — OIDC auth routes
 //
 // GET  /auth/mode      → Return current AUTH_MODE for dashboard detection
 // POST /auth/login     → Initiate OIDC login (returns redirect URL)

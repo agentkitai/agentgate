@@ -1,5 +1,5 @@
 {
-  "name": "@agentgate/mcp",
+  "name": "@agentkitai/agentgate-mcp",
   "version": "0.0.2",
   "mcpName": "io.github.agentkitai/agentgate",
   "repository": {
@@ -21,7 +21,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@agentgate/core": "workspace:*",
+    "@agentkitai/agentgate-core": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.26.0"
   },
   "devDependencies": {

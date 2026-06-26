@@ -1,21 +1,21 @@
 # TypeScript SDK
 
-The `@agentgate/sdk` package provides a type-safe client for AI agents to request human approvals.
+The `@agentkitai/agentgate-sdk` package provides a type-safe client for AI agents to request human approvals.
 
 ## Installation
 
 ```bash
-npm install @agentgate/sdk
+npm install @agentkitai/agentgate-sdk
 # or
-pnpm add @agentgate/sdk
+pnpm add @agentkitai/agentgate-sdk
 # or
-yarn add @agentgate/sdk
+yarn add @agentkitai/agentgate-sdk
 ```
 
 ## Quick Start
 
 ```typescript
-import { AgentGateClient } from '@agentgate/sdk'
+import { AgentGateClient } from '@agentkitai/agentgate-sdk'
 
 const client = new AgentGateClient({
   baseUrl: 'http://localhost:3000',
@@ -115,7 +115,7 @@ const requests = await client.listRequests({
 ## Error Handling
 
 ```typescript
-import { AgentGateError, TimeoutError } from '@agentgate/sdk'
+import { AgentGateError, TimeoutError } from '@agentkitai/agentgate-sdk'
 
 try {
   await client.waitForDecision(id)
@@ -130,7 +130,7 @@ try {
 
 ## Types
 
-All types from `@agentgate/core` are re-exported:
+All types from `@agentkitai/agentgate-core` are re-exported:
 
 ```typescript
 import type {
@@ -141,7 +141,7 @@ import type {
   Policy,
   PolicyRule,
   PolicyDecision
-} from '@agentgate/sdk'
+} from '@agentkitai/agentgate-sdk'
 ```
 
 ## Usage Patterns

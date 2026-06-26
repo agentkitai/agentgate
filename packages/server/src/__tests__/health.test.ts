@@ -1,4 +1,4 @@
-// @agentgate/server - Health endpoint tests
+// @agentkitai/agentgate-server - Health endpoint tests
 
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import app from "../index.js";

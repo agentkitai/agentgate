@@ -1,4 +1,4 @@
-// @agentgate/server - Approval request routes
+// @agentkitai/agentgate-server - Approval request routes
 
 import { Hono } from "hono";
 import { nanoid } from "nanoid";
@@ -13,7 +13,7 @@ import {
   type Policy as CorePolicy,
   type RequestCreatedEvent,
   type RequestDecidedEvent,
-} from "@agentgate/core";
+} from "@agentkitai/agentgate-core";
 import { logAuditEvent } from "../lib/audit.js";
 import { owaspRiskForPolicyDecision } from "../lib/owasp.js";
 import { resolveVerifiedAgentId, resolveEffectiveAgentId } from "../lib/agent-tokens.js";

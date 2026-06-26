@@ -1,4 +1,4 @@
-// @agentgate/server — Agent OAuth2 token endpoint (agent-identity spine).
+// @agentkitai/agentgate-server — Agent OAuth2 token endpoint (agent-identity spine).
 //
 // POST /api/agents/token — RFC 6749 client_credentials grant. An agent presents
 // its agt_*/ags_* credential (JSON body or HTTP Basic) and receives a

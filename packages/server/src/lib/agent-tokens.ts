@@ -1,4 +1,4 @@
-// @agentgate/server — Agent OAuth2 token helpers (agent-identity spine).
+// @agentkitai/agentgate-server — Agent OAuth2 token helpers (agent-identity spine).
 //
 // An agent exchanges its long-lived secret (ags_*) once at the token endpoint
 // for a short-lived Bearer JWT, then presents the JWT (X-Agent-Token) instead

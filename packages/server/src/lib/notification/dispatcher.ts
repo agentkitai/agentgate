@@ -12,7 +12,7 @@ import {
   type EventName,
   type ApprovalUrgency,
   eventMatchesFilter,
-} from "@agentgate/core";
+} from "@agentkitai/agentgate-core";
 import type {
   ChannelRoute,
   NotificationChannelAdapter,

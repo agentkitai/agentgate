@@ -1,19 +1,19 @@
-# @agentgate/sdk
+# @agentkitai/agentgate-sdk
 
 TypeScript SDK for agents to request human approvals via AgentGate.
 
 ## Installation
 
 ```bash
-npm install @agentgate/sdk
+npm install @agentkitai/agentgate-sdk
 # or
-pnpm add @agentgate/sdk
+pnpm add @agentkitai/agentgate-sdk
 ```
 
 ## Quick Start
 
 ```typescript
-import { AgentGateClient } from '@agentgate/sdk'
+import { AgentGateClient } from '@agentkitai/agentgate-sdk'
 
 const client = new AgentGateClient({
   baseUrl: 'http://localhost:3000',
@@ -193,7 +193,7 @@ await client.revokeApiKey('key_123')
 ### Error Handling
 
 ```typescript
-import { AgentGateError, TimeoutError } from '@agentgate/sdk'
+import { AgentGateError, TimeoutError } from '@agentkitai/agentgate-sdk'
 
 try {
   await client.waitForDecision(id)
@@ -208,7 +208,7 @@ try {
 
 ### Types
 
-All types from `@agentgate/core` are re-exported for convenience:
+All types from `@agentkitai/agentgate-core` are re-exported for convenience:
 
 ```typescript
 import type {
@@ -226,7 +226,7 @@ import type {
   AuditListResult,
   ApiKey,
   ApiKeyCreateResult,
-} from '@agentgate/sdk'
+} from '@agentkitai/agentgate-sdk'
 ```
 
 ## License

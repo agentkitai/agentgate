@@ -6,7 +6,7 @@
  */
 
 import crypto from "crypto";
-import type { AgentGateEvent } from "@agentgate/core";
+import type { AgentGateEvent } from "@agentkitai/agentgate-core";
 import type { NotificationChannelAdapter, NotificationResult } from "../types.js";
 import { getConfig } from "../../../config.js";
 import { validateWebhookUrl } from "../../url-validator.js";

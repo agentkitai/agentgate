@@ -1,4 +1,4 @@
-// @agentgate/server - Rate limiter (legacy re-exports)
+// @agentkitai/agentgate-server - Rate limiter (legacy re-exports)
 // This file is kept for backwards compatibility
 // New code should import from ./rate-limiter/index.js
 
