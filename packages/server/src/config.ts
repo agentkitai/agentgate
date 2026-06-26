@@ -237,6 +237,25 @@ export const ConfigSchema = z.object({
    *  JWKS verifiers (AgentLens, Lore) can pin the issuer. */
   agentTokenIssuer: z.string().optional(),
 
+  // ─── External SPIFFE/WIMSE workload identity (#41) ──────────────────
+  /** Accept SPIFFE JWT-SVIDs whose audience equals this value. REQUIRED to
+   *  enable SPIFFE verification (the spec mandates audience validation). */
+  spiffeAudience: z.string().optional(),
+  /** Trust domain to pin SPIFFE IDs to, e.g. "example.org" → only
+   *  `spiffe://example.org/...` subjects are accepted. REQUIRED to enable SPIFFE
+   *  (a multi-domain/federation bundle must not authenticate an unexpected
+   *  domain as a fully-verified principal). */
+  spiffeTrustDomain: z.string().optional(),
+  /** URL of the SPIFFE trust bundle (a JWKS) for verifying SVID signatures.
+   *  Validated as a URL so a typo fails closed at startup, not per-request. */
+  spiffeJwksUrl: z.string().url().optional(),
+  /** Inline SPIFFE trust bundle as JWKS JSON (alternative to SPIFFE_JWKS_URL,
+   *  e.g. air-gapped). */
+  spiffeTrustBundle: z.string().optional(),
+  /** Optional max SVID age (seconds, checked against `iat`) — bounds acceptance
+   *  even if a trust domain mis-issues a long-lived SVID. Unset = only `exp`. */
+  spiffeMaxSvidAge: z.coerce.number().int().min(1).optional(),
+
   // ─── Per-agent spend / budgets (#13) ────────────────────────────────
   /** AgentLens base URL — source of per-agent spend telemetry. Unset = spend
    *  reads disabled. */
@@ -352,6 +371,11 @@ const ENV_MAP: Record<string, keyof z.infer<typeof ConfigSchema>> = {
   AGENT_TOKEN_VERIFY_KEYS: "agentTokenVerifyKeys",
   AGENT_TOKEN_AUDIENCE: "agentTokenAudience",
   AGENT_TOKEN_ISSUER: "agentTokenIssuer",
+  SPIFFE_AUDIENCE: "spiffeAudience",
+  SPIFFE_TRUST_DOMAIN: "spiffeTrustDomain",
+  SPIFFE_JWKS_URL: "spiffeJwksUrl",
+  SPIFFE_TRUST_BUNDLE: "spiffeTrustBundle",
+  SPIFFE_MAX_SVID_AGE: "spiffeMaxSvidAge",
 };
 
 // ============================================================================
@@ -505,6 +529,16 @@ export function validateProductionConfig(config: Config): string[] {
     warnings.push(
       "AGENT_TOKEN_ISSUER has no effect without AGENT_TOKEN_SIGNING_KEY " +
         "(the iss claim is only minted on the RS256 path)",
+    );
+  }
+
+  // SPIFFE needs audience + trust domain + a bundle; surface a partial config so
+  // it isn't silently disabled.
+  const spiffeBundle = config.spiffeJwksUrl || config.spiffeTrustBundle;
+  if ((config.spiffeAudience || spiffeBundle) && !(config.spiffeAudience && config.spiffeTrustDomain && spiffeBundle)) {
+    warnings.push(
+      "SPIFFE verification is DISABLED: it requires SPIFFE_AUDIENCE + " +
+        "SPIFFE_TRUST_DOMAIN + (SPIFFE_JWKS_URL or SPIFFE_TRUST_BUNDLE) all set",
     );
   }
 

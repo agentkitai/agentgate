@@ -171,6 +171,35 @@ unchanged.
   RS256 token is *not* forgeable there, so lifting this is a reasonable future
   change — tracked, not done in this slice.
 
+## External SPIFFE / WIMSE workload identity (#41)
+
+Enterprises already running a SPIFFE/SPIRE (or WIMSE) workload-identity plane can
+present a **JWT-SVID** on `X-Agent-Token` instead of minting an AgentGate token.
+AgentGate verifies it against the trust domain's bundle and resolves it to the
+SAME verified-principal slot — the principal id is the **SPIFFE ID** itself
+(e.g. `spiffe://example.org/agent/checkout`).
+
+- **Verification:** signature checked against the trust bundle (asymmetric algs
+  only — `RS*`/`PS*`/`ES*`/`EdDSA`, never HS/none); the **audience MUST match**
+  `SPIFFE_AUDIENCE` (mandatory per the SPIFFE JWT-SVID spec); `exp` (and the
+  optional `SPIFFE_MAX_SVID_AGE`) enforced; `sub` must be
+  `spiffe://<SPIFFE_TRUST_DOMAIN>/<non-empty path>`. Verification is fail-safe —
+  any error rejects the SVID, never 500s.
+- **Enable:** set `SPIFFE_AUDIENCE` **and** `SPIFFE_TRUST_DOMAIN` **and** a
+  bundle (`SPIFFE_JWKS_URL` or inline `SPIFFE_TRUST_BUNDLE`). All three are
+  required — a partial config logs a "DISABLED" warning. Requiring the trust
+  domain prevents a multi-domain/federation bundle from authenticating an
+  unexpected domain.
+- **Externally attested:** a SPIFFE principal is **not** looked up in the
+  `agents` table (no liveness check) — the platform attests it; rely on
+  short-lived SVIDs (and optionally `SPIFFE_MAX_SVID_AGE`) for revocation.
+- **Limitation:** because a SPIFFE principal isn't a registered `agt_*`, it is
+  **not** subject to per-agent budgets/policies (those key on the agents table) —
+  binding a SPIFFE ID to a registered agent for budget/policy scoping is future
+  work. Resolution order is unchanged: an AgentGate agent token wins; the SVID is
+  tried only when no live agent token resolves; both are gated off in
+  `api-key-only` mode.
+
 ## Downstream propagation (the consumer contract)
 
 The same verified identity is intended to flow to the rest of the platform.
@@ -220,6 +249,11 @@ formalization, not a new subsystem.
 | `AGENT_TOKEN_VERIFY_KEYS` | — | JSON array of public RSA JWKs (each with `kid`) to also publish + accept on verify — retired signers during a rotation. |
 | `AGENT_TOKEN_AUDIENCE` | — | `aud` claim minted into RS256 tokens and required on verify (RS256 path only). |
 | `AGENT_TOKEN_ISSUER` | — | `iss` claim minted into RS256 tokens for issuer pinning (RS256 path only). |
+| `SPIFFE_AUDIENCE` | — | Required SVID audience. Set with `SPIFFE_TRUST_DOMAIN` + a bundle to enable SPIFFE. |
+| `SPIFFE_TRUST_DOMAIN` | — | Trust domain to pin SVID subjects to (e.g. `example.org`). Required to enable SPIFFE. |
+| `SPIFFE_JWKS_URL` | — | URL of the SPIFFE trust bundle (JWKS). Validated as a URL. |
+| `SPIFFE_TRUST_BUNDLE` | — | Inline trust bundle (JWKS JSON), alternative to the URL. |
+| `SPIFFE_MAX_SVID_AGE` | — | Optional max SVID age in seconds (checked against `iat`). |
 | `GUARDRAILS_WEBHOOK_SECRET` | — | Shared secret authenticating the reactive-guardrails webhook. |
 
 ## Security considerations
@@ -243,8 +277,11 @@ formalization, not a new subsystem.
   [above](#asymmetric-signing--jwks-40).
 - **RS256 tokens in `api-key-only` mode** — currently rejected wholesale even
   though they are not forgeable; allow them when a signing key is configured.
-- **SPIFFE SVID / WIMSE** workload identity for mesh deployments
-  (X.509 / Workload API), resolving to the same verified principal.
+- ✅ **SPIFFE JWT-SVID / WIMSE** workload identity — shipped in #41 (JWT-SVID via
+  the trust bundle, resolving to the SPIFFE ID as the principal). See
+  [above](#external-spiffe--wimse-workload-identity-41). Still open: X.509-SVID
+  (Workload API / mTLS), and **binding a SPIFFE ID to a registered `agt_*`** so
+  per-agent budgets/policies apply.
 - **RFC-8693 token exchange** for delegated/on-behalf-of agent chains.
 - **Token-endpoint rate limiting** and a credential-rotation playbook
   (dual-active secret window).
