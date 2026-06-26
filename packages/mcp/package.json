@@ -1,6 +1,6 @@
 {
   "name": "@agentkitai/agentgate-mcp",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "mcpName": "io.github.agentkitai/agentgate",
   "repository": {
     "type": "git",

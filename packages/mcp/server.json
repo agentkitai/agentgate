@@ -8,13 +8,13 @@
     "url": "https://github.com/agentkitai/agentgate",
     "source": "github"
   },
-  "version": "0.0.2",
+  "version": "0.0.3",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@agentkitai/agentgate-mcp",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"
