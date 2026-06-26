@@ -21,6 +21,7 @@ import { checkAgentBudget } from "../lib/agent-budget.js";
 import { checkAgentEval } from "../lib/agent-eval.js";
 import { maybeAlertBudgetThreshold } from "../lib/budget-alerts.js";
 import { decideInitialStatus } from "../lib/request-decision.js";
+import { computeAutoApproveSuggestions } from "../lib/auto-approve-suggestions.js";
 import { getConfig } from "../config.js";
 import type { ApiKey } from "../db/schema.js";
 import { deliverWebhook } from "../lib/webhook.js";
@@ -444,6 +445,20 @@ requestsRouter.get("/queue-stats", async (c) => {
     by_urgency: byUrgency,
     oldest_pending_age_ms: oldestCreatedAt ? Date.now() - oldestCreatedAt.getTime() : null,
   });
+});
+
+// GET /api/requests/suggestions - identity-scoped auto-approve suggestions (#45).
+// Read-only heuristic; defined before /:id so it isn't shadowed.
+requestsRouter.get("/suggestions", async (c) => {
+  const agentId = c.req.query("agentId") || undefined;
+  const minRaw = Number(c.req.query("minApprovals"));
+  const winRaw = Number(c.req.query("windowDays"));
+  const suggestions = await computeAutoApproveSuggestions({
+    agentId,
+    minApprovals: Number.isFinite(minRaw) && minRaw > 0 ? minRaw : undefined,
+    windowDays: Number.isFinite(winRaw) && winRaw > 0 ? winRaw : undefined,
+  });
+  return c.json({ suggestions });
 });
 
 // GET /api/requests/:id - Get request by ID
