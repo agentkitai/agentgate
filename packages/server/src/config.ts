@@ -278,6 +278,15 @@ export const ConfigSchema = z.object({
     .union([z.boolean(), z.string()])
     .transform((val) => (typeof val === "boolean" ? val : ["true", "1", "yes"].includes(val.toLowerCase())))
     .default(false),
+  /** Per-agent eval gate (#7): deny requests from an agent whose latest eval
+   *  pass-rate (read from AgentLens) is below agentEvalMinPassRate. Default off
+   *  — ships dark until an operator opts in. Fails open. */
+  agentEvalGate: z
+    .union([z.boolean(), z.string()])
+    .transform((val) => (typeof val === "boolean" ? val : ["true", "1", "yes"].includes(val.toLowerCase())))
+    .default(false),
+  /** Minimum eval pass-rate (0..1) an agent must meet when AGENT_EVAL_GATE is on. */
+  agentEvalMinPassRate: z.coerce.number().min(0).max(1).default(0.8),
 
   // Metrics
   /** Enable Prometheus metrics endpoint (default true) */
@@ -366,6 +375,8 @@ const ENV_MAP: Record<string, keyof z.infer<typeof ConfigSchema>> = {
   SPEND_READ_TIMEOUT_MS: "spendReadTimeoutMs",
   AGENT_BUDGET_ENFORCEMENT: "agentBudgetEnforcement",
   AGENT_BUDGET_ALERTS: "agentBudgetAlerts",
+  AGENT_EVAL_GATE: "agentEvalGate",
+  AGENT_EVAL_MIN_PASS_RATE: "agentEvalMinPassRate",
   AGENT_TOKEN_SIGNING_KEY: "agentTokenSigningKey",
   AGENT_TOKEN_SIGNING_KID: "agentTokenSigningKid",
   AGENT_TOKEN_VERIFY_KEYS: "agentTokenVerifyKeys",
