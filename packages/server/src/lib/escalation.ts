@@ -10,7 +10,66 @@ import { nanoid } from "nanoid";
 import { getDb, approvalRequests, escalationRules, escalationHistory } from "../db/index.js";
 import { getLogger } from "./logger.js";
 import { deliverWebhook } from "./webhook.js";
-import { EventNames, createBaseEvent, type RequestEscalatedEvent } from "@agentgate/core";
+import { logAuditEvent } from "./audit.js";
+import {
+  EventNames,
+  createBaseEvent,
+  getGlobalEmitter,
+  type RequestEscalatedEvent,
+  type RequestDecidedEvent,
+} from "@agentgate/core";
+
+/** Parse an escalateTo of the form `decision:approve` / `decision:deny`. */
+function parseFallbackDecision(escalateTo: string): "approved" | "denied" | null {
+  if (escalateTo === "decision:approve") return "approved";
+  if (escalateTo === "decision:deny") return "denied";
+  return null;
+}
+
+/**
+ * Terminal fallback (#44): when an escalation rule's target is a `decision:*`,
+ * auto-resolve a still-pending request instead of notifying — so a request that
+ * no human ever answers doesn't sit pending forever. Mirrors the auto-decision
+ * side effects (audit + event + webhook) so downstream sees a normal decision.
+ */
+async function applyFallbackDecision(
+  request: typeof approvalRequests.$inferSelect,
+  status: "approved" | "denied",
+  triggerAfterSec: number,
+): Promise<void> {
+  const db = getDb();
+  const reason = `No decision after ${triggerAfterSec}s — escalation fallback ${status}`;
+  await db
+    .update(approvalRequests)
+    .set({ status, decidedAt: new Date(), decidedBy: "escalation_fallback", decisionReason: reason })
+    .where(eq(approvalRequests.id, request.id));
+
+  await logAuditEvent(request.id, status, "escalation_fallback", {
+    reason,
+    automatic: true,
+    decidedByType: "escalation_fallback",
+  });
+
+  const decidedEvent: RequestDecidedEvent = {
+    ...createBaseEvent(EventNames.REQUEST_DECIDED, "escalation-scanner"),
+    payload: {
+      requestId: request.id,
+      action: request.action,
+      status,
+      decidedBy: "escalation_fallback",
+      decidedByType: "escalation_fallback",
+      reason,
+      decisionTimeMs: 0,
+    },
+  };
+  getGlobalEmitter().emitSync(decidedEvent);
+
+  try {
+    await deliverWebhook(`request.${status}`, { request });
+  } catch {
+    // best-effort: the decision already persisted
+  }
+}
 
 let scannerTimer: NodeJS.Timeout | null = null;
 
@@ -107,6 +166,19 @@ export async function scanPendingEscalations(): Promise<number> {
 
       // Mark as escalated so we don't process again in this pass
       alreadyEscalated.add(key);
+
+      // Terminal fallback rule (#44): resolve the request instead of notifying,
+      // then stop — it's no longer pending, so later rungs don't apply.
+      const fallback = parseFallbackDecision(rule.escalateTo);
+      if (fallback) {
+        await applyFallbackDecision(request, fallback, rule.triggerAfterSec);
+        log.info(
+          { requestId: request.id, ruleId: rule.id, decision: fallback },
+          "Escalation fallback decision applied"
+        );
+        escalationCount++;
+        break; // request resolved — skip remaining rules for it
+      }
 
       // Dispatch notification via webhook
       const escalationEvent: RequestEscalatedEvent = {
