@@ -447,7 +447,7 @@ DELETE /api/webhooks/:id
 
 ## Request Body Size Limits
 
-All endpoints that accept a request body enforce a size limit (default: **100KB**). Requests exceeding this limit receive a `413 Payload Too Large` response. Configure via the `BODY_SIZE_LIMIT` environment variable (see [Configuration](/configuration)).
+All endpoints that accept a request body enforce a fixed size limit of **1 MB**. This limit is hard-coded and not configurable via an environment variable. Requests exceeding this limit receive a `413 Payload Too Large` response.
 
 ---
 

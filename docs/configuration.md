@@ -56,7 +56,6 @@ DATABASE_URL=postgresql://user:pass@db.example.com:5432/agentgate?sslmode=requir
 | `CORS_ALLOWED_ORIGINS` | string | `*` | Allowed CORS origins (comma-separated) |
 | `HSTS_ENABLED` | boolean | `false` | Enable HTTP Strict Transport Security header |
 | `WEBHOOK_ENCRYPTION_KEY` | string | - | AES-256-GCM key for encrypting webhook secrets at rest |
-| `BODY_SIZE_LIMIT` | string | `100kb` | Maximum request body size (e.g., `100kb`, `1mb`) |
 
 ::: danger Production Requirements
 In production (`NODE_ENV=production`), `ADMIN_API_KEY` is required and must be at least 16 characters.
@@ -203,7 +202,6 @@ SLACK_DEFAULT_CHANNEL=#agentgate-alerts
 # Security (additional)
 HSTS_ENABLED=true
 WEBHOOK_ENCRYPTION_KEY=your-32-byte-hex-key
-BODY_SIZE_LIMIT=100kb
 
 # Cleanup
 CLEANUP_RETENTION_DAYS=30

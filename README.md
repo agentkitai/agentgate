@@ -45,7 +45,7 @@ auto-deny dangerous ones, and route everything else to a human — via dashboard
 docker compose up
 
 # …or from source:
-pnpm install && pnpm migrate && pnpm bootstrap && pnpm dev
+pnpm install && pnpm --filter @agentkitai/agentgate-server db:migrate && pnpm --filter @agentkitai/agentgate-server bootstrap && pnpm dev
 ```
 
 Drop AgentGate into an MCP client (Claude Desktop / Cursor / VS Code) — point it at the gateway:
@@ -640,7 +640,7 @@ All configuration is done via environment variables. See `.env.example` for all 
 
 **Recommended for production:**
 - `JWT_SECRET` — JWT signing secret (min 32 characters)
-- `CORS_ORIGINS` — Restrict to your domain(s)
+- `CORS_ALLOWED_ORIGINS` — Restrict to your domain(s)
 - `POSTGRES_PASSWORD` — Use a strong password
 
 ### Building Images
