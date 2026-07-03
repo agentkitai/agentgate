@@ -82,7 +82,7 @@ DATABASE_URL=postgresql://user:pass@db.example.com:5432/agentgate?sslmode=requir
 |----------|------|---------|-------------|
 | `ADMIN_API_KEY` | string | - | Admin API key (min 16 chars, required in production) |
 | `JWT_SECRET` | string | - | JWT signing secret (min 32 chars, recommended in production) |
-| `CORS_ORIGINS` | string | `*` | Allowed CORS origins (comma-separated) |
+| `CORS_ALLOWED_ORIGINS` | string | `*` | Allowed CORS origins (comma-separated) |
 
 ### Rate Limiting
 
@@ -321,7 +321,7 @@ DATABASE_URL=/var/data/agentgate.db
 # Security
 ADMIN_API_KEY=your-secure-admin-key-here
 JWT_SECRET=your-secure-jwt-secret-at-least-32-characters
-CORS_ORIGINS=https://app.example.com,https://admin.example.com
+CORS_ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com
 
 # Rate Limiting
 RATE_LIMIT_ENABLED=true
@@ -351,7 +351,7 @@ When running in production (`NODE_ENV=production`), ensure:
 
 - [ ] `ADMIN_API_KEY` is set (minimum 16 characters)
 - [ ] `JWT_SECRET` is set (minimum 32 characters)
-- [ ] `CORS_ORIGINS` is restricted (not `*`)
+- [ ] `CORS_ALLOWED_ORIGINS` is restricted (not `*`)
 - [ ] `DATABASE_URL` points to a persistent location
 - [ ] `LOG_FORMAT=json` for structured logging
 - [ ] Rate limiting is enabled
