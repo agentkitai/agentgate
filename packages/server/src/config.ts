@@ -317,6 +317,15 @@ export const ConfigSchema = z.object({
   isDevelopment: config.nodeEnv === "development",
   /** Convenience: true if nodeEnv === 'production' */
   isProduction: config.nodeEnv === "production",
+  /** What the operator requested via AGENTGATE_ALLOW_PRIVATE_WEBHOOKS (pre-refusal). */
+  allowPrivateWebhooksRequested: config.allowPrivateWebhooks,
+  // Hard-refuse the SSRF escape hatch in production: even if the env var is set, it
+  // can NEVER take effect when NODE_ENV=production. A dev-only ergonomics switch must
+  // not be able to open an SSRF hole in prod, so it is neutralized here — not merely
+  // warned about. All call sites read config.allowPrivateWebhooks, so this is the one
+  // enforcement point.
+  allowPrivateWebhooks:
+    config.nodeEnv === "production" ? false : config.allowPrivateWebhooks,
 }));
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -521,11 +530,14 @@ export function validateProductionConfig(config: Config): string[] {
     if (!config.webhookEncryptionKey) {
       warnings.push("WEBHOOK_ENCRYPTION_KEY should be set to encrypt webhook secrets at rest");
     }
-    if (config.allowPrivateWebhooks) {
+    // The escape hatch is hard-refused in production (see the config transform).
+    // If the operator set it anyway, tell them it was IGNORED so the silent-no-op
+    // isn't mistaken for it being active.
+    if (config.allowPrivateWebhooksRequested) {
       warnings.push(
-        "AGENTGATE_ALLOW_PRIVATE_WEBHOOKS is ON — the webhook SSRF guard is " +
-          "permitting loopback/private-range destinations. This is a dev/test-only " +
-          "escape hatch and must NOT be enabled in production.",
+        "AGENTGATE_ALLOW_PRIVATE_WEBHOOKS was set in production and has been IGNORED — " +
+          "the webhook SSRF guard stays fully enforced (loopback/private destinations " +
+          "blocked). This escape hatch is dev/test-only.",
       );
     }
     // Require OIDC config when auth mode needs it
