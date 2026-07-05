@@ -28,7 +28,7 @@ services:
   # Redis (for rate limiting, queues, pub/sub)
   # ==========================================================================
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     container_name: agentgate-redis
     # Ports not exposed to host by default for security.
     # To expose for debugging, use: docker-compose -f docker-compose.yml -f docker-compose.override.yml up
