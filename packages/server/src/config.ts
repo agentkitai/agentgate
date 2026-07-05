@@ -111,6 +111,16 @@ export const ConfigSchema = z.object({
   webhookTimeoutMs: z.coerce.number().int().min(100).default(5000),
   /** Max webhook retry attempts */
   webhookMaxRetries: z.coerce.number().int().min(0).default(3),
+  /** DEV/TEST ONLY — permit webhook destinations on loopback / RFC-1918 private
+   *  ranges (127.0.0.1, ::1, 10.x, 172.16-31.x, 192.168.x, localhost). Lets local
+   *  integrations (e.g. the AgentGate×UCP adapter demo) register a
+   *  http://127.0.0.1:PORT webhook without the SSRF guard rejecting it. Cloud
+   *  metadata endpoints and non-HTTP(S) protocols STAY blocked. Default off —
+   *  never enable in production. */
+  allowPrivateWebhooks: z
+    .union([z.boolean(), z.string()])
+    .transform((val) => (typeof val === "boolean" ? val : ["true", "1", "yes"].includes(val.toLowerCase())))
+    .default(false),
 
   // Slack Integration
   slackBotToken: z.string().optional(),
@@ -337,6 +347,7 @@ const ENV_MAP: Record<string, keyof z.infer<typeof ConfigSchema>> = {
   REQUEST_TIMEOUT_SEC: "requestTimeoutSec",
   WEBHOOK_TIMEOUT_MS: "webhookTimeoutMs",
   WEBHOOK_MAX_RETRIES: "webhookMaxRetries",
+  AGENTGATE_ALLOW_PRIVATE_WEBHOOKS: "allowPrivateWebhooks",
   SLACK_BOT_TOKEN: "slackBotToken",
   SLACK_SIGNING_SECRET: "slackSigningSecret",
   SLACK_DEFAULT_CHANNEL: "slackDefaultChannel",
@@ -509,6 +520,13 @@ export function validateProductionConfig(config: Config): string[] {
     }
     if (!config.webhookEncryptionKey) {
       warnings.push("WEBHOOK_ENCRYPTION_KEY should be set to encrypt webhook secrets at rest");
+    }
+    if (config.allowPrivateWebhooks) {
+      warnings.push(
+        "AGENTGATE_ALLOW_PRIVATE_WEBHOOKS is ON — the webhook SSRF guard is " +
+          "permitting loopback/private-range destinations. This is a dev/test-only " +
+          "escape hatch and must NOT be enabled in production.",
+      );
     }
     // Require OIDC config when auth mode needs it
     if (config.authMode !== "api-key-only") {

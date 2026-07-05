@@ -28,7 +28,9 @@ router.post('/', zValidator('json', createWebhookSchema), async (c) => {
   const { url, events, secret } = c.req.valid('json');
   
   // SSRF protection: validate URL before accepting
-  const validation = await validateWebhookUrl(url);
+  const validation = await validateWebhookUrl(url, {
+    allowPrivate: getConfig().allowPrivateWebhooks,
+  });
   if (!validation.valid) {
     return c.json({ error: `Invalid webhook URL: ${validation.error}` }, 400);
   }
@@ -208,7 +210,9 @@ router.post('/deliveries/:id/replay', async (c) => {
   }
 
   // SSRF protection: re-validate URL
-  const validation = await validateWebhookUrl(webhook.url);
+  const validation = await validateWebhookUrl(webhook.url, {
+    allowPrivate: getConfig().allowPrivateWebhooks,
+  });
   if (!validation.valid) {
     return c.json({ error: `Webhook URL no longer valid: ${validation.error}` }, 400);
   }
@@ -375,7 +379,9 @@ router.patch('/:id', zValidator('json', updateWebhookSchema), async (c) => {
   
   // SSRF protection: validate URL if being updated
   if (updates.url) {
-    const validation = await validateWebhookUrl(updates.url);
+    const validation = await validateWebhookUrl(updates.url, {
+      allowPrivate: getConfig().allowPrivateWebhooks,
+    });
     if (!validation.valid) {
       return c.json({ error: `Invalid webhook URL: ${validation.error}` }, 400);
     }
@@ -409,7 +415,9 @@ router.post('/:id/test', async (c) => {
   }
   
   // SSRF protection: re-validate URL (DNS rebinding defense)
-  const validation = await validateWebhookUrl(webhookRecord.url);
+  const validation = await validateWebhookUrl(webhookRecord.url, {
+    allowPrivate: getConfig().allowPrivateWebhooks,
+  });
   if (!validation.valid) {
     return c.json({ error: `Webhook URL no longer valid: ${validation.error}` }, 400);
   }

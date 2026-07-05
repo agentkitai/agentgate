@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import dns from 'dns/promises';
 import { isPrivateIP, isCloudMetadata, validateWebhookUrl } from '../lib/url-validator.js';
 
@@ -289,6 +289,93 @@ describe('validateWebhookUrl', () => {
 
     it('rejects empty string', async () => {
       const result = await validateWebhookUrl('');
+      expect(result.valid).toBe(false);
+    });
+  });
+
+  describe('allowPrivate dev/test escape hatch', () => {
+    it('rejects loopback by default (flag unset)', async () => {
+      const result = await validateWebhookUrl('http://127.0.0.1:8787/webhook');
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('Private IP');
+    });
+
+    it('accepts loopback IP when allowPrivate is set', async () => {
+      const result = await validateWebhookUrl('http://127.0.0.1:8787/webhook', { allowPrivate: true });
+      expect(result.valid).toBe(true);
+      expect(result.resolvedIP).toBe('127.0.0.1');
+    });
+
+    it('accepts localhost hostname when allowPrivate is set', async () => {
+      // localhost is not a literal IP, so it goes through DNS resolution → 127.0.0.1
+      vi.mocked(dns.resolve4).mockResolvedValue(['127.0.0.1']);
+      vi.mocked(dns.resolve6).mockResolvedValue([]);
+
+      const result = await validateWebhookUrl('http://localhost:8787/webhook', { allowPrivate: true });
+      expect(result.valid).toBe(true);
+    });
+
+    it('STILL blocks localhost hostname by default (flag unset)', async () => {
+      const result = await validateWebhookUrl('http://localhost:8787/webhook');
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('not allowed');
+    });
+
+    it('accepts private RFC-1918 IPs when allowPrivate is set', async () => {
+      expect((await validateWebhookUrl('http://10.0.0.5/hook', { allowPrivate: true })).valid).toBe(true);
+      expect((await validateWebhookUrl('http://192.168.1.10/hook', { allowPrivate: true })).valid).toBe(true);
+      expect((await validateWebhookUrl('http://172.20.0.1/hook', { allowPrivate: true })).valid).toBe(true);
+    });
+
+    it('accepts IPv6 loopback when allowPrivate is set', async () => {
+      const result = await validateWebhookUrl('http://[::1]:8787/webhook', { allowPrivate: true });
+      expect(result.valid).toBe(true);
+    });
+
+    it('accepts hostname resolving to a private IP when allowPrivate is set', async () => {
+      vi.mocked(dns.resolve4).mockResolvedValue(['127.0.0.1']);
+      vi.mocked(dns.resolve6).mockResolvedValue([]);
+
+      const result = await validateWebhookUrl('http://lvh.me:8787/webhook', { allowPrivate: true });
+      expect(result.valid).toBe(true);
+    });
+
+    it('always accepts public URLs regardless of the flag', async () => {
+      vi.mocked(dns.resolve4).mockResolvedValue(['93.184.216.34']);
+      vi.mocked(dns.resolve6).mockResolvedValue([]);
+
+      expect((await validateWebhookUrl('https://example.com/webhook')).valid).toBe(true);
+      expect((await validateWebhookUrl('https://example.com/webhook', { allowPrivate: true })).valid).toBe(true);
+    });
+
+    it('STILL blocks cloud metadata even when allowPrivate is set', async () => {
+      const result = await validateWebhookUrl('http://169.254.169.254/latest/meta-data/', { allowPrivate: true });
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('metadata');
+    });
+
+    it('STILL blocks cloud metadata hostnames even when allowPrivate is set', async () => {
+      const result = await validateWebhookUrl('http://metadata.google.internal/computeMetadata/v1/', { allowPrivate: true });
+      expect(result.valid).toBe(false);
+    });
+
+    it('STILL blocks a hostname resolving to the metadata IP when allowPrivate is set', async () => {
+      vi.mocked(dns.resolve4).mockResolvedValue(['169.254.169.254']);
+      vi.mocked(dns.resolve6).mockResolvedValue([]);
+
+      const result = await validateWebhookUrl('http://metadata-proxy.example.com/', { allowPrivate: true });
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('metadata');
+    });
+
+    it('STILL blocks non-HTTP protocols even when allowPrivate is set', async () => {
+      const result = await validateWebhookUrl('file:///etc/passwd', { allowPrivate: true });
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('HTTP');
+    });
+
+    it('STILL blocks decimal-encoded loopback by default', async () => {
+      const result = await validateWebhookUrl('http://2130706433/webhook');
       expect(result.valid).toBe(false);
     });
   });
