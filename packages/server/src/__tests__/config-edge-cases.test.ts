@@ -281,6 +281,30 @@ describe("config edge cases", () => {
       const warnings = validateProductionConfig(config);
       expect(warnings).toHaveLength(0);
     });
+
+    it("hard-refuses AGENTGATE_ALLOW_PRIVATE_WEBHOOKS in production (neutralized, not honored)", () => {
+      const config = parseConfig({
+        nodeEnv: "production",
+        allowPrivateWebhooks: true,
+        adminApiKey: "supersecretadminkey123",
+        jwtSecret: "very-long-jwt-secret-that-is-32-chars!!",
+        corsAllowedOrigins: "https://myapp.com",
+        webhookEncryptionKey: "my-encryption-key",
+        authMode: "api-key-only",
+      });
+      // The SSRF escape hatch can NEVER take effect in production, even when set.
+      expect(config.allowPrivateWebhooks).toBe(false);
+      expect(config.allowPrivateWebhooksRequested).toBe(true);
+      const warnings = validateProductionConfig(config);
+      expect(warnings.some((w) => w.includes("IGNORED"))).toBe(true);
+    });
+
+    it("honors AGENTGATE_ALLOW_PRIVATE_WEBHOOKS outside production", () => {
+      const dev = parseConfig({ nodeEnv: "development", allowPrivateWebhooks: true });
+      expect(dev.allowPrivateWebhooks).toBe(true);
+      const test = parseConfig({ nodeEnv: "test", allowPrivateWebhooks: true });
+      expect(test.allowPrivateWebhooks).toBe(true);
+    });
   });
 
   describe("singleton behavior edge cases", () => {

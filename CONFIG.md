@@ -109,6 +109,7 @@ recovery. AgentLens posts to `POST /api/guardrails/webhook` with a shared secret
 | `REQUEST_TIMEOUT_SEC` | number | `3600` | Default request timeout in seconds |
 | `WEBHOOK_TIMEOUT_MS` | number | `5000` | Webhook delivery timeout in milliseconds |
 | `WEBHOOK_MAX_RETRIES` | number | `3` | Maximum webhook retry attempts |
+| `AGENTGATE_ALLOW_PRIVATE_WEBHOOKS` | boolean | `false` | **DEV/TEST ONLY.** When set (`1`/`true`), the webhook SSRF guard permits loopback / RFC-1918 private-range destinations (`127.0.0.1`, `::1`, `10.x`, `172.16-31.x`, `192.168.x`, `localhost`) so local integrations can register a `http://127.0.0.1:PORT` webhook. Cloud-metadata endpoints (`169.254.169.254`) and non-HTTP(S) protocols stay blocked. Default (unset) keeps the full SSRF-safe behavior. **Never enable in production** — startup emits a warning if it is on under `NODE_ENV=production`. |
 
 ### Slack Integration
 

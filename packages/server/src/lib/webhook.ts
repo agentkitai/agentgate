@@ -77,7 +77,9 @@ function getBackoffMs(attempt: number): number {
 
 async function attemptDelivery(deliveryId: string, url: string, payload: string, signature: string, attempt = 1) {
   // SSRF protection: Re-validate URL before each delivery attempt (DNS rebinding defense)
-  const validation = await validateWebhookUrl(url);
+  const validation = await validateWebhookUrl(url, {
+    allowPrivate: getConfig().allowPrivateWebhooks,
+  });
   if (!validation.valid) {
     await getDb().update(webhookDeliveries)
       .set({

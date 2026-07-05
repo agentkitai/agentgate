@@ -56,7 +56,9 @@ export class WebhookAdapter implements NotificationChannelAdapter {
     const timestamp = Date.now();
 
     // Validate URL and SSRF protection
-    const validation = await validateWebhookUrl(target);
+    const validation = await validateWebhookUrl(target, {
+      allowPrivate: config.allowPrivateWebhooks,
+    });
     if (!validation.valid) {
       return {
         success: false,

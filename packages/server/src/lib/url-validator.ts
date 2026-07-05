@@ -48,10 +48,16 @@ const CLOUD_METADATA_HOSTNAMES = [
   'instance-data',
 ];
 
-// Blocked hostnames
-const BLOCKED_HOSTNAMES = [
+// Loopback / local hostnames — blocked by default, but permitted when the
+// dev/test allowPrivate escape hatch is on (see validateWebhookUrl).
+const LOOPBACK_HOSTNAMES = [
   'localhost',
   'localhost.localdomain',
+];
+
+// Blocked hostnames
+const BLOCKED_HOSTNAMES = [
+  ...LOOPBACK_HOSTNAMES,
   ...CLOUD_METADATA_HOSTNAMES,
 ];
 
@@ -105,18 +111,25 @@ export function isCloudMetadata(ip: string): boolean {
 }
 
 /**
- * Check if hostname is blocked
+ * Check if hostname is blocked.
+ *
+ * When `allowPrivate` is set (dev/test escape hatch), loopback hostnames such
+ * as `localhost` are permitted, but cloud-metadata hostnames stay blocked.
  */
-function isBlockedHostname(hostname: string): boolean {
+function isBlockedHostname(hostname: string, allowPrivate: boolean): boolean {
   const normalizedHost = hostname.toLowerCase();
-  
+
+  // In allowPrivate mode only cloud-metadata hostnames remain off-limits;
+  // otherwise the full blocklist (loopback + metadata) applies.
+  const blockList = allowPrivate ? CLOUD_METADATA_HOSTNAMES : BLOCKED_HOSTNAMES;
+
   // Direct match
-  if (BLOCKED_HOSTNAMES.includes(normalizedHost)) {
+  if (blockList.includes(normalizedHost)) {
     return true;
   }
 
   // Subdomain of blocked hostname
-  for (const blocked of BLOCKED_HOSTNAMES) {
+  for (const blocked of blockList) {
     if (normalizedHost.endsWith('.' + blocked)) {
       return true;
     }
@@ -180,13 +193,29 @@ export interface ValidationResult {
   resolvedIP?: string;
 }
 
+export interface ValidateWebhookOptions {
+  /**
+   * Dev/test ONLY: permit webhook destinations on loopback and RFC-1918/private
+   * ranges (127.0.0.1, ::1, 10.x, 172.16-31.x, 192.168.x, 169.254.x, localhost).
+   *
+   * Cloud metadata endpoints (169.254.169.254 & friends) and non-HTTP(S)
+   * protocols remain blocked even when this is set — so the guard still stops
+   * the canonical SSRF vectors. Default: false. Never enable in production.
+   */
+  allowPrivate?: boolean;
+}
+
 /**
  * Validate a webhook URL for SSRF vulnerabilities
  * Resolves DNS and checks if destination is safe
  */
-export async function validateWebhookUrl(url: string): Promise<ValidationResult> {
+export async function validateWebhookUrl(
+  url: string,
+  options: ValidateWebhookOptions = {},
+): Promise<ValidationResult> {
+  const allowPrivate = options.allowPrivate ?? false;
   let parsed: URL;
-  
+
   try {
     parsed = new URL(url);
   } catch {
@@ -201,7 +230,7 @@ export async function validateWebhookUrl(url: string): Promise<ValidationResult>
   const hostname = parsed.hostname;
 
   // Check blocked hostnames
-  if (isBlockedHostname(hostname)) {
+  if (isBlockedHostname(hostname, allowPrivate)) {
     return { valid: false, error: 'Hostname is not allowed' };
   }
 
@@ -212,7 +241,7 @@ export async function validateWebhookUrl(url: string): Promise<ValidationResult>
     if (isCloudMetadata(normalizedFromHost)) {
       return { valid: false, error: 'Cloud metadata endpoints are not allowed' };
     }
-    if (isPrivateIP(normalizedFromHost)) {
+    if (!allowPrivate && isPrivateIP(normalizedFromHost)) {
       return { valid: false, error: 'Private IP addresses are not allowed' };
     }
     return { valid: true, resolvedIP: normalizedFromHost };
@@ -224,7 +253,7 @@ export async function validateWebhookUrl(url: string): Promise<ValidationResult>
     if (isCloudMetadata(hostname)) {
       return { valid: false, error: 'Cloud metadata endpoints are not allowed' };
     }
-    if (isPrivateIP(hostname)) {
+    if (!allowPrivate && isPrivateIP(hostname)) {
       return { valid: false, error: 'Private IP addresses are not allowed' };
     }
     return { valid: true, resolvedIP: hostname };
@@ -237,7 +266,7 @@ export async function validateWebhookUrl(url: string): Promise<ValidationResult>
     if (isCloudMetadata(ipv6)) {
       return { valid: false, error: 'Cloud metadata endpoints are not allowed' };
     }
-    if (isPrivateIP(ipv6)) {
+    if (!allowPrivate && isPrivateIP(ipv6)) {
       return { valid: false, error: 'Private IP addresses are not allowed' };
     }
     return { valid: true, resolvedIP: ipv6 };
@@ -259,7 +288,7 @@ export async function validateWebhookUrl(url: string): Promise<ValidationResult>
       if (isCloudMetadata(ip)) {
         return { valid: false, error: `Hostname resolves to cloud metadata endpoint: ${ip}` };
       }
-      if (isPrivateIP(ip)) {
+      if (!allowPrivate && isPrivateIP(ip)) {
         return { valid: false, error: `Hostname resolves to private IP: ${ip}` };
       }
     }
