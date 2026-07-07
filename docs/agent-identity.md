@@ -200,6 +200,50 @@ SAME verified-principal slot — the principal id is the **SPIFFE ID** itself
   tried only when no live agent token resolves; both are gated off in
   `api-key-only` mode.
 
+## Delegated / on-behalf-of tokens — RFC-8693 (#43)
+
+Unattended agent chains — an orchestrator **A** that spawns a sub-agent **B** to
+act for it — need a token that records both *who is acting* (B) and *on whose
+behalf* (A). AgentGate adds the [RFC-8693](https://datatracker.ietf.org/doc/html/rfc8693)
+**token-exchange** grant at `POST /api/agents/token` to mint such **delegated
+tokens**. Tier 1 supports **delegation** (an `act` chain is always left behind);
+impersonation (no `act`) is intentionally not offered.
+
+**Enable:** set `AGENT_TOKEN_EXCHANGE_ENABLED=true`. Delegated tokens are
+**RS256-only**, so `AGENT_TOKEN_SIGNING_KEY` (#40) must also be configured — with
+neither, the grant returns `unsupported_grant_type`.
+
+**Exchange:** the actor presents **both** its own agent token (`actor_token`) and
+the subject's agent token (`subject_token`, given to it by the subject):
+
+```
+POST /api/agents/token
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+subject_token=<A's agent token>      # the principal (on behalf of whom)
+actor_token=<B's agent token>        # the actor (who is acting)
+→ { access_token, issued_token_type: "urn:ietf:params:oauth:token-type:jwt", token_type: "Bearer", expires_in }
+```
+
+**Claim shape (strict RFC-8693 §4.1):** the delegated token keeps the on-behalf-of
+principal in `sub` and the current actor in the top-level `act.sub`; a chain nests
+older actors inward. Both AgentGate and AgentLens read the **actor** via
+`actingAgentOf()` (`act.sub ?? sub`), so per-agent budgets (#13), MCP guardrails
+(#14), virtual-key binding, and AgentLens attribution all target **B (the actor)**,
+while `sub` records who B acts for. A plain (non-delegated) token has no `act`, so
+`sub` is the actor — existing tokens and verifiers are unchanged.
+
+- **Verification:** both presented tokens are verified as agent tokens; the actor
+  must be a **live, non-revoked** `agt_*` at exchange time (mirroring the use-time
+  liveness re-check). Possession of a valid subject + actor token IS the
+  authorization — this is never worse than the actor simply using the subject's
+  token directly, but leaves an audit trace instead.
+- **Attribution:** AgentLens stamps the principal into `verifiedOnBehalfOf`
+  alongside `verifiedAgentId` (the actor), so a delegated purchase reads as
+  "B acting for A".
+- **Limitation (deferred):** no `may_act` restriction on *which* agents may act
+  for a subject (Tier 2), and no scope/audience narrowing of the delegated token
+  (Tier 3). A crafted delegation chain is bounded (`MAX_DELEGATION_DEPTH`).
+
 ## Downstream propagation (the consumer contract)
 
 The same verified identity is intended to flow to the rest of the platform.
@@ -249,6 +293,7 @@ formalization, not a new subsystem.
 | `AGENT_TOKEN_VERIFY_KEYS` | — | JSON array of public RSA JWKs (each with `kid`) to also publish + accept on verify — retired signers during a rotation. |
 | `AGENT_TOKEN_AUDIENCE` | — | `aud` claim minted into RS256 tokens and required on verify (RS256 path only). |
 | `AGENT_TOKEN_ISSUER` | — | `iss` claim minted into RS256 tokens for issuer pinning (RS256 path only). |
+| `AGENT_TOKEN_EXCHANGE_ENABLED` | `false` | Enable the RFC-8693 token-exchange grant (delegated/on-behalf-of tokens, #43). Requires `AGENT_TOKEN_SIGNING_KEY` (RS256-only). |
 | `SPIFFE_AUDIENCE` | — | Required SVID audience. Set with `SPIFFE_TRUST_DOMAIN` + a bundle to enable SPIFFE. |
 | `SPIFFE_TRUST_DOMAIN` | — | Trust domain to pin SVID subjects to (e.g. `example.org`). Required to enable SPIFFE. |
 | `SPIFFE_JWKS_URL` | — | URL of the SPIFFE trust bundle (JWKS). Validated as a URL. |
@@ -282,6 +327,9 @@ formalization, not a new subsystem.
   [above](#external-spiffe--wimse-workload-identity-41). Still open: X.509-SVID
   (Workload API / mTLS), and **binding a SPIFFE ID to a registered `agt_*`** so
   per-agent budgets/policies apply.
-- **RFC-8693 token exchange** for delegated/on-behalf-of agent chains.
+- ✅ **RFC-8693 token exchange** for delegated/on-behalf-of agent chains — shipped
+  in #43 (Tier 1: delegation via `subject_token` + `actor_token`, strict `act`
+  chain, RS256-only). See [above](#delegated--on-behalf-of-tokens--rfc-8693-43).
+  Still open: `may_act` restriction (Tier 2) and scope/audience narrowing (Tier 3).
 - **Token-endpoint rate limiting** and a credential-rotation playbook
   (dual-active secret window).

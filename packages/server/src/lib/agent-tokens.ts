@@ -23,6 +23,43 @@ import { verifySpiffeSvid } from "./spiffe.js";
 export const AGENT_TOKEN_TYP = "agent";
 
 /**
+ * RFC-8693 `act` (actor) claim. For a delegated token, `sub` is the principal
+ * (on whose behalf the call is made) and `act.sub` is the actor (the agent
+ * actually acting); a delegation chain nests older actors inward via `act.act`.
+ */
+export interface ActClaim {
+  sub?: string;
+  act?: ActClaim;
+  [k: string]: unknown;
+}
+
+/** The verified identity claims we read off an agent token. */
+export interface AgentTokenClaims {
+  /** Token subject: the acting agent (plain token) or the principal (delegated). */
+  sub: string;
+  /** Present only on a delegated (token-exchange) token. */
+  act?: ActClaim;
+}
+
+/**
+ * The agent that is ACTUALLY acting. RFC-8693 puts the current actor in the
+ * top-level `act.sub`; a plain (non-delegated) token has no `act`, so the actor
+ * IS `sub`. Every enforcement/attribution consumer wants this value — it is what
+ * {@link verifyAgentToken} returns, so existing callers keep working unchanged.
+ */
+export function actingAgentOf(claims: AgentTokenClaims): string {
+  return typeof claims.act?.sub === "string" ? claims.act.sub : claims.sub;
+}
+
+/**
+ * The principal a delegated token acts ON BEHALF OF (the RFC-8693 `sub`), or
+ * undefined for a plain token. Used for attribution, never for enforcement.
+ */
+export function onBehalfOfAgent(claims: AgentTokenClaims): string | undefined {
+  return claims.act ? claims.sub : undefined;
+}
+
+/**
  * Mint a short-lived agent access token. sub = agt_* id; exp from config TTL.
  * When an RS256 signing key is configured (#40) the token is signed
  * asymmetrically with that key's kid (and aud, if set); otherwise it is signed
@@ -48,20 +85,31 @@ export async function signAgentToken(agentId: string, config: AuthConfig): Promi
   );
 }
 
+/** Narrow a verified JWT payload to {@link AgentTokenClaims} (sub required, act optional). */
+function toAgentClaims(payload: Record<string, unknown>): AgentTokenClaims | null {
+  if (typeof payload.sub !== "string") return null;
+  const act = payload["act"];
+  return {
+    sub: payload.sub,
+    ...(act && typeof act === "object" ? { act: act as ActClaim } : {}),
+  };
+}
+
 /**
- * Verify a Bearer token AS an agent token. Returns the agent id (sub) iff the
- * signature is valid AND typ === "agent"; otherwise null — including for valid
- * USER tokens, which must never cross over into the agent path.
+ * Verify a Bearer token AS an agent token and return its identity claims
+ * ({@link AgentTokenClaims}: `sub` + optional RFC-8693 `act`), iff the signature
+ * is valid AND typ === "agent"; otherwise null — including for valid USER tokens,
+ * which must never cross over into the agent path.
  *
  * The token's header `alg` selects the path: RS256-family tokens verify against
  * the local JWKS (#40, pinned to RS256 so an HS256/none token can't down-bid),
  * everything else uses the shared-secret HS256 verifier. Both paths re-check
  * `typ === "agent"`; the RS256 path also enforces the configured audience.
  */
-export async function verifyAgentToken(
+export async function verifyAgentTokenClaims(
   token: string | undefined,
   config: AuthConfig,
-): Promise<string | null> {
+): Promise<AgentTokenClaims | null> {
   if (!token) return null;
 
   let alg: unknown;
@@ -84,7 +132,7 @@ export async function verifyAgentToken(
         ...(audience ? { audience } : {}),
       });
       if ((payload as Record<string, unknown>).typ !== AGENT_TOKEN_TYP) return null;
-      return typeof payload.sub === "string" ? payload.sub : null;
+      return toAgentClaims(payload as Record<string, unknown>);
     } catch {
       return null;
     }
@@ -93,7 +141,21 @@ export async function verifyAgentToken(
   const claims = await verifyAccessToken(token, config);
   if (!claims) return null;
   if ((claims as Record<string, unknown>).typ !== AGENT_TOKEN_TYP) return null;
-  return typeof claims.sub === "string" ? claims.sub : null;
+  return toAgentClaims(claims as Record<string, unknown>);
+}
+
+/**
+ * Verify a Bearer token AS an agent token. Returns the ACTING agent id (the
+ * top-level `act.sub` for a delegated token, else `sub`) iff valid, else null.
+ * Every enforcement consumer resolves through here, so a delegated token is
+ * enforced against the actor — not the on-behalf-of principal.
+ */
+export async function verifyAgentToken(
+  token: string | undefined,
+  config: AuthConfig,
+): Promise<string | null> {
+  const claims = await verifyAgentTokenClaims(token, config);
+  return claims ? actingAgentOf(claims) : null;
 }
 
 /**
