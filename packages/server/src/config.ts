@@ -246,6 +246,14 @@ export const ConfigSchema = z.object({
   /** Optional issuer (iss) claim minted into RS256 agent tokens so standard
    *  JWKS verifiers (AgentLens, Lore) can pin the issuer. */
   agentTokenIssuer: z.string().optional(),
+  /** Enable the RFC-8693 token-exchange grant (#43) at POST /api/agents/token,
+   *  which mints DELEGATED tokens ("agent B acting on behalf of A"). Off by
+   *  default; requires AGENT_TOKEN_SIGNING_KEY (delegated tokens are RS256-only).
+   *  When disabled the grant returns unsupported_grant_type. */
+  agentTokenExchangeEnabled: z
+    .union([z.boolean(), z.string()])
+    .transform((val) => (typeof val === "boolean" ? val : ["true", "1", "yes"].includes(val.toLowerCase())))
+    .default(false),
 
   // ─── External SPIFFE/WIMSE workload identity (#41) ──────────────────
   /** Accept SPIFFE JWT-SVIDs whose audience equals this value. REQUIRED to
@@ -402,6 +410,7 @@ const ENV_MAP: Record<string, keyof z.infer<typeof ConfigSchema>> = {
   AGENT_TOKEN_VERIFY_KEYS: "agentTokenVerifyKeys",
   AGENT_TOKEN_AUDIENCE: "agentTokenAudience",
   AGENT_TOKEN_ISSUER: "agentTokenIssuer",
+  AGENT_TOKEN_EXCHANGE_ENABLED: "agentTokenExchangeEnabled",
   SPIFFE_AUDIENCE: "spiffeAudience",
   SPIFFE_TRUST_DOMAIN: "spiffeTrustDomain",
   SPIFFE_JWKS_URL: "spiffeJwksUrl",
@@ -564,6 +573,12 @@ export function validateProductionConfig(config: Config): string[] {
     warnings.push(
       "AGENT_TOKEN_AUDIENCE has no effect without AGENT_TOKEN_SIGNING_KEY " +
         "(audience scoping requires the RS256/JWKS path)",
+    );
+  }
+  if (config.agentTokenExchangeEnabled && !config.agentTokenSigningKey) {
+    warnings.push(
+      "AGENT_TOKEN_EXCHANGE_ENABLED has no effect without AGENT_TOKEN_SIGNING_KEY " +
+        "(delegated tokens are RS256-only); the token-exchange grant stays disabled",
     );
   }
   if (config.agentTokenIssuer && !config.agentTokenSigningKey) {
