@@ -20,7 +20,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # docker-container driver so `cache-to: type=gha` works (the default
       # docker driver can't export cache — the build fails without this).

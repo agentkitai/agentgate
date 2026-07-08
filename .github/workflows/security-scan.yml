@@ -15,7 +15,7 @@ jobs:
     name: Trivy Filesystem Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Run Trivy filesystem scan
         uses: aquasecurity/trivy-action@v0.36.0
@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'schedule'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build Docker image
         run: docker build -t agentgate:scan .
@@ -54,7 +54,7 @@ jobs:
     name: Dependency Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v4
 
