@@ -213,7 +213,8 @@ export function formatError(error: unknown): ToolResult {
 /**
  * Map a guardrail verdict to a blocking tool result, or null when the call is
  * allowed (the caller then runs the tool). A `deny` is a synchronous error
- * result; `requires_approval` is a (non-error) pending result. Issue #14.
+ * result; `requires_approval` is a (non-error) pending result; `error` (the gate
+ * failing closed, see authorizeTool) is a blocking error result. Issue #14.
  */
 export function guardrailBlockResult(
   verdict: { decision: string; requestId?: string; reason?: string | null } | null,
@@ -235,6 +236,16 @@ export function guardrailBlockResult(
       reason: verdict.reason ?? null,
       message: 'Tool call requires approval and was routed to AgentGate.',
     });
+  }
+  if (verdict?.decision === 'error') {
+    return {
+      ...formatResult({
+        status: 'blocked',
+        reason: verdict.reason ?? null,
+        message: 'Tool call blocked: AgentGate guardrail unavailable (failing closed).',
+      }),
+      isError: true,
+    };
   }
   return null;
 }
@@ -465,10 +476,14 @@ export async function handleGetAuditActors(
 /**
  * Ask the server whether a tool call is allowed for this MCP server's identity
  * (issue #14). The server keys the guardrail on the verified agent bound to the
- * api key. Returns the verdict (allow / requires_approval / deny), or null to
- * fail-open (allow) on a network/auth error.
- * ponytail: fail-open on error; add an AGENTGATE_GUARDRAIL_STRICT flag if a
- * deployment needs the gate to fail closed.
+ * api key. Returns the verdict (allow / requires_approval / deny).
+ *
+ * On a network/auth error the gate FAILS CLOSED by default: it returns an
+ * `error` verdict that `guardrailBlockResult` turns into a blocking result, so
+ * a down/unreachable AgentGate can't silently wave every tool call through.
+ * Set AGENTGATE_GUARDRAIL_FAIL_OPEN=1 (config.guardrailFailOpen) to restore the
+ * old fail-open behaviour (returns null → allow) for deployments where the
+ * guardrail is advisory rather than enforcing.
  */
 export async function authorizeTool(
   config: ApiConfig,
@@ -481,8 +496,13 @@ export async function authorizeTool(
       params: args,
     })) as { decision: string; status?: string; requestId?: string; reason?: string | null };
   } catch (err) {
-    console.error(`[guardrail] authorize failed for ${toolName}, allowing:`, err);
-    return null;
+    if (config.guardrailFailOpen) {
+      console.error(`[guardrail] authorize failed for ${toolName}, failing OPEN (AGENTGATE_GUARDRAIL_FAIL_OPEN):`, err);
+      return null;
+    }
+    const reason = err instanceof Error ? err.message : String(err);
+    console.error(`[guardrail] authorize failed for ${toolName}, failing CLOSED:`, err);
+    return { decision: "error", reason: `guardrail unavailable: ${reason}` };
   }
 }
 
