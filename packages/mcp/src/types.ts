@@ -76,6 +76,9 @@ export interface ApiConfig {
   approvalWaitMs?: number;
   /** Poll interval (ms) while waiting for an approval decision. */
   approvalPollMs?: number;
+  /** When the guardrail authorize call errors, allow the tool through instead of
+   *  blocking it. Default false (fail closed). Set via AGENTGATE_GUARDRAIL_FAIL_OPEN. */
+  guardrailFailOpen?: boolean;
 }
 
 export interface ApiErrorResponse {

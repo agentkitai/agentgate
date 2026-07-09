@@ -33,6 +33,14 @@ describe('guardrailBlockResult', () => {
     expect(guardrailBlockResult({ decision: 'allow' })).toBeNull();
     expect(guardrailBlockResult(null)).toBeNull();
   });
+
+  it('returns an isError block for an error verdict (guardrail failing closed)', () => {
+    const r = guardrailBlockResult({ decision: 'error', reason: 'guardrail unavailable: boom' });
+    expect(r?.isError).toBe(true);
+    const text = JSON.stringify(r);
+    expect(text).toContain('blocked');
+    expect(text).toContain('guardrail unavailable');
+  });
 });
 
 describe('buildListParams', () => {
@@ -568,9 +576,19 @@ describe('authorizeTool (MCP guardrail, #14)', () => {
     expect(verdict?.requestId).toBe('req-9');
   });
 
-  it('fails OPEN (returns null) on a network/auth error', async () => {
+  it('fails CLOSED by default on a network/auth error (returns an error verdict)', async () => {
     fetchMock.mockResolvedValue({ ok: false, status: 500, text: () => Promise.resolve('') });
-    expect(await authorizeTool(config, 'file.read', {})).toBeNull();
+    const verdict = await authorizeTool(config, 'file.read', {});
+    expect(verdict?.decision).toBe('error');
+    // and that verdict blocks the tool call
+    const blocked = guardrailBlockResult(verdict);
+    expect(blocked?.isError).toBe(true);
+  });
+
+  it('fails OPEN (returns null) when guardrailFailOpen is set', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 500, text: () => Promise.resolve('') });
+    const openCfg: ApiConfig = { ...config, guardrailFailOpen: true };
+    expect(await authorizeTool(openCfg, 'file.read', {})).toBeNull();
   });
 });
 

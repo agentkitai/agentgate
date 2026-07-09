@@ -16,6 +16,7 @@ const config: ApiConfig = {
   apiKey: process.env.AGENTGATE_API_KEY ?? '',
   approvalWaitMs: Number(process.env.AGENTGATE_APPROVAL_WAIT_MS ?? 0) || 0,
   approvalPollMs: Number(process.env.AGENTGATE_APPROVAL_POLL_MS ?? 2000) || 2000,
+  guardrailFailOpen: /^(1|true|yes)$/i.test(process.env.AGENTGATE_GUARDRAIL_FAIL_OPEN ?? ''),
 };
 
 const server = new Server(
