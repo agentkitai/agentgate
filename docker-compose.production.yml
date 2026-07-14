@@ -41,7 +41,7 @@ services:
   # Redis (for rate limiting, queues, pub/sub)
   # ==========================================================================
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     container_name: agentgate-redis
     # Not exposed to host — only accessible within the internal network
     expose:
