@@ -1,5 +1,5 @@
 # ── Build stage ──────────────────────────────────────────────
-FROM node:22 AS build
+FROM node:24 AS build
 
 WORKDIR /app
 
@@ -26,7 +26,7 @@ COPY packages/dashboard/ packages/dashboard/
 RUN pnpm run build
 
 # ── Production stage ────────────────────────────────────────
-FROM node:22-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
