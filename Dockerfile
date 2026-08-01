@@ -4,7 +4,8 @@ FROM node:22 AS build
 WORKDIR /app
 
 # Install pnpm
-RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+# node:25+ no longer bundles corepack — install pnpm directly
+RUN npm install -g pnpm@9.15.4
 
 # Copy workspace config first for layer caching
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
@@ -29,7 +30,8 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+# node:25+ no longer bundles corepack — install pnpm directly
+RUN npm install -g pnpm@9.15.4
 
 # Copy workspace config
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
